@@ -198,8 +198,83 @@ def _klinik_ogohlantirish() -> None:
 .klinik-ogoh {
   position: sticky; top: 0; z-index: 999;
   background: #fff3cd; border: 1px solid #ffc107; color: #4a3800;
-  padding: 0.55rem 0.8rem; border-radius: 6px; margin-bottom: 0.6rem;
-  font-size: 0.92rem; line-height: 1.35;
+  padding: 0.42rem 0.8rem; border-radius: 6px; margin-bottom: 0.4rem;
+  font-size: 0.87rem; line-height: 1.3;
+}
+.bolim-sarlavha {
+  font-size: 0.93rem; font-weight: 600; color: #07111f;
+  border-bottom: 1px solid #dde3ec; padding-bottom: 0.15rem;
+  margin-top: 0.8rem; margin-bottom: 0.3rem;
+}
+.bosh-holat-ogoh {
+  background: #eaf1fb; border: 1px dashed #9ab4d4; color: #1a3657;
+  border-radius: 6px; padding: 1rem 1.2rem; text-align: center;
+  font-size: 0.95rem; margin-top: 1rem;
+}
+.oqim-qator {
+  display: flex; flex-wrap: wrap; gap: 0.4rem; margin: 0.2rem 0 0.8rem;
+}
+.oqim-chip {
+  font-size: 0.82rem; line-height: 1.2; white-space: nowrap;
+  padding: 0.28rem 0.55rem; border-radius: 999px; border: 1px solid #d5dbe3;
+  background: #f4f6f8; color: #3d4a5c;
+}
+.oqim-chip.done { background: #e5f6ea; border-color: #8dcea0; color: #145c2e; }
+.oqim-chip.current { background: #e7f1fb; border-color: #7eb0e0; color: #0b3a66; font-weight: 600; }
+.oqim-chip.skip { background: #f7f7f7; color: #6b7280; }
+/* ── Yangi komponentlar ─────────────────────────────────────────────────── */
+.lab-card {
+  display:flex; align-items:center; gap:0.5rem; background:#f9fafb;
+  border-radius:6px; padding:0.35rem 0.6rem; margin:0.18rem 0;
+  font-size:0.84rem; border-left:4px solid #9ca3af;
+}
+.lab-card.ok     { border-left-color:#16a34a; }
+.lab-card.warning{ border-left-color:#d97706; }
+.lab-card.danger { border-left-color:#dc2626; }
+.lab-card .lab-val { font-weight:700; font-size:0.94rem; margin-right:0.2rem; }
+.lab-dot-ok      { color:#16a34a; }
+.lab-dot-warning { color:#d97706; }
+.lab-dot-danger  { color:#dc2626; }
+.ecg-badge {
+  display:inline-block; padding:0.22rem 0.55rem; border-radius:999px;
+  font-size:0.82rem; font-weight:600; margin:0.15rem 0.2rem;
+  background:#f4f6f8; color:#3d4a5c; border:1px solid #d5dbe3;
+}
+.ecg-badge.ok      { background:#dcfce7; color:#14532d; border-color:#86efac; }
+.ecg-badge.warning { background:#fef3c7; color:#78350f; border-color:#fbbf24; }
+.ecg-badge.danger  { background:#fee2e2; color:#7f1d1d; border-color:#f87171; }
+.risk-badge {
+  display:inline-block; padding:0.2rem 0.6rem; border-radius:999px;
+  font-size:0.82rem; font-weight:700; margin:0.1rem 0.2rem;
+}
+.risk-badge.oddiy    { background:#dcfce7; color:#14532d; }
+.risk-badge.murakkab { background:#ffedd5; color:#7c2d12; }
+.risk-badge.unknown  { background:#f3f4f6; color:#6b7280; }
+.agent-badge {
+  display:inline-block; padding:0.2rem 0.6rem; border-radius:999px;
+  font-size:0.82rem; font-weight:700; margin:0.1rem 0.2rem;
+}
+.agent-badge.stop     { background:#ccfbf1; color:#134e4a; }
+.agent-badge.continue { background:#dbeafe; color:#1e3a8a; }
+.mdt-gemma   { border-left:3px solid #7c3aed; background:#f5f3ff; border-radius:4px; padding:0.4rem 0.6rem; margin:0.2rem 0; }
+.mdt-qwen    { border-left:3px solid #0891b2; background:#ecfeff; border-radius:4px; padding:0.4rem 0.6rem; margin:0.2rem 0; }
+.mdt-deepseek{ border-left:3px solid #b91c1c; background:#fff1f2; border-radius:4px; padding:0.4rem 0.6rem; margin:0.2rem 0; }
+.step-card {
+  border:1px solid #e5e7eb; border-radius:6px;
+  padding:0.5rem 0.75rem; margin:0.3rem 0; background:#fafafa;
+}
+.step-card.done    { border-left:4px solid #16a34a; }
+.step-card.pending { border-left:4px solid #3b82f6; }
+.step-card.xato    { border-left:4px solid #dc2626; }
+.replan-alert {
+  background:#fffbeb; border:1px solid #f59e0b; border-radius:6px;
+  padding:0.5rem 0.8rem; margin:0.4rem 0; color:#78350f; font-size:0.87rem;
+}
+.log-entry {
+  font-family:monospace; font-size:0.82rem; background:#f8fafc;
+  border:1px solid #e2e8f0; border-radius:4px;
+  padding:0.4rem 0.6rem; margin:0.2rem 0; white-space:pre-wrap;
+  word-break:break-all; color:#1e293b;
 }
 </style>
 """,
@@ -239,6 +314,56 @@ def _audit_paneli(agent_holat: Optional[Dict[str, Any]]) -> None:
         f"Qwen={yozuv.get('mdt_qwen_manba')}/{yozuv.get('mdt_qwen_model')}"
     )
     st.caption("Audit JSON mahalliy `data/audit/` da (git emas). Kalit va EKG signal yozilmaydi.")
+
+
+def _sidebar_paneli(rag_paket: Any, agent_holat: Optional[Dict[str, Any]]) -> None:
+    """Texnik holat (LLM/RAG), audit va formani tozalash tugmasini sidebar ga yig‘adi.
+
+    Args:
+        rag_paket: _rag_ol natijasi (ok, rag, xato).
+        agent_holat: ChiefCardiologist.run natijasi yoki None.
+
+    Returns:
+        None. Tashxis emas; kalit va PII ko‘rsatilmaydi.
+    """
+    with st.sidebar:
+        st.markdown("### 🫀 Tizim holati")
+
+        # LLM/VLM qisqa holati
+        if llm_mavjud():
+            vlm = vlm_sozlama("medgemma") or vlm_sozlama("qwen_vl")
+            if vlm:
+                st.caption("✅ LLM ulangan · VLM sozlangan")
+            else:
+                st.caption("⚠️ LLM ulangan · VLM yo‘q (MDT shablon)")
+        else:
+            st.warning("Shablon rejimi: LLM kaliti yo‘q. MDT/fellow qoida bilan ishlaydi.", icon="⚠️")
+
+        # RAG holati (yig‘ilgan)
+        with st.expander("CardiacRAG holati", expanded=False):
+            _rag_banner(rag_paket)
+
+        st.divider()
+
+        # Audit
+        _audit_paneli(agent_holat)
+
+        st.divider()
+
+        # Agent izlar (qisqa versiya)
+        if agent_holat:
+            with st.expander("Agent izlar (qisqa)", expanded=False):
+                _agent_izlar(agent_holat)
+
+        st.divider()
+
+        # Formani tozalash: tahlil natijalarini o‘chiradi, widget state saqlanadi
+        st.caption("Tahlil natijalarini o‘chiring (yuklangan fayllar saqlanadi).")
+        if st.button("🗑️ Formani tozalash", use_container_width=True, key="formani_tozala"):
+            st.session_state.agent_holat = None
+            st.session_state.bemor_tahlil = None
+            st.session_state.vizual_ochiq = False
+            st.rerun()
 
 
 def _oqim_bosqichlari(holat: Optional[Dict[str, Any]]) -> List[str]:
@@ -293,27 +418,27 @@ def _olti_bosqich_chiz(holat: Optional[Dict[str, Any]]) -> None:
         None. Tashxis emas.
     """
     sarlavhalar = [
-        "1. Qabul",
-        "2. Murakkablik",
-        "3. CardiacRAG reja",
-        "4. Ekspert vositalar",
-        "5. MDT",
-        "6. Xulosa",
+        "1 · Qabul",
+        "2 · Murakkablik",
+        "3 · RAG reja",
+        "4 · Vositalar",
+        "5 · MDT",
+        "6 · Xulosa",
     ]
     holatlar = _oqim_bosqichlari(holat)
     st.markdown("**6 bosqichli oqim**")
-    ustunlar = st.columns(6)
-    for i, nom in enumerate(sarlavhalar):
-        with ustunlar[i]:
-            s = holatlar[i]
-            if s == "done":
-                st.success(nom)
-            elif s == "current":
-                st.info("▶ " + nom)
-            elif s == "skip":
-                st.caption(nom + " (o‘tkazildi)")
-            else:
-                st.caption(nom)
+    qismlar = []
+    for nom, s in zip(sarlavhalar, holatlar):
+        yozuv = nom + (" · o‘tkazildi" if s == "skip" else "")
+        if s == "current":
+            yozuv = "▶ " + yozuv
+        qismlar.append(
+            f'<span class="oqim-chip {html.escape(s)}">{html.escape(yozuv)}</span>'
+        )
+    st.markdown(
+        '<div class="oqim-qator">' + "".join(qismlar) + "</div>",
+        unsafe_allow_html=True,
+    )
 
 
 def _reja_jonli(holat: Optional[Dict[str, Any]]) -> None:
@@ -559,6 +684,536 @@ def _echo_kadr_xarita(bemor: Optional[Dict[str, Any]], echo: Dict[str, Any]) -> 
     return xarita
 
 
+def _lab_kartalar(lab_natija: Optional[Dict[str, Any]], bemor: Optional[Dict[str, Any]] = None) -> None:
+    """Lab analitlarini rangli kartochkalar bilan ko'rsatadi.
+
+    Args:
+        lab_natija: agent_holat['lab_natija'] — {qiymatlar, ...}.
+        bemor: Ixtiyoriy; zaxira laboratoriya lug'ati.
+
+    Returns:
+        None. Orientir rangi; tashxis emas.
+    """
+    qiymatlar: Dict[str, float] = (lab_natija or {}).get("qiymatlar") or {}
+    if not qiymatlar:
+        qiymatlar = (bemor or {}).get("laboratoriya") or {}
+    if not qiymatlar:
+        return
+
+    def _holat(k: str, v: float) -> str:
+        """Bir analitning xavf darajasini qaytaradi (ok/warning/danger)."""
+        if k == "troponin_i":
+            return "ok" if v < 34 else ("warning" if v < 100 else "danger")
+        if k == "nt_probnp":
+            return "ok" if v < 300 else ("warning" if v < 900 else "danger")
+        if k == "kreatinin":
+            return "danger" if v < 30 or v > 300 else ("ok" if 60 <= v <= 110 else "warning")
+        if k == "kaliy":
+            return "danger" if v < 3.0 or v > 5.5 else ("ok" if 3.5 <= v <= 5.1 else "warning")
+        if k == "glyukoza":
+            return "ok" if v <= 6.1 else ("warning" if v <= 11 else "danger")
+        if k == "ldl":
+            return "ok" if v < 2.6 else ("warning" if v < 4.9 else "danger")
+        if k == "hdl":
+            return "danger" if v < 0.7 else ("warning" if v <= 1.0 else "ok")
+        if k == "hba1c":
+            return "ok" if v < 5.7 else ("warning" if v < 6.5 else "danger")
+        return "ok"
+
+    belgi_map = {"ok": "●", "warning": "⚠", "danger": "🔴"}
+    sarlavha_map = {m[0]: m[1] for m in LAB_MAYDONLARI}
+    html_qismlar = []
+    for k, v in qiymatlar.items():
+        try:
+            fv = float(v)
+        except (TypeError, ValueError):
+            continue
+        h = _holat(k, fv)
+        s = html.escape(sarlavha_map.get(k, k))
+        belgi = belgi_map.get(h, "●")
+        html_qismlar.append(
+            f'<div class="lab-card {html.escape(h)}">'
+            f'<span class="lab-dot-{html.escape(h)}">{belgi}</span>'
+            f'<span class="lab-val">{html.escape(str(round(fv, 2)))}</span>'
+            f'<span>{s}</span>'
+            f'</div>'
+        )
+    if html_qismlar:
+        st.markdown("".join(html_qismlar), unsafe_allow_html=True)
+        st.caption("Orientir. Tashxis emas.")
+
+
+def _ecg_metrik(ecg_natija: Optional[Dict[str, Any]], ep_natija: Optional[Dict[str, Any]] = None) -> None:
+    """HR/QRS/QTc/PR ni rangli pill badge sifatida ko'rsatadi.
+
+    Args:
+        ecg_natija: agent_holat['ecg_natija'] — ECG o'lchovlar.
+        ep_natija: agent_holat['ep_natija'] — zaxira EP o'lchovlar.
+
+    Returns:
+        None. Taxminiy o'lchov; tashxis emas.
+    """
+    ecg = ecg_natija or {}
+    ep = ep_natija or {}
+
+    def _val(kalit: str) -> Optional[float]:
+        """Birinchi mavjud qiymatni float qilib qaytaradi."""
+        v = ecg.get(kalit) or ep.get(kalit)
+        try:
+            return float(v) if v is not None else None
+        except (TypeError, ValueError):
+            return None
+
+    hr = _val("yurak_chastotasi_bpm")
+    qrs = _val("qrs_ms")
+    qtc = _val("qtc_bazett_ms")
+    pr = _val("pr_ms")
+
+    badge_qismlar = []
+    if hr is not None:
+        h = "danger" if (hr < 50 or hr > 100) else "ok"
+        badge_qismlar.append(f'<span class="ecg-badge {html.escape(h)}">HR {int(round(hr))} bpm</span>')
+    if qrs is not None:
+        h = "warning" if qrs >= 120 else "ok"
+        badge_qismlar.append(f'<span class="ecg-badge {html.escape(h)}">QRS {int(round(qrs))} ms</span>')
+    if qtc is not None:
+        h = "warning" if qtc >= 450 else "ok"
+        badge_qismlar.append(f'<span class="ecg-badge {html.escape(h)}">QTc {int(round(qtc))} ms</span>')
+    if pr is not None:
+        h = "warning" if pr >= 200 else "ok"
+        badge_qismlar.append(f'<span class="ecg-badge {html.escape(h)}">PR {int(round(pr))} ms</span>')
+
+    if badge_qismlar:
+        st.markdown(
+            '<div style="margin:0.3rem 0;">' + "".join(badge_qismlar) + "</div>",
+            unsafe_allow_html=True,
+        )
+        st.caption("Taxminiy o'lchov, tashxis emas.")
+
+
+def _qadam_panel(agent_holat: Optional[Dict[str, Any]]) -> None:
+    """Klinik reja P ni qadam holati va oraliq natija xilosasi bilan ko'rsatadi.
+
+    Args:
+        agent_holat: ChiefCardiologist.run natijasi yoki None.
+
+    Returns:
+        None. Bu panel klinik reja P ni aks ettiradi; tashxis emas.
+    """
+    if not agent_holat:
+        return
+    murakkablik = str(agent_holat.get("murakkablik") or "")
+    amal = str(agent_holat.get("amal") or "")
+    sababi = str(agent_holat.get("murakkablik_sababi") or "")[:80]
+    risk_cls = "oddiy" if murakkablik == "oddiy" else ("murakkab" if murakkablik == "murakkab" else "unknown")
+    amal_cls = "stop" if amal == "STOP" else "continue"
+
+    st.markdown(
+        f'<div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;margin-bottom:0.3rem;">'
+        f'<b>Qadam-ba-qadam bajarish paneli</b>'
+        f'<span class="risk-badge {html.escape(risk_cls)}">{html.escape(murakkablik or "—")}</span>'
+        f'<span class="agent-badge {html.escape(amal_cls)}">{html.escape(amal or "—")}</span>'
+        f'</div>',
+        unsafe_allow_html=True,
+    )
+    if sababi:
+        st.caption(sababi)
+
+    # REPLAN detection: check qadam_tarixi for replan keyword
+    tarix = [str(t) for t in (agent_holat.get("qadam_tarixi") or [])]
+    if any("replan" in t.lower() for t in tarix):
+        st.markdown(
+            '<div class="replan-alert">⚠️ REPLAN aniqlandi — reja qayta tartibga solindi. '
+            'Klinik qarorni shifokor tasdiqlashi kerak.</div>',
+            unsafe_allow_html=True,
+        )
+
+    reja = (agent_holat or {}).get("reja") or []
+    if not reja:
+        st.caption("Reja hali tuzilmagan.")
+
+    lab_n = agent_holat.get("lab_natija") or {}
+    ecg_tech = agent_holat.get("ecg_technician_natija") or {}
+    ep_n = agent_holat.get("ep_natija") or {}
+    fellow_n = agent_holat.get("fellow_natija") or {}
+
+    for qadam in reja:
+        hol = str(qadam.get("holat") or "pending")
+        vosita = str(qadam.get("vosita") or "")
+        tavsif = str(qadam.get("tavsif") or "")[:120]
+        qid = str(qadam.get("id") or "")
+
+        if hol == "done":
+            belgi, klass = "✅", "done"
+        elif hol == "xato":
+            belgi, klass = "❌", "xato"
+        else:
+            belgi, klass = "🔷", "pending"
+
+        natija_matn = ""
+        if hol == "done":
+            if "lab_technician" in vosita:
+                tokenlar = lab_n.get("tokenlar") or []
+                natija_matn = f"Tokenlar: {len(tokenlar)} | Top: {', '.join(tokenlar[:3])}"
+            elif "ecg_technician" in vosita:
+                natija_matn = (
+                    f"Sifat: {ecg_tech.get('sifat') or '—'} | "
+                    f"HR≈{ecg_tech.get('yurak_chastotasi_bpm') or '—'} | "
+                    f"{ecg_tech.get('davomiylik_s') or '—'} s"
+                )
+            elif "electrophysiologist" in vosita or "ep_tool" in vosita:
+                natija_matn = (
+                    f"PR {ep_n.get('pr_ms') or '—'} | "
+                    f"QRS {ep_n.get('qrs_ms') or '—'} | "
+                    f"QTc {ep_n.get('qtc_bazett_ms') or '—'}"
+                )
+            elif "fellow" in vosita.lower():
+                matn = str(fellow_n.get("matn") or "")[:80]
+                natija_matn = matn if matn else "Bajarildi"
+            else:
+                natija_matn = f"{vosita} bajarildi"
+
+        xato_matn = ""
+        if hol == "xato":
+            xato_matn = str(qadam.get("xabar") or "Xato yuz berdi")[:100]
+
+        st.markdown(
+            f'<div class="step-card {html.escape(klass)}">'
+            f'{belgi} <b>{html.escape(qid)}</b> — <b>{html.escape(vosita)}</b><br>'
+            f'<span style="color:#6b7280;font-size:0.85rem;">{html.escape(tavsif)}</span>'
+            + (f'<br><span style="color:#374151;font-size:0.83rem;">{html.escape(natija_matn)}</span>' if natija_matn else "")
+            + (f'<br><span style="color:#dc2626;font-size:0.83rem;">❌ {html.escape(xato_matn)}</span>' if xato_matn else "")
+            + '</div>',
+            unsafe_allow_html=True,
+        )
+
+    baho = str(agent_holat.get("baho_sababi") or "")
+    if baho:
+        st.caption(f"Baholash sababi: {baho}")
+    st.caption("Bu panel klinik reja P ni aks ettiradi. Tashxis emas.")
+
+
+def _agent_izlar(agent_holat: Optional[Dict[str, Any]]) -> None:
+    """Agent mulohaza va iz jurnalin to'rt tabli ko'rinishda chiqaradi.
+
+    Args:
+        agent_holat: ChiefCardiologist.run natijasi yoki None.
+
+    Returns:
+        None. Tizim izlari; tashxis emas.
+    """
+    if not agent_holat:
+        st.info("Tahlildan keyin izlar ko'rinadi.")
+        return
+
+    import json as _json
+
+    tab_rag, tab_boss, tab_ekspert, tab_tizim = st.tabs([
+        "CardiacRAG izlar",
+        "Bosh kardiolog mulohazasi",
+        "Ekspert vositalar",
+        "Tizim holati",
+    ])
+
+    with tab_rag:
+        dalillar = agent_holat.get("rag_dalillar") or []
+        if not dalillar:
+            st.info("RAG dalillari yo'q.")
+        else:
+            for i, d in enumerate(dalillar):
+                st.markdown(
+                    f'<div class="log-entry">[{i + 1}] {html.escape(str(d)[:300])}</div>',
+                    unsafe_allow_html=True,
+                )
+        audit = agent_holat.get("audit") or {}
+        c_manbalar = audit.get("C") or []
+        if c_manbalar:
+            st.caption("C manbalari: " + ", ".join(str(m) for m in c_manbalar))
+
+    with tab_boss:
+        murakkablik = str(agent_holat.get("murakkablik") or "—")
+        sababi = str(agent_holat.get("murakkablik_sababi") or "")
+        risk_cls = "oddiy" if murakkablik == "oddiy" else ("murakkab" if murakkablik == "murakkab" else "unknown")
+        keng_nom = (
+            "BASIC (oddiy)" if murakkablik == "oddiy"
+            else ("COMPLEX (murakkab)" if murakkablik == "murakkab" else murakkablik)
+        )
+        st.markdown(
+            f'<span class="risk-badge {html.escape(risk_cls)}">{html.escape(keng_nom)}</span>',
+            unsafe_allow_html=True,
+        )
+        if sababi:
+            st.caption(sababi)
+        tarix = agent_holat.get("qadam_tarixi") or []
+        st.markdown("**Qadam tarixi (chain-of-thought):**")
+        for i, q in enumerate(tarix):
+            st.markdown(
+                f'<div class="log-entry">[{i + 1}] {html.escape(str(q))}</div>',
+                unsafe_allow_html=True,
+            )
+        baho = str(agent_holat.get("baho_sababi") or "")
+        if baho:
+            st.markdown(
+                f'<div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:6px;'
+                f'padding:0.5rem 0.8rem;margin-top:0.5rem;">'
+                f'<b>CONTINUE/STOP sababi:</b> {html.escape(baho)}</div>',
+                unsafe_allow_html=True,
+            )
+
+    with tab_ekspert:
+        ecg_tech = agent_holat.get("ecg_technician_natija") or {}
+        ep_n2 = agent_holat.get("ep_natija") or {}
+        echo_n2 = agent_holat.get("echo_natija") or {}
+        mask_n2 = agent_holat.get("echo_mask") or {}
+        fellow_n2 = agent_holat.get("fellow_natija") or {}
+
+        with st.expander("EKG technician", expanded=True):
+            if ecg_tech:
+                for k in ["sifat", "tasma", "urishlar_soni", "yurak_chastotasi_bpm",
+                          "davomiylik_s", "sampling_rate"]:
+                    v = ecg_tech.get(k)
+                    if v is not None:
+                        st.markdown(
+                            f'<div class="log-entry">{html.escape(k)}: {html.escape(str(v))}</div>',
+                            unsafe_allow_html=True,
+                        )
+                yet = ecg_tech.get("yetishmagan") or []
+                if yet:
+                    st.markdown(
+                        f'<div class="log-entry">yetishmagan: {html.escape(", ".join(yet))}</div>',
+                        unsafe_allow_html=True,
+                    )
+                if ecg_tech.get("xabar"):
+                    st.caption(str(ecg_tech["xabar"]))
+            else:
+                st.info("EKG technician natijasi yo'q.")
+
+        with st.expander("Elektrofiziolog", expanded=False):
+            if ep_n2:
+                for k in ["tasma", "yurak_chastotasi_bpm", "pr_ms", "qrs_ms", "qt_ms",
+                          "qtc_bazett_ms", "hrv_sdnn_ms", "hrv_rmssd_ms", "p_soni", "t_soni"]:
+                    v = ep_n2.get(k)
+                    if v is not None:
+                        st.markdown(
+                            f'<div class="log-entry">{html.escape(k)}: {html.escape(str(v))}</div>',
+                            unsafe_allow_html=True,
+                        )
+                eslatmalar = ep_n2.get("eslatmalar") or []
+                if eslatmalar:
+                    st.markdown("**Eslatmalar:**")
+                    for e in eslatmalar:
+                        st.markdown(f"- {e}")
+                if ep_n2.get("xabar"):
+                    st.caption(str(ep_n2["xabar"]))
+            else:
+                st.info("Elektrofiziolog natijasi yo'q.")
+
+        with st.expander("Echo technician", expanded=False):
+            if echo_n2:
+                korinishlar = echo_n2.get("korinishlar") or []
+                if korinishlar:
+                    st.markdown(
+                        f'<div class="log-entry">korinishlar: {html.escape(", ".join(korinishlar))}</div>',
+                        unsafe_allow_html=True,
+                    )
+                yet = echo_n2.get("yetishmagan_standart") or []
+                if yet:
+                    st.markdown(
+                        f'<div class="log-entry">yetishmagan_standart: {html.escape(", ".join(yet))}</div>',
+                        unsafe_allow_html=True,
+                    )
+                if echo_n2.get("xabar"):
+                    st.caption(str(echo_n2["xabar"]))
+            else:
+                st.info("Echo natijasi yo'q.")
+
+        with st.expander("Echo segmenter (LV maska)", expanded=False):
+            if mask_n2:
+                for k in ["korinish", "maydon_px", "ulush", "model", "xabar"]:
+                    v = mask_n2.get(k)
+                    if v is not None:
+                        st.markdown(
+                            f'<div class="log-entry">{html.escape(k)}: {html.escape(str(v))}</div>',
+                            unsafe_allow_html=True,
+                        )
+            else:
+                st.info("LV maska natijasi yo'q.")
+
+        with st.expander("Cardiology fellow", expanded=False):
+            if fellow_n2:
+                st.markdown(
+                    f'<div class="log-entry">'
+                    f'manba: {html.escape(str(fellow_n2.get("manba") or ""))} | '
+                    f'model: {html.escape(str(fellow_n2.get("model") or ""))}'
+                    f'</div>',
+                    unsafe_allow_html=True,
+                )
+                dalillar2 = fellow_n2.get("dalillar") or []
+                if dalillar2:
+                    st.markdown("**Dalillar:**")
+                    for d in dalillar2:
+                        st.markdown(f"- {d}")
+                yoq = fellow_n2.get("yoq_dalillar") or []
+                if yoq:
+                    st.markdown("**Yo'q dalillar:**")
+                    for d in yoq:
+                        st.markdown(f"- {d}")
+                matn2 = str(fellow_n2.get("matn") or "")
+                if matn2:
+                    with st.expander("To'liq matn", expanded=False):
+                        st.markdown(
+                            f'<div class="log-entry">{html.escape(matn2)}</div>',
+                            unsafe_allow_html=True,
+                        )
+                if fellow_n2.get("xabar"):
+                    st.caption(str(fellow_n2["xabar"]) + " Tashxis emas.")
+            else:
+                st.info("Fellow natijasi yo'q.")
+
+    with tab_tizim:
+        tarix2 = agent_holat.get("qadam_tarixi") or []
+        st.markdown(f"**Qadam soni:** {len(tarix2)} | **Amal:** {agent_holat.get('amal') or '—'}")
+        for i, q in enumerate(tarix2):
+            st.markdown(
+                f'<div class="log-entry">[{i}] {html.escape(str(q))}</div>',
+                unsafe_allow_html=True,
+            )
+        ep_n3 = agent_holat.get("ep_natija") or {}
+        eslatmalar3 = ep_n3.get("eslatmalar") or []
+        ecg_tech3 = agent_holat.get("ecg_technician_natija") or {}
+        yet3 = ecg_tech3.get("yetishmagan") or []
+        if eslatmalar3 or yet3:
+            st.markdown("**Ogohlantirishlar:**")
+            for e in eslatmalar3:
+                st.warning(e)
+            if yet3:
+                st.warning("EKG yetishmagan tasma: " + ", ".join(yet3))
+        audit2 = agent_holat.get("audit") or {}
+        if audit2:
+            st.markdown("**Audit:**")
+            st.markdown(
+                f'<div class="log-entry">{html.escape(_json.dumps(audit2, ensure_ascii=False, indent=2))}</div>',
+                unsafe_allow_html=True,
+            )
+
+
+def _mdt_panel(mdt: Dict[str, Any], agent_holat: Optional[Dict[str, Any]] = None) -> None:
+    """MDT muhokara raundlarini uch ekspert ustunida vizual ko'rsatadi.
+
+    Args:
+        mdt: mdt_munozara natijasi — raundlar, konsensus, umumlashtirish.
+        agent_holat: I/Z zaxira; ixtiyoriy.
+
+    Returns:
+        None. MDT muhokara T=4 raund. Tashxis emas.
+    """
+    holat = agent_holat or {}
+    raund_soni = int(mdt.get("raund_soni") or 0)
+    konsensus = mdt.get("konsensus")
+    k_rang = "#16a34a" if konsensus else "#dc2626"
+    k_matn = "✅ KELISHILDI" if konsensus else "❌ KELISHMADI"
+
+    st.markdown(
+        f'<div style="display:flex;align-items:center;gap:0.8rem;flex-wrap:wrap;margin-bottom:0.4rem;">'
+        f'<b>MDT muhokara</b>'
+        f'<span style="background:#f3f4f6;border-radius:4px;padding:0.15rem 0.5rem;'
+        f'font-size:0.85rem;">Raund {raund_soni}</span>'
+        f'<span style="color:{k_rang};font-weight:700;">{k_matn}</span>'
+        f'</div>',
+        unsafe_allow_html=True,
+    )
+    st.caption(
+        f"MedGemma={mdt.get('medgemma_manba')} | Qwen={mdt.get('qwen_manba')} | "
+        f"DeepSeek={mdt.get('deepseek_manba')}"
+    )
+
+    for r in mdt.get("raundlar") or []:
+        r_soni = int(r.get("raund") or 0)
+        st.markdown(f"**Raund {r_soni}** — kirish: {r.get('kirish') or '—'}")
+        col_g, col_q, col_d = st.columns(3)
+
+        with col_g:
+            manba_g = str(r.get("medgemma_manba") or mdt.get("medgemma_manba") or "")
+            st.markdown(
+                f'<div class="mdt-gemma"><b>MedGemma</b><br>'
+                f'<span style="font-size:0.77rem;color:#6b7280;">{html.escape(manba_g)}</span></div>',
+                unsafe_allow_html=True,
+            )
+            matn_g = str(r.get("medgemma") or "")
+            if len(matn_g) > 300:
+                st.write(matn_g[:300] + "…")
+                with st.expander("Ko'proq (MedGemma)"):
+                    st.write(matn_g)
+            else:
+                st.write(matn_g)
+
+        with col_q:
+            manba_q = str(r.get("qwen_manba") or mdt.get("qwen_manba") or "")
+            st.markdown(
+                f'<div class="mdt-qwen"><b>Qwen2.5-VL</b><br>'
+                f'<span style="font-size:0.77rem;color:#6b7280;">{html.escape(manba_q)}</span></div>',
+                unsafe_allow_html=True,
+            )
+            matn_q = str(r.get("qwen") or "")
+            if len(matn_q) > 300:
+                st.write(matn_q[:300] + "…")
+                with st.expander("Ko'proq (Qwen)"):
+                    st.write(matn_q)
+            else:
+                st.write(matn_q)
+
+        with col_d:
+            manba_d = str(r.get("deepseek_manba") or mdt.get("deepseek_manba") or "")
+            st.markdown(
+                f'<div class="mdt-deepseek"><b>DeepSeek-R1</b><br>'
+                f'<span style="font-size:0.77rem;color:#6b7280;">{html.escape(manba_d)}</span></div>',
+                unsafe_allow_html=True,
+            )
+            matn_d = str(r.get("deepseek") or "")
+            if len(matn_d) > 300:
+                st.write(matn_d[:300] + "…")
+                with st.expander("Ko'proq (DeepSeek)"):
+                    st.write(matn_d)
+            else:
+                st.write(matn_d)
+
+        if r_soni >= 3:
+            q_agree = r.get("qwen_agree")
+            g_agree = r.get("medgemma_agree")
+            both = bool(q_agree) and bool(g_agree)
+            rang2 = "#16a34a" if both else "#dc2626"
+            k2 = "KELISHILDI" if both else "KELISHMADI"
+            st.markdown(
+                f'<div style="margin:0.2rem 0;">'
+                f'agree(Q,D_oldingi)=<b>{q_agree}</b> | '
+                f'agree(P,D_oldingi)=<b>{g_agree}</b> | '
+                f'<span style="color:{rang2};font-weight:700;">{k2}</span>'
+                f'</div>',
+                unsafe_allow_html=True,
+            )
+        st.divider()
+
+    umumlashtirish = mdt.get("umumlashtirish")
+    if umumlashtirish:
+        st.markdown(
+            f'<div style="background:#f0fdf4;border:1px solid #86efac;border-radius:6px;'
+            f'padding:0.6rem 0.8rem;margin:0.5rem 0;">'
+            f'<b>Yakuniy D (DeepSeek-R1) xulosasi:</b><br>{html.escape(str(umumlashtirish))}'
+            f'</div>',
+            unsafe_allow_html=True,
+        )
+    if mdt.get("konsensus_sabab"):
+        st.caption("Konsensus: " + str(mdt.get("konsensus_sabab")))
+
+    with st.expander("I va Z (qayta kiritilgan)"):
+        st.markdown("**I (xom)**")
+        st.write(mdt.get("xom_i") or holat.get("xom_i") or "")
+        st.markdown("**Z (oraliq)**")
+        st.write(mdt.get("oraliq_z") or holat.get("oraliq_z") or "")
+
+    st.caption("MDT muhokara T=4 raund. Tashxis emas.")
+
+
 def _mdt_yonma_yon(mdt: Dict[str, Any], agent_holat: Optional[Dict[str, Any]] = None) -> None:
     """MDT raundlarini MedGemma | Qwen yonma-yon chizadi.
 
@@ -569,42 +1224,7 @@ def _mdt_yonma_yon(mdt: Dict[str, Any], agent_holat: Optional[Dict[str, Any]] = 
     Returns:
         None. Streamlit. Tashxis emas.
     """
-    holat = agent_holat or {}
-    st.caption(
-        f"Raund={mdt.get('raund_soni')} | kelishuv={mdt.get('konsensus')} | "
-        f"MedGemma={mdt.get('medgemma_manba')} | Qwen={mdt.get('qwen_manba')} | "
-        f"DeepSeek={mdt.get('deepseek_manba')}"
-    )
-    st.markdown("**Oxirgi D (DeepSeek-R1)**")
-    st.write(mdt.get("umumlashtirish"))
-    if mdt.get("konsensus_sabab"):
-        st.caption("Konsensus: " + str(mdt.get("konsensus_sabab")))
-    with st.expander("I va Z (qayta kiritilgan)"):
-        st.markdown("**I (xom)**")
-        st.write(mdt.get("xom_i") or holat.get("xom_i") or "")
-        st.markdown("**Z (oraliq)**")
-        st.write(mdt.get("oraliq_z") or holat.get("oraliq_z") or "")
-    for r in mdt.get("raundlar") or []:
-        st.markdown(f"**Raund {r.get('raund')} — kirish {r.get('kirish') or '—'}**")
-        chap, ong = st.columns(2)
-        with chap:
-            st.markdown("MedGemma — mulohaza")
-            st.caption("manba=" + str(r.get("medgemma_manba") or mdt.get("medgemma_manba")))
-            st.write(str(r.get("medgemma") or ""))
-        with ong:
-            st.markdown("Qwen2.5-VL — mulohaza")
-            st.caption("manba=" + str(r.get("qwen_manba") or mdt.get("qwen_manba")))
-            st.write(str(r.get("qwen") or ""))
-        st.markdown("DeepSeek D")
-        st.caption("manba=" + str(r.get("deepseek_manba") or mdt.get("deepseek_manba")))
-        st.write(str(r.get("deepseek") or ""))
-        if int(r.get("raund") or 0) >= 3:
-            st.caption(
-                "agree(Q, D_oldingi)="
-                + str(r.get("qwen_agree"))
-                + " | agree(P, D_oldingi)="
-                + str(r.get("medgemma_agree"))
-            )
+    _mdt_panel(mdt, agent_holat)
 
 
 def laboratoriya_matn(lab: Dict[str, float]) -> str:
@@ -660,15 +1280,18 @@ def ehtiyotkor_tavsiyalar(bemor: Dict[str, Any], agent_holat: Dict[str, Any]) ->
 
 
 def _ustun1_forma() -> Tuple[Dict[str, Any], Any, float, bool]:
-    """Bemor va laboratoriya maydonlarini 1-ustunda chizadi.
+    """Bemor va laboratoriya maydonlarini 1-ustunda guruhlangan holda chizadi.
 
     Args:
         Yo‘q. Streamlit widgetlari.
 
     Returns:
-        bemor lug‘ati (EKGsiz), yuklangan EKG fayllar ro‘yxati, sampling_rate, tahlil tugmasi.
+        bemor lug‘ati (EKGsiz), yuklangan EKG fayllar ro‘yxati, sampling_rate,
+        yagona tahlil tugmasi. Demografiya doimo ko‘rinadi; tekshiruvlar alohida
+        bo‘lim; laboratoriya 2-ustunli grid; disk yo‘li va Hz kengaytirilganda.
     """
-    st.subheader("Bemor ma’lumotlari")
+    # ── 1. Asosiy klinik ma‘lumotlar ─────────────────────────────────────────────────
+    st.markdown('<div class="bolim-sarlavha">Bemor</div>', unsafe_allow_html=True)
     yosh = st.number_input("Yosh (yil)", min_value=0, max_value=120, value=58, step=1)
     jins = st.selectbox("Jins", ["erkak", "ayol", "ko‘rsatilmagan"])
     shikoyatlar = st.text_area(
@@ -687,35 +1310,75 @@ def _ustun1_forma() -> Tuple[Dict[str, Any], Any, float, bool]:
         height=70,
         help="Yoki: aspirin 75 mg od",
     )
-    echo_fayl = st.text_input("Echo/DICOM yo‘li (ixtiyoriy, disk)", value="")
-    st.markdown("**Echo faylni shu yerga tashlang** (drag-and-drop) yoki tanlang")
+
+    # ── 2. Tekshiruvlar (fayl yuklash) ────────────────────────────────────────────────
+    st.markdown('<div class="bolim-sarlavha">Tekshiruvlar</div>', unsafe_allow_html=True)
     echo_yuk = st.file_uploader(
         "Echo (DICOM/video/rasm, bir nechta)",
         type=["dcm", "dicom", "mp4", "avi", "mov", "mkv", "png", "jpg", "jpeg"],
         accept_multiple_files=True,
-        help="Faylni maydonga tashlang. 11 ko‘rinish: A2C A4C A3C PLAX PSAX-* subcostal SSN. Tashxis emas.",
+        help="11 ko‘rinish: A2C A4C A3C PLAX PSAX-* subcostal SSN. Tashxis emas.",
     )
     if echo_yuk:
-        st.success("Yuklandi: " + ", ".join(f.name for f in echo_yuk) + f" ({len(echo_yuk)} ta)")
-    tahlil_yuqori = st.button("Tahlil qilish", type="primary", width="stretch")
-    st.subheader("Laboratoriya")
-    st.caption("Qiymatlar orientir; CSV/PDF yuklansa forma ustidan yoziladi. Tashxis emas.")
-    lab_fayl = st.file_uploader("Lab hisoboti (CSV yoki PDF)", type=["csv", "pdf", "txt"])
-    lab: Dict[str, float] = {}
-    for kalit, sarlavha, izoh, past, yuqori, odatiy in LAB_MAYDONLARI:
-        lab[kalit] = float(
-            st.number_input(sarlavha, min_value=past, max_value=yuqori, value=odatiy, step=0.1, help=izoh)
-        )
-    sampling_rate = st.number_input("EKG sampling_rate (Hz)", min_value=100.0, max_value=2000.0, value=ODATIY_HZ)
-    st.caption("CSV: I..V6 yoki 12 ustun; ixtiyoriy `# sampling_rate=500` va `time` ustuni. WFDB: .hea va .dat ni birga.")
+        st.success(f"Echo yuklandi: {len(echo_yuk)} ta fayl")
+    lab_fayl = st.file_uploader(
+        "Lab hisoboti (CSV yoki PDF)",
+        type=["csv", "pdf", "txt"],
+        help="Yuklansa quyidagi raqamli maydonlar ustidan yoziladi.",
+    )
     fayllar = st.file_uploader(
         "EKG fayl(lar) (CSV yoki WFDB .hea+.dat)",
         type=["csv", "hea", "dat", "txt"],
         accept_multiple_files=True,
+        help="CSV: I..V6 yoki 12 ustun; ixtiyoriy `# sampling_rate=500`. WFDB: .hea va .dat ni birga.",
     )
     namuna = st.checkbox("Namuna (sintetik) EKG ishlatish", value=True)
-    tahlil_past = st.button("Tahlil qilish", type="primary", width="stretch", key="tahlil_past")
-    tahlil = bool(tahlil_yuqori or tahlil_past)
+
+    # ── 3. Laboratoriya raqamlari — 2-ustunli grid ──────────────────────────────────────────────
+    with st.expander("Laboratoriya qiymatlari", expanded=True):
+        st.caption("Orientir; CSV/PDF yuklansa forma ustidan yoziladi. Tashxis emas.")
+        lab: Dict[str, float] = {}
+        juftlar = [LAB_MAYDONLARI[i : i + 2] for i in range(0, len(LAB_MAYDONLARI), 2)]
+        for juft in juftlar:
+            kol_chap, kol_ong = st.columns(2)
+            for kol, (kalit, sarlavha_lab, izoh, past, yuqori, odatiy) in zip(
+                [kol_chap, kol_ong], juft
+            ):
+                with kol:
+                    lab[kalit] = float(
+                        st.number_input(
+                            sarlavha_lab,
+                            min_value=past,
+                            max_value=yuqori,
+                            value=odatiy,
+                            step=0.1,
+                            help=izoh,
+                        )
+                    )
+
+    # ── 3.5 Lab rangli kartalar (tahlildan keyin) ─────────────────────────────────────────────────
+    _lab_holat_s = st.session_state.get("agent_holat")
+    if _lab_holat_s and (_lab_holat_s.get("lab_natija") or {}).get("qiymatlar"):
+        _lab_kartalar(_lab_holat_s.get("lab_natija"), bemor=None)
+
+    # ── 4. Kengaytirilgan sozlamalar (odatda yopiq) ────────────────────────────────────────────────
+    with st.expander("Kengaytirilgan sozlamalar", expanded=False):
+        echo_fayl = st.text_input("Echo/DICOM disk yo‘li (ixtiyoriy)", value="")
+        sampling_rate = st.number_input(
+            "EKG sampling_rate (Hz)",
+            min_value=100.0,
+            max_value=2000.0,
+            value=ODATIY_HZ,
+            help="CSV/WFDB da avtoaniqlansa shu qiymat bekor bo‘ladi.",
+        )
+        st.caption(
+            "CSV: I..V6 yoki 12 ustun; ixtiyoriy `# sampling_rate=500` va `time` ustuni. "
+            "WFDB: .hea va .dat ni birga."
+        )
+
+    # ── 5. Yagona tahlil tugmasi ──────────────────────────────────────────────────────────────────
+    tahlil = st.button("Tahlil qilish", type="primary", use_container_width=True, key="tahlil_past")
+
     bemor = {
         "yosh": int(yosh),
         "jins": jins,
@@ -786,6 +1449,11 @@ def _ustun2_ekg(
     )
     st.pyplot(fig, width="stretch")
     plt.close(fig)
+    # EKG metrik badge'lari (HR/QRS/QTc/PR)
+    _ecg_metrik(
+        (agent_holat or {}).get("ecg_natija"),
+        (agent_holat or {}).get("ep_natija") if isinstance((agent_holat or {}).get("ep_natija"), dict) else None,
+    )
     holat = agent_holat or {}
     echo_n = holat.get("echo_natija") or {}
     if echo_n.get("korinishlar"):
@@ -912,35 +1580,79 @@ def _vizual_tekshirish_paneli(
     with tab_mdt:
         mdt = holat.get("mdt_natija")
         if mdt:
-            _mdt_yonma_yon(mdt, holat)
+            _mdt_panel(mdt, holat)
         else:
             st.info("MDT hali yo‘q. EKG/echo yoki murakkab holatda tahlildan keyin chiqadi.")
 
 
 def _ustun3_xulosa(agent_holat: Optional[Dict[str, Any]], bemor: Optional[Dict[str, Any]]) -> None:
-    """3-ustunda agent xulosasi va ehtiyotkor tavsiyalarni ko‘rsatadi.
+    """3-ustunda agent xulosasi va ehtiyotkor tavsiyalarni ko'rinishli karta bilan chizadi.
 
     Args:
         agent_holat: run() natijasi yoki None.
         bemor: Tahlil qilingan bemor.
 
     Returns:
-        None. Klinik tashxis o‘rnini bosmaydi.
+        None. Xulosani ajratilgan karta ichida ko'rsatadi; audit sidebar da.
+        Klinik tashxis o'rnini bosmaydi.
     """
     st.subheader("AI tibbiy xulosa")
+
+    # ── Bo'sh holat ───────────────────────────────────────────────────────────
     if not agent_holat:
-        st.info("Chapda ma’lumotni to‘ldirib, «Tahlil qilish» ni bosing.")
+        st.markdown(
+            '<div class="bosh-holat-ogoh">'
+            "Chapdan bemor ma’lumotlarini va tekshiruvlarni kiriting, so‘ng "
+            "<strong>Tahlil qilish</strong> tugmasini bosing."
+            "</div>",
+            unsafe_allow_html=True,
+        )
         return
-    amal = agent_holat.get("amal", "")
-    st.metric("Agent amali", amal)
-    st.caption(
-        f"Murakkablik: {agent_holat.get('murakkablik') or '—'} — "
-        f"{agent_holat.get('murakkablik_sababi') or ''}"
+
+    # ── Holat satri — TASK 7: rangli badge qatori ────────────────────────────
+    _murakkablik = str(agent_holat.get("murakkablik") or "")
+    _amal = str(agent_holat.get("amal") or "")
+    _risk_cls = "oddiy" if _murakkablik == "oddiy" else ("murakkab" if _murakkablik == "murakkab" else "unknown")
+    _amal_cls = "stop" if _amal == "STOP" else "continue"
+    _sababi_q = str(agent_holat.get("murakkablik_sababi") or "")[:80]
+    st.markdown(
+        f'<div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;margin-bottom:0.2rem;">'
+        f'<span class="risk-badge {html.escape(_risk_cls)}">{html.escape(_murakkablik or "—")}</span>'
+        f'<span class="agent-badge {html.escape(_amal_cls)}">{html.escape(_amal or "—")}</span>'
+        f'</div>',
+        unsafe_allow_html=True,
     )
-    st.text_area("Xulosa", value=agent_holat.get("xulosa") or "", height=260, disabled=True)
+    if _sababi_q:
+        st.caption(_sababi_q)
+
+    # ── Qadam panel — TASK 4 ──────────────────────────────────────────────────
+    with st.expander("Qadam-ba-qadam bajarish", expanded=True):
+        _qadam_panel(agent_holat)
+
+    # ── Xulosa kartasi (asosiy fokus) ─────────────────────────────────────────
+    # Streamlit har markdownni alohida element qiladi, shuning uchun
+    # ochuvchi/yopuvchi div matn maydonini o‘ramaydi. border=True haqiqiy karta.
+    xulosa_matn = agent_holat.get("xulosa") or ""
+    with st.container(border=True):
+        st.markdown("**Xulosa**")
+        st.text_area(
+            "xulosa_maydoni",
+            value=xulosa_matn,
+            height=220,
+            disabled=True,
+            label_visibility="collapsed",
+        )
+
+    # ── Tavsiyalar ────────────────────────────────────────────────────────────
     st.markdown("**Tavsiyalar**")
     for band in ehtiyotkor_tavsiyalar(bemor or {}, agent_holat):
         st.markdown(f"- {band}")
+
+    # ── Agent izlar — TASK 5 ──────────────────────────────────────────────────
+    with st.expander("Agent izlar va mulohaza", expanded=False):
+        _agent_izlar(agent_holat)
+
+    # ── Lab technician ────────────────────────────────────────────────────────
     lab_n = agent_holat.get("lab_natija") or {}
     if lab_n:
         with st.expander("Lab technician (token/RAG satr)"):
@@ -949,27 +1661,35 @@ def _ustun3_xulosa(agent_holat: Optional[Dict[str, Any]], bemor: Optional[Dict[s
             if lab_n.get("dorilar"):
                 st.write(lab_n.get("dorilar"))
             st.caption("Tokenlar: " + ", ".join(lab_n.get("tokenlar") or []))
+
+    # ── Klinik reja va qadamlar ───────────────────────────────────────────────
     with st.expander("Klinik reja P", expanded=True):
         _reja_jonli(agent_holat)
     with st.expander("Qadamlar (LangGraph)", expanded=True):
         for qator in agent_holat.get("qadam_tarixi") or []:
             st.write(qator)
+
+    # ── CardiacRAG dalillari ──────────────────────────────────────────────────
     dalillar = agent_holat.get("rag_dalillar") or []
     if dalillar:
-        st.markdown("**CardiacRAG kontekst C**")
-        for d in dalillar:
-            st.write(d)
+        with st.expander("CardiacRAG kontekst C"):
+            for d in dalillar:
+                st.write(d)
+
+    # ── MDT munozara ──────────────────────────────────────────────────────────
     mdt = agent_holat.get("mdt_natija")
     if mdt:
         with st.expander("MDT munozara (qisqa)", expanded=False):
-            _mdt_yonma_yon(mdt, agent_holat)
+            _mdt_panel(mdt, agent_holat)
+
+    # ── EKG, Echo, Fellow expanders ───────────────────────────────────────────
     tech_n = agent_holat.get("ecg_technician_natija") or {}
     if tech_n:
         with st.expander("EKG technician (tozalash / sifat)"):
             st.write(tech_n.get("xabar") or "")
             st.write(
                 f"Sifat: {tech_n.get('sifat')} | tasma {tech_n.get('tasma')} | "
-                f"R={tech_n.get('urishlar_soni')} | HR≈{tech_n.get('yurak_chastotasi_bpm')} | "
+                f"R={tech_n.get('urishlar_soni')} | HR\u2248{tech_n.get('yurak_chastotasi_bpm')} | "
                 f"{tech_n.get('davomiylik_s')} s @ {tech_n.get('sampling_rate')} Hz"
             )
             if tech_n.get("yetishmagan"):
@@ -991,65 +1711,69 @@ def _ustun3_xulosa(agent_holat: Optional[Dict[str, Any]], bemor: Optional[Dict[s
             st.caption("Qiymatlar taxminiy; tashxis emas.")
     echo_n = agent_holat.get("echo_natija") or {}
     if echo_n:
-        with st.expander("Echo technician (11 ko‘rinish)"):
+        with st.expander("Echo technician (11 ko'rinish)"):
             st.write(echo_n.get("xabar") or "")
             st.write(echo_n.get("yozuvlar") or echo_n.get("korinishlar"))
             yet = echo_n.get("yetishmagan_standart") or []
             if yet:
-                st.caption("Hali yo‘q (11 dan): " + ", ".join(yet))
+                st.caption("Hali yo'q (11 dan): " + ", ".join(yet))
     mask_n = agent_holat.get("echo_mask") or {}
     if mask_n:
         with st.expander("Echo segmenter (LV maska)"):
             st.write(mask_n.get("xabar") or "")
             if mask_n.get("ok"):
                 st.write(
-                    f"ko‘rinish={mask_n.get('korinish')} | {mask_n.get('maydon_px')} px | "
+                    f"ko'rinish={mask_n.get('korinish')} | {mask_n.get('maydon_px')} px | "
                     f"ulush={mask_n.get('ulush')} | model={mask_n.get('model')}"
                 )
-            st.caption("Algoritmik kavak; klinik EF emas. To‘liq rasm vizual tekshiruvda.")
+            st.caption("Algoritmik kavak; klinik EF emas. To'liq rasm vizual tekshiruvda.")
     fellow_n = agent_holat.get("fellow_natija") or {}
     if fellow_n:
         with st.expander("Cardiology fellow (multimodal)"):
             st.write(f"manba={fellow_n.get('manba')} model={fellow_n.get('model')} | dalillar={fellow_n.get('dalillar')}")
             if fellow_n.get("yoq_dalillar"):
-                st.caption("Yo‘q (o‘ylab topilmagan): " + ", ".join(fellow_n.get("yoq_dalillar") or []))
+                st.caption("Yo'q (o'ylab topilmagan): " + ", ".join(fellow_n.get("yoq_dalillar") or []))
             st.write(fellow_n.get("matn") or "")
             st.caption((fellow_n.get("xabar") or "") + " Tashxis emas.")
             if fellow_n.get("manba") == "shablon" or (agent_holat.get("mdt_natija") or {}).get("medgemma_manba") == "shablon":
-                st.warning("Fellow/MDT **shablon rejimida** (LLM yoki VLM javobi yo‘q).")
+                st.warning("Fellow/MDT **shablon rejimida** (LLM yoki VLM javobi yo'q).")
+
+    # ── Vizual holat eslatmasi ─────────────────────────────────────────────────
     viz = agent_holat.get("vizual") or {}
     st.caption(
-        "Vizual tekshiruv shifokor so‘raganda ochiladi: tozalangan 12 tasma, echo, LV, MDT. "
+        "Vizual tekshiruv shifokor so'raganda ochiladi: tozalangan 12 tasma, echo, LV, MDT. "
         f"sifat={viz.get('ekg_sifat')} echo={viz.get('echo_korinishlar')} "
         f"lv={viz.get('lv_maska')} mdt_raund={viz.get('mdt_raund')}."
     )
 
 
 def asosiy() -> None:
-    """Sahifani 3 ustunda yig‘adi va tahlil tugmasida agentni ishga tushiradi.
+    """Sahifani 3 ustunda yig'adi va tahlil tugmasida agentni ishga tushiradi.
 
     Args:
-        Yo‘q.
+        Yo'q.
 
     Returns:
-        None. Streamlit ilovasi.
+        None. Streamlit ilovasi. Texnik holat (RAG/LLM/audit) sidebar da;
+        asosiy kanvas klinik vazifadan boshlanadi.
     """
     st.set_page_config(
         page_title="Kardiologik AI agent",
         layout="wide",
-        page_icon="🫀",
+        page_icon="\U0001fac0",
     )
     st.title("Kardiologik AI agent")
+
+    # Klinik ogohlantirish sahifa yuqorida qoladi (sticky)
     _klinik_ogohlantirish()
-    _rejim_banner()
+
+    # RAG yuklanadi; kesh eskirsa yangilanadi
     rag_paket = _rag_ol()
     rag = _rag_obyekt(rag_paket)
     if rag is not None and not hasattr(rag, "bert_ishlatildi"):
         _rag_ol.clear()
         rag_paket = _rag_ol()
         rag = _rag_obyekt(rag_paket)
-    _rag_banner(rag_paket)
-    st.caption(KLINIK_OGOHLANTIRISH)
 
     if "ekg_signal" not in st.session_state:
         st.session_state.ekg_signal = namuna_ekg_signal()
@@ -1059,6 +1783,10 @@ def asosiy() -> None:
         st.session_state.bemor_tahlil = None
         st.session_state.vizual_ochiq = False
 
+    # Sidebar: texnik holat, audit, tozalash tugmasi
+    _sidebar_paneli(rag_paket, st.session_state.agent_holat)
+
+    # 6 bosqichli progress qatori asosiy kanvas yuqorida
     bosqich_joy = st.empty()
     with bosqich_joy.container():
         _olti_bosqich_chiz(st.session_state.agent_holat)
@@ -1083,7 +1811,7 @@ def asosiy() -> None:
             signal = namuna_ekg_signal(sampling_rate)
             xabar = "Sintetik namuna EKG (haqiqiy yozuv emas)."
         else:
-            signal, xabar = None, "EKG yo‘q."
+            signal, xabar = None, "EKG yo'q."
         st.session_state.ekg_signal = signal
         st.session_state.ekg_xabar = xabar
         st.session_state.sampling_rate = sampling_rate
@@ -1123,7 +1851,7 @@ def asosiy() -> None:
                 "amal": "STOP",
                 "xulosa": (
                     f"Tahlil bajarilmadi: {exc}. "
-                    "Bu tashxis emas; shifokor bilan ko‘rib chiqing."
+                    "Bu tashxis emas; shifokor bilan ko'rib chiqing."
                 ),
                 "qadam_tarixi": [str(exc)],
                 "ecg_natija": None,
@@ -1140,13 +1868,14 @@ def asosiy() -> None:
             st.session_state.agent_holat,
         )
     with col3:
+        # Audit sidebar da; bu yerda faqat klinik xulosa
         _ustun3_xulosa(st.session_state.agent_holat, st.session_state.bemor_tahlil)
-        _audit_paneli(st.session_state.agent_holat)
 
     if st.session_state.agent_holat:
         yozuv = "Vizual panelni yopish" if st.session_state.get("vizual_ochiq") else "Vizual tekshiruvni ochish"
         if st.button(yozuv):
             st.session_state.vizual_ochiq = not bool(st.session_state.get("vizual_ochiq"))
+            st.rerun()
     if st.session_state.get("vizual_ochiq") and st.session_state.agent_holat:
         _vizual_tekshirish_paneli(
             st.session_state.agent_holat,
@@ -1154,7 +1883,6 @@ def asosiy() -> None:
             st.session_state.ekg_signal,
             float(st.session_state.sampling_rate),
         )
-    st.caption(KLINIK_OGOHLANTIRISH)
 
 
 asosiy()

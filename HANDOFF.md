@@ -11,7 +11,7 @@ Tizim shifokor o‘rnini bosmaydi. Yakuniy qaror shifokorga tegishli. **Klinik p
 | Maydon | Qiymat |
 |---|---|
 | Keyingi ish | K8 yopildi. Ochiq: K2 (foydalanuvchi, kod emas), K5, K6, K7, K10. K3/K4 ni qayta so‘ramang |
-| Oxirgi kod | Murakkab reja yuklangan lab/EKG/echo ni to‘ldiradi; qadamlar tugaguncha CONTINUE; murakkab bo‘lsa MDT |
+| Oxirgi kod | Dashboard boyitildi: lab-card, ecg-badge, risk/agent-badge CSS; _lab_kartalar, _ecg_metrik, _qadam_panel, _agent_izlar, _mdt_panel funksiyalari qo‘shildi (7 ta vazifa). Agent oqimi o‘zgartirilmadi. |
 | GitHub | https://github.com/Abbos8/cardio-ai-system (private, `main`) |
 | UI | `./ishga_tushir.sh` → http://127.0.0.1:8501 |
 | Oqim | murakkablik → CardiacRAG reja → vosita → CONTINUE/STOP → MDT → xulosa. Vizual panel tugma bilan |
