@@ -1,0 +1,13 @@
+---
+description: Ish/uy kompyuter handoff — HANDOFF.md ni yangilab boring
+alwaysApply: true
+---
+
+# Handoff
+
+Bu loyiha ikki kompyuterda (ish va uy) yuritiladi.
+
+- Muhim o‘zgarish, yangi vosita yoki workflow bosqichi tugagach `HANDOFF.md` ni yangilang: nima qilindi, nima qolgan, qanday ishga tushirish.
+- Tibbiy xulosa ehtiyotkor bo‘lsin; tizim shifokor o‘rnini bosmaydi.
+- GitHub: `Abbos8/cardio-ai-system`, tarmoq `main`. Commitdan oldin `HANDOFF.md` ni tekshiring.
+- 6 bosqich: murakkablik → CardiacRAG reja → ekspert vositalar → stepwise CONTINUE/STOP → MDT → xulosa/vizual panel. Yangi kod shu oqimni buzmasin.

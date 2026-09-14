@@ -1,0 +1,8 @@
+# Og'ir datasetlar — indeksga kiritilmasin
+data/
+
+# PDF hujjatlar
+*.pdf
+
+# Python virtual muhiti
+venv/

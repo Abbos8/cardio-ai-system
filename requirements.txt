@@ -1,0 +1,10 @@
+faiss-cpu
+langgraph
+matplotlib>=3.8,<3.11
+neurokit2
+numpy>=1.26.4,<2
+streamlit
+torch
+transformers
+beautifulsoup4
+python-dotenv

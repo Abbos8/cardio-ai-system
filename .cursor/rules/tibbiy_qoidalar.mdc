@@ -1,0 +1,33 @@
+---
+description: Kardiologik AI agent tizimi qoidalari va funksiya izohlari
+alwaysApply: true
+---
+
+# Kardiologik AI agent tizimi
+
+Bu loyiha kardiologik AI agent tizimidir. Kod, izohlar va javoblar shu kontekstda yoziladi: yurak-qon tomir kasalliklari, EKG va klinik qaror qo‘llab-quvvatlash.
+
+Tibbiy tavsiya berilganda, bu tizim shifokor o‘rnini bosmasligini hisobga ol. Diagnostik xulosa ehtiyotkor, tekshirilgan va tushunarli bo‘lsin.
+
+# Funksiya izohlari
+
+Har bir funksiyaga tushunarli izoh yoz. Izoh nima qilishini, qanday kirish/chiqish kutishini va tibbiy ma’noda nima uchun kerakligini qisqa tushuntirsin.
+
+```python
+# Yomon — izoh yo‘q yoki faqat nomni takrorlaydi
+def hisobla_xavf(yosh, qon_bosimi):
+    return yosh * 0.1 + qon_bosimi * 0.02
+
+# Yaxshi — maqsad, parametrlar va natija aniq
+def hisobla_xavf(yosh: int, qon_bosimi: float) -> float:
+    """Kardiovaskulyar xavf ballini yosh va sistolik qon bosimidan hisoblaydi.
+
+    Args:
+        yosh: Bemor yoshi (yillarda).
+        qon_bosimi: Sistolik qon bosimi (mmHg).
+
+    Returns:
+        Taxminiy xavf bali. Klinik tashxis o‘rnini bosmaydi.
+    """
+    return yosh * 0.1 + qon_bosimi * 0.02
+```

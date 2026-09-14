@@ -1,0 +1,31 @@
+Cardiology knowledge seed (paraphrased public facts for RAG indexing; not a substitute for ESC/NICE/AHA full guidelines; not a diagnosis).
+
+Chest pain with possible ACS: assess ABC, ECG within 10 minutes of arrival, serial troponin per local protocol, and do not delay reperfusion if STEMI criteria are met on clinician-read ECG.
+
+High-sensitivity troponin: interpret with the assay-specific 99th percentile, delta change, and clinical context; a single value does not confirm or exclude myocardial infarction.
+
+NT-proBNP: age and renal function affect cut-offs; elevated values support further evaluation for heart failure but are not specific.
+
+Potassium: values outside approximately 3.5–5.1 mmol/L can associate with ECG changes and arrhythmia risk; confirm with the laboratory and clinician.
+
+ECG intervals (typical adult teaching ranges, not patient-specific diagnosis): QRS duration often under 120 ms; PR often 120–200 ms; QTc interpretation requires heart-rate correction and sex-specific caution.
+
+Bradycardia and tachycardia: heart rate below 50 or above 100 bpm warrants clinical correlation with symptoms, medications, and rhythm diagnosis by a physician.
+
+Wide QRS: consider ventricular conduction delay, paced rhythm, or ventricular rhythm; clinical ECG reading is required.
+
+Prolonged PR: first-degree AV delay is a description, not a complete diagnosis; correlate with drugs such as beta-blockers and with symptoms.
+
+Heart rate variability (HRV): time-domain metrics such as SDNN and RMSSD describe interval variation; they are research/support measures, not a stand-alone diagnosis.
+
+STEMI vs NSTE-ACS pathway: ST elevation meeting local criteria needs immediate reperfusion discussion; without ST elevation, risk scores and serial biomarkers guide observation versus invasive strategy.
+
+Heart failure with reduced ejection fraction: echo quantifies LVEF; guideline-directed medical therapy is a clinician decision involving ACEI/ARNI, beta-blocker, MRA, SGLT2i as appropriate.
+
+Echocardiography standard views include A2C, A4C, A3C, PLAX, PSAX levels, subcostal, and suprasternal; view classification supports completeness of a study, not a disease label.
+
+Left-ventricular contour segmentation on echo frames can support EF estimation pipelines; pixel masks must be reviewed visually before any clinical use.
+
+Multidisciplinary discussion is appropriate when imaging quality is poor, biomarkers and ECG conflict, or evidence is insufficient for a single modality conclusion.
+
+This system does not replace a licensed physician. Final decisions require full clinical assessment, verified ECG, laboratory, and imaging.
