@@ -7,16 +7,28 @@ Natija shifokor tashxisining o‘rnini bosmaydi.
 
 from __future__ import annotations
 
+import hashlib
+import json
+import logging
 import math
 import os
 import re
 from pathlib import Path
-from typing import List, Optional, Sequence
+from typing import List, Optional, Sequence, Tuple
 
 import faiss  # Eng yaqin vektorlarni tez qidirish uchun
 import numpy as np  # Embeddinglarni massiv sifatida saqlash uchun
 import torch  # BioClinicalBERT ni GPU/CPU da ishlatish uchun
 from transformers import AutoModel, AutoTokenizer  # BERT model va tokenizer
+
+try:
+    from dotenv import load_dotenv
+
+    load_dotenv(Path(__file__).resolve().parents[2] / ".env")
+except ImportError:
+    pass
+
+_LOG = logging.getLogger(__name__)
 
 # Klinik matnlar uchun oldindan o‘qitilgan BioClinicalBERT nomi
 MODEL_NOMI = "emilyalsentzer/Bio_ClinicalBERT"
@@ -62,6 +74,16 @@ TIBBIY_LUGAT = {
 }
 # Uzun tibbiy matnni kesish chegarasi (token)
 MAX_TOKEN = 256
+# FAISS + bo‘laklar disk kesh (har UI ochilganda qayta embedding qilmaslik)
+LOYIHA_ILDZI = Path(__file__).resolve().parents[2]
+ODATIY_INDEKS_DIR = LOYIHA_ILDZI / "data" / "processed" / "rag_index"
+ODATIY_RAW_DIR = LOYIHA_ILDZI / "data" / "raw"
+INDEKS_FAYL = "index.faiss"
+BOLAK_FAYL = "chunks.json"
+META_FAYL = "meta.json"
+
+# Jarayon ichida tokenizer/model bir marta yuklanadi (HF keshdan)
+_BERT_KESH: dict = {}
 
 # Kalit so‘z tanlashda e’tiborsiz qoldiriladigan oddiy so‘zlar
 TOXTATISH_SOZLARI = {
@@ -93,37 +115,111 @@ TOXTATISH_SOZLARI = {
 }
 
 
+def _bert_yoqilgan() -> bool:
+    """USE_BIOCLINICAL_BERT muhit bayrog‘ini o‘qiydi.
+
+    Returns:
+        True — BioClinicalBERT; False — hashing zaxirasi.
+    """
+    return os.getenv("USE_BIOCLINICAL_BERT", "1").strip() in {"1", "true", "True", "yes"}
+
+
+def _indeks_katalogi() -> Path:
+    """FAISS kesh katalogini qaytaradi (RAG_INDEX_DIR yoki odatiy yo‘l).
+
+    Returns:
+        Mavjud bo‘lmasa ham yo‘l; yozishda mkdir qilinadi.
+    """
+    maxsus = (os.getenv("RAG_INDEX_DIR") or "").strip()
+    return Path(maxsus) if maxsus else ODATIY_INDEKS_DIR
+
+
+def _bert_yukla(model_nomi: str, qurilma: str) -> Tuple[object, object]:
+    """BioClinicalBERT tokenizer va modelini jarayon keshidan oladi.
+
+    Args:
+        model_nomi: Hugging Face identifikatori.
+        qurilma: cuda yoki cpu.
+
+    Returns:
+        (tokenizer, model). Yuklash xatosida istisno ko‘tariladi.
+    """
+    kalit = f"{model_nomi}::{qurilma}"
+    if kalit in _BERT_KESH:
+        return _BERT_KESH[kalit]
+    tokenizer = AutoTokenizer.from_pretrained(model_nomi)
+    model = AutoModel.from_pretrained(model_nomi)
+    model.to(qurilma)
+    model.eval()
+    _BERT_KESH[kalit] = (tokenizer, model)
+    _LOG.info("BioClinicalBERT yuklandi: %s (%s)", model_nomi, qurilma)
+    return tokenizer, model
+
+
+def _manba_imzo(yol: Path, model_nomi: str, bert: bool, raw_katalog: Optional[Path] = None) -> str:
+    """Seed + data/raw fayllari va embedding rejimidan kesh kalitini hisoblaydi.
+
+    Args:
+        yol: cardiology_seed.txt yo‘li.
+        model_nomi: BERT identifikatori.
+        bert: Haqiqiy BERT ishlatilganmi.
+        raw_katalog: Yuklab olingan HTML/PDF. None — data/raw.
+
+    Returns:
+        SHA-256 hex. Korpus o‘zgarsa indeks qayta quriladi.
+    """
+    from rag.ingest import CHUNK_SOZ, CHUNK_USTMA_UST
+
+    h = hashlib.sha256()
+    h.update(yol.read_bytes() if yol.exists() else b"")
+    raw = Path(raw_katalog) if raw_katalog else ODATIY_RAW_DIR
+    if raw.exists():
+        for fayl in sorted(raw.rglob("*")):
+            if not fayl.is_file() or fayl.name.endswith(".url.txt"):
+                continue
+            if fayl.suffix.lower() not in {".html", ".htm", ".pdf", ".txt", ".md"}:
+                continue
+            rel = str(fayl.relative_to(raw)).encode()
+            h.update(rel)
+            h.update(str(fayl.stat().st_size).encode())
+            h.update(hashlib.sha256(fayl.read_bytes()).digest())
+    h.update(f"|{model_nomi}|{int(bert)}|{EMBEDDING_OLCHAMI}|{CHUNK_SOZ}|{CHUNK_USTMA_UST}".encode())
+    return h.hexdigest()
+
+
 class MedicalRAG:
     """FAISS va BioClinicalBERT asosidagi ikki bosqichli tibbiy RAG."""
 
     def __init__(self, model_nomi: str = MODEL_NOMI) -> None:
-        """BioClinicalBERT va bo‘sh FAISS indeksini yuklaydi.
+        """BioClinicalBERT ni bir marta yuklaydi va bo‘sh FAISS indeksini ochadi.
 
         Args:
             model_nomi: Hugging Face dagi klinik BERT identifikatori.
 
         Returns:
-            None. Indeks hali bo‘sh; avval index_documents chaqiriladi.
+            None. Indeks hali bo‘sh; urug_indeks yoki index_documents chaqiriladi.
         """
         self.model_nomi = model_nomi
         self.qurilma = "cuda" if torch.cuda.is_available() else "cpu"
         self.tokenizer = None
         self.model = None
-        bert_yoq = os.getenv("USE_BIOCLINICAL_BERT", "0").strip() in {"1", "true", "True", "yes"}
-        if bert_yoq:
+        self.bert_ishlatildi = False
+        self.bert_xato: Optional[str] = None
+        if _bert_yoqilgan():
             try:
-                self.tokenizer = AutoTokenizer.from_pretrained(model_nomi, local_files_only=False)
-                self.model = AutoModel.from_pretrained(model_nomi)
-                self.model.to(self.qurilma)
-                self.model.eval()
-            except Exception:
+                self.tokenizer, self.model = _bert_yukla(model_nomi, self.qurilma)
+                self.bert_ishlatildi = True
+            except Exception as xato:
                 self.tokenizer = None
                 self.model = None
+                self.bert_xato = str(xato)
+                _LOG.warning("BioClinicalBERT yuklanmadi, hashing zaxirasi: %s", xato)
         self.indeks = faiss.IndexFlatIP(EMBEDDING_OLCHAMI)
         self.bolaklar: List[str] = []  # Indeksdagi asl tibbiy matn bo‘laklari
         self._tf_idf_tayyor: bool = False
         self._idf: dict = {}
         self._df: dict = {}
+        self.indeks_katalogi = _indeks_katalogi()
 
     def _ortacha_pul(self, yashirin: torch.Tensor, niqob: torch.Tensor) -> torch.Tensor:
         """Token vektorlarini e’tibor niqobi bilan o‘rtacha qiladi.
@@ -188,6 +284,79 @@ class MedicalRAG:
         self.bolaklar.extend(toza)
         self._tf_idf_tayyor = False
         return len(toza)
+
+    def indeksni_saqla(self, katalog: Optional[Path] = None, manba: Optional[Path] = None) -> Path:
+        """FAISS indeksini va bo‘laklarni diskka yozadi.
+
+        Args:
+            katalog: Saqlash jildi. None — data/processed/rag_index.
+            manba: Seed .txt (kesh kaliti uchun).
+
+        Returns:
+            Yozilgan katalog yo‘li. Keyingi UI ochilishida qayta hisoblanmaydi.
+        """
+        katalog = Path(katalog) if katalog else self.indeks_katalogi
+        katalog.mkdir(parents=True, exist_ok=True)
+        faiss.write_index(self.indeks, str(katalog / INDEKS_FAYL))
+        (katalog / BOLAK_FAYL).write_text(
+            json.dumps(self.bolaklar, ensure_ascii=False, indent=0),
+            encoding="utf-8",
+        )
+        imzo = _manba_imzo(manba, self.model_nomi, self.bert_ishlatildi) if manba else ""
+        meta = {
+            "model_nomi": self.model_nomi,
+            "embedding_olchami": EMBEDDING_OLCHAMI,
+            "bert_ishlatildi": self.bert_ishlatildi,
+            "chunk_soni": len(self.bolaklar),
+            "manba_imzo": imzo,
+        }
+        (katalog / META_FAYL).write_text(json.dumps(meta, ensure_ascii=False, indent=2), encoding="utf-8")
+        _LOG.info("FAISS indeks saqlandi: %s (%s bo‘lak)", katalog, len(self.bolaklar))
+        return katalog
+
+    def indeksni_yukla(self, katalog: Optional[Path] = None, manba: Optional[Path] = None) -> bool:
+        """Diskdagi FAISS indeksini o‘qiydi, agar kesh kaliti mos kelsa.
+
+        Args:
+            katalog: Kesh jildi.
+            manba: Seed .txt; o‘zgargan bo‘lsa False (qayta qurish kerak).
+
+        Returns:
+            True — indeks tayyor; False — qayta embedding kerak.
+        """
+        katalog = Path(katalog) if katalog else self.indeks_katalogi
+        indeks_yol = katalog / INDEKS_FAYL
+        bolak_yol = katalog / BOLAK_FAYL
+        meta_yol = katalog / META_FAYL
+        if not (indeks_yol.exists() and bolak_yol.exists() and meta_yol.exists()):
+            return False
+        try:
+            meta = json.loads(meta_yol.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, OSError):
+            return False
+        if int(meta.get("embedding_olchami") or 0) != EMBEDDING_OLCHAMI:
+            return False
+        if bool(meta.get("bert_ishlatildi")) != self.bert_ishlatildi:
+            return False
+        if str(meta.get("model_nomi") or "") != self.model_nomi:
+            return False
+        if manba is not None:
+            kutilgan = _manba_imzo(manba, self.model_nomi, self.bert_ishlatildi)
+            if str(meta.get("manba_imzo") or "") != kutilgan:
+                return False
+        try:
+            bolaklar = json.loads(bolak_yol.read_text(encoding="utf-8"))
+            indeks = faiss.read_index(str(indeks_yol))
+        except Exception as xato:
+            _LOG.warning("FAISS kesh o‘qilmadi: %s", xato)
+            return False
+        if not isinstance(bolaklar, list) or indeks.ntotal != len(bolaklar):
+            return False
+        self.indeks = indeks
+        self.bolaklar = [str(b) for b in bolaklar]
+        self._tf_idf_tayyor = False
+        _LOG.info("FAISS indeks diskdan: %s (%s bo‘lak)", katalog, len(self.bolaklar))
+        return True
 
     def _kalit_sozlar(self, matn: str) -> set:
         """So‘rovdan qisqa, ma’noli kalit so‘zlarni ajratadi.
@@ -342,23 +511,33 @@ class MedicalRAG:
         )
         return tartiblangan[:bosqich2]
 
-    def urug_indeks(self, yol: Optional[Path] = None) -> int:
-        """Ichki kardiologiya seed matnini indekslaydi.
+    def urug_indeks(self, yol: Optional[Path] = None, qayta_qur: bool = False) -> int:
+        """Seed + data/raw korpusini indekslaydi; kesh mos bo‘lsa diskdan.
 
         Args:
-            yol: Ixtiyoriy .txt; None — knowledge/cardiology_seed.txt.
+            yol: Ixtiyoriy seed .txt; None — knowledge/cardiology_seed.txt.
+            qayta_qur: True — keshni e’tiborsiz qoldirib qayta hisoblash.
 
         Returns:
-            Qo‘shilgan bo‘laklar soni.
+            Indeksdagi bo‘laklar soni.
         """
-        from rag.ingest import chunklarga_ajrat
+        from rag.ingest import korpus_bolaklari
 
         if yol is None:
             yol = Path(__file__).resolve().parent / "knowledge" / "cardiology_seed.txt"
-        if not yol.exists():
-            return 0
-        matn = yol.read_text(encoding="utf-8")
-        return self.index_documents(chunklarga_ajrat(matn))
+        if qayta_qur:
+            self.indeks = faiss.IndexFlatIP(EMBEDDING_OLCHAMI)
+            self.bolaklar = []
+            self._tf_idf_tayyor = False
+        elif self.indeks.ntotal > 0 and self.bolaklar:
+            return len(self.bolaklar)
+        if not qayta_qur and self.indeksni_yukla(manba=yol):
+            return len(self.bolaklar)
+        bolaklar = korpus_bolaklari(yol, ODATIY_RAW_DIR)
+        soni = self.index_documents(bolaklar)
+        if soni:
+            self.indeksni_saqla(manba=yol)
+        return soni
 
     def reja_tuz(self, sorov: str, kontekst: Optional[Sequence[str]] = None) -> List[dict]:
         """Kontekst C asosida tartiblangan klinik qadamlar P ni tuzadi.

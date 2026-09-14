@@ -12,6 +12,28 @@ import sys
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
+
+def _conda_numpy_aralashmasin() -> None:
+    """conda base Streamlit/NumPy ni ushlab, tushunarli xato beradi.
+
+    Returns:
+        None. Noto‘g‘ri muhitda ImportError.
+    """
+    exe = (sys.executable or "").replace("\\", "/")
+    venv_ichida = "/cardio-ai-system/venv/" in exe or exe.endswith("/cardio-ai-system/venv/bin/python")
+    np_mod = sys.modules.get("numpy")
+    np_fayl = (getattr(np_mod, "__file__", "") or "").replace("\\", "/")
+    conda_numpy = "miniconda" in np_fayl and "/cardio-ai-system/venv/" not in np_fayl
+    conda_python = "miniconda" in exe and "/cardio-ai-system/venv/" not in exe
+    if conda_python or conda_numpy:
+        raise ImportError(
+            "numpy.core.multiarray: Streamlit conda (base) orqali ishga tushgan. "
+            "Shu terminalni to‘xtating, keyin loyiha ildizida: conda deactivate && ./ishga_tushir.sh"
+        )
+
+
+_conda_numpy_aralashmasin()
+
 try:
     from dotenv import load_dotenv
 
@@ -33,6 +55,7 @@ if str(_SRC) not in sys.path:
 from agents.chief_agent import ChiefCardiologist
 from rag.medical_rag import MedicalRAG
 from tools.ecg_tool import TASMA_NOMLARI
+from tools.lab_tool import process_lab
 
 # Namuna EKG: kamida 2 s (ecg_tool talabi)
 NAMUNA_SONIYA = 8.0
@@ -51,12 +74,16 @@ LAB_MAYDONLARI: List[Tuple[str, str, str, float, float, float]] = [
 ]
 
 
-@st.cache_resource(show_spinner="CardiacRAG indekslanmoqda...")
-def _rag_ol() -> Optional[MedicalRAG]:
-    """Seed bilimlar bazasi bilan MedicalRAG ni bir marta yuklaydi.
+@st.cache_resource(show_spinner="CardiacRAG: BioClinicalBERT va FAISS yuklanmoqda...")
+def _rag_ol(kesh_versiya: int = 3) -> Optional[MedicalRAG]:
+    """BERT ni jarayonda bir marta, FAISS ni disk keshdan yuklaydi.
+
+    Args:
+        kesh_versiya: Streamlit cache kaliti; atributlar o‘zgaganda oshiriladi.
 
     Returns:
         Indekslangan RAG yoki None. BERT bo‘lmasa hashing zaxirasi.
+        Seed o‘zgarmasa embedding qayta hisoblanmaydi.
     """
     try:
         rag = MedicalRAG()
@@ -64,6 +91,27 @@ def _rag_ol() -> Optional[MedicalRAG]:
         return rag
     except Exception:
         return None
+
+
+def _rag_holat_matn(rag: Optional[MedicalRAG]) -> str:
+    """UI caption uchun RAG holatini yozadi (eski kesh obyektiga chidamli).
+
+    Args:
+        rag: MedicalRAG yoki None.
+
+    Returns:
+        Qisqa holat matni. Tashxis emas.
+    """
+    if rag is None:
+        return "CardiacRAG yuklanmadi (hashing/indeks yo‘q)."
+    bert = bool(getattr(rag, "bert_ishlatildi", getattr(rag, "model", None) is not None))
+    bolak = len(getattr(rag, "bolaklar", []) or [])
+    qurilma = getattr(rag, "qurilma", "?")
+    katalog = getattr(rag, "indeks_katalogi", "")
+    if bert:
+        return f"CardiacRAG: BioClinicalBERT + FAISS ({bolak} bo‘lak, {qurilma}). Indeks: {katalog}"
+    sabab = getattr(rag, "bert_xato", None) or "USE_BIOCLINICAL_BERT=0 yoki hashing"
+    return f"CardiacRAG: hashing zaxirasi ({bolak} bo‘lak). {sabab}"
 
 
 def _agent_ol() -> ChiefCardiologist:
@@ -222,7 +270,7 @@ def ehtiyotkor_tavsiyalar(bemor: Dict[str, Any], agent_holat: Dict[str, Any]) ->
         "Bu tizim shifokor o‘rnini bosmaydi; yakuniy qaror klinik ko‘rikka tegishli.",
         "O‘tkir ko‘krak og‘rig‘i, nafas qisishi yoki hushdan ketishda zudlik bilan shifokorga murojaat.",
     ]
-    lab = bemor.get("laboratoriya") or {}
+    lab = (agent_holat.get("lab_natija") or {}).get("qiymatlar") or bemor.get("laboratoriya") or {}
     troponin = lab.get("troponin_i")
     if troponin is not None and troponin >= 34:
         tavsiya.append(
@@ -268,11 +316,17 @@ def _ustun1_forma() -> Tuple[Dict[str, Any], Any, float, bool]:
         value="Gipertenziya. Oldingi MI yo‘q.",
         height=70,
     )
-    dorilar = st.text_input("Dori-darmonlar tarixi", value="")
+    dorilar = st.text_area(
+        "Dori-darmonlar (har qator: nom | doza | chastota)",
+        value="aspirin | 75 mg | once daily\nbisoprolol | 5 mg | once daily",
+        height=70,
+        help="Yoki: aspirin 75 mg od",
+    )
     echo_fayl = st.text_input("Echo/DICOM yo‘li (ixtiyoriy)", value="")
     tahlil_yuqori = st.button("Tahlil qilish", type="primary", width="stretch")
     st.subheader("Laboratoriya")
-    st.caption("Qiymatlar orientir; usul va norma laboratoriyaga bog‘liq.")
+    st.caption("Qiymatlar orientir; CSV/PDF yuklansa forma ustidan yoziladi. Tashxis emas.")
+    lab_fayl = st.file_uploader("Lab hisoboti (CSV yoki PDF)", type=["csv", "pdf", "txt"])
     lab: Dict[str, float] = {}
     for kalit, sarlavha, izoh, past, yuqori, odatiy in LAB_MAYDONLARI:
         lab[kalit] = float(
@@ -295,6 +349,9 @@ def _ustun1_forma() -> Tuple[Dict[str, Any], Any, float, bool]:
         "sampling_rate": float(sampling_rate),
         "namuna_ekg": namuna,
     }
+    if lab_fayl is not None:
+        bemor["lab_fayl_bayt"] = lab_fayl.getvalue()
+        bemor["lab_fayl_nomi"] = lab_fayl.name
     return bemor, fayl, float(sampling_rate), tahlil
 
 
@@ -344,6 +401,14 @@ def _ustun3_xulosa(agent_holat: Optional[Dict[str, Any]], bemor: Optional[Dict[s
     st.markdown("**Tavsiyalar**")
     for band in ehtiyotkor_tavsiyalar(bemor or {}, agent_holat):
         st.markdown(f"- {band}")
+    lab_n = agent_holat.get("lab_natija") or {}
+    if lab_n:
+        with st.expander("Lab technician (token/RAG satr)"):
+            st.write(lab_n.get("xabar") or "")
+            st.code(lab_n.get("rag_satr") or lab_n.get("matn") or "")
+            if lab_n.get("dorilar"):
+                st.write(lab_n.get("dorilar"))
+            st.caption("Tokenlar: " + ", ".join(lab_n.get("tokenlar") or []))
     with st.expander("Klinik reja P"):
         for qadam in agent_holat.get("reja") or []:
             st.write(f"{qadam.get('id')} [{qadam.get('holat')}] {qadam.get('vosita')}: {qadam.get('tavsif')}")
@@ -393,8 +458,14 @@ def asosiy() -> None:
         page_icon="🫀",
     )
     st.title("Kardiologik AI agent")
+    rag = _rag_ol()
+    if rag is not None and not hasattr(rag, "bert_ishlatildi"):
+        _rag_ol.clear()
+        rag = _rag_ol()
+    rag_holat = _rag_holat_matn(rag)
     st.caption(
-        "Klinik qaror qo‘llab-quvvatlash. Tashxis va davolash faqat shifokor zimmasida."
+        "Klinik qaror qo‘llab-quvvatlash. Tashxis va davolash faqat shifokor zimmasida. "
+        + rag_holat
     )
 
     if "ekg_signal" not in st.session_state:
@@ -425,6 +496,13 @@ def asosiy() -> None:
         if signal is not None:
             paket["ecg_signal"] = signal
         paket["sampling_rate"] = sampling_rate
+        lab_oldindan = process_lab(paket)
+        if lab_oldindan.get("qiymatlar"):
+            paket["laboratoriya"] = lab_oldindan["qiymatlar"]
+        if lab_oldindan.get("rag_satr"):
+            paket["klinik_savol"] = lab_oldindan["rag_satr"]
+        if lab_oldindan.get("dorilar"):
+            paket["dorilar_tuzilgan"] = lab_oldindan["dorilar"]
         with st.spinner("Agent tahlil qilmoqda..."):
             try:
                 agent = _agent_ol()

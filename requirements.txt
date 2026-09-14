@@ -8,3 +8,4 @@ torch
 transformers
 beautifulsoup4
 python-dotenv
+pypdf

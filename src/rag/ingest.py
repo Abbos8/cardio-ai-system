@@ -7,7 +7,7 @@ Manbalar: Mayo Clinic, NHS, MedlinePlus, ESC — faqat foydalanuvchi bergan fayl
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Iterable, List, Sequence
+from typing import List, Sequence
 
 # Chunk o‘lchami (so‘z) va ustma-ust qismi — retrieval sifatini saqlash uchun
 CHUNK_SOZ = 180
@@ -43,9 +43,12 @@ def html_dan_matn(html: str) -> str:
 
         return matnni_tozala(re.sub(r"<[^>]+>", " ", html))
     shorba = BeautifulSoup(html, "html.parser")
-    for teg in shorba(["script", "style", "nav", "footer"]):
+    for teg in shorba(
+        ["script", "style", "nav", "footer", "header", "aside", "form", "noscript", "iframe", "svg"]
+    ):
         teg.decompose()
-    return matnni_tozala(shorba.get_text(" "))
+    asos = shorba.find("main") or shorba.find("article") or shorba.body or shorba
+    return matnni_tozala(asos.get_text(" "))
 
 
 def pdf_dan_matn(yol: Path) -> str:
@@ -96,7 +99,7 @@ def chunklarga_ajrat(
         i += qadam
         if i >= len(sozlar):
             break
-    return bolaklar
+    return [b for b in bolaklar if len(b.split()) >= 40]
 
 
 def fayldan_bolaklar(yol: Path) -> List[str]:
@@ -109,33 +112,53 @@ def fayldan_bolaklar(yol: Path) -> List[str]:
         Indekslanadigan bo‘laklar.
     """
     yol = Path(yol)
-    if not yol.exists():
+    if not yol.exists() or yol.name.endswith(".url.txt"):
         return []
     suffix = yol.suffix.lower()
     if suffix in {".html", ".htm"}:
         matn = html_dan_matn(yol.read_text(encoding="utf-8", errors="ignore"))
     elif suffix == ".pdf":
         matn = pdf_dan_matn(yol)
-    else:
+    elif suffix in {".txt", ".md"}:
         matn = matnni_tozala(yol.read_text(encoding="utf-8", errors="ignore"))
-    return chunklarga_ajrat(matn)
+    else:
+        return []
+    pref = f"[{yol.parent.name}/{yol.stem}] "
+    return [pref + b for b in chunklarga_ajrat(matn)]
 
 
 def katalogdan_bolaklar(katalog: Path, glob_andoza: str = "*.*") -> List[str]:
-    """Katalogdagi barcha mos fayllardan bo‘laklar yig‘adi.
+    """Katalogdagi (ichki jildlar bilan) mos fayllardan bo‘laklar yig‘adi.
 
     Args:
         katalog: data/raw yoki knowledge papkasi.
-        glob_andoza: Fayl filtri.
+        glob_andoza: Fayl filtri (rglob).
 
     Returns:
-        Barcha chunklar.
+        Barcha chunklar. CardiacRAG indeksi uchun.
     """
     katalog = Path(katalog)
     if not katalog.exists():
         return []
     yigindi: List[str] = []
-    for fayl in sorted(katalog.glob(glob_andoza)):
+    for fayl in sorted(katalog.rglob(glob_andoza)):
         if fayl.is_file():
             yigindi.extend(fayldan_bolaklar(fayl))
+    return yigindi
+
+
+def korpus_bolaklari(seed: Path, raw_katalog: Path) -> List[str]:
+    """Seed matn va data/raw hujjatlaridan overlapping chunklarni yig‘adi.
+
+    Args:
+        seed: knowledge/cardiology_seed.txt.
+        raw_katalog: Yuklab olingan HTML/PDF jildi.
+
+    Returns:
+        Indekslanadigan bo‘laklar (manba prefiksi bilan).
+    """
+    yigindi: List[str] = []
+    if seed.exists():
+        yigindi.extend(chunklarga_ajrat(matnni_tozala(seed.read_text(encoding="utf-8"))))
+    yigindi.extend(katalogdan_bolaklar(raw_katalog))
     return yigindi

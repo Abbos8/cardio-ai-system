@@ -34,7 +34,7 @@ def dastlabki_tashxis(
         f"shikoyat={bemor.get('shikoyatlar') or bemor.get('symptoms')}.",
     ]
     if lab and lab.get("ok"):
-        qismlar.append(lab.get("matn") or "")
+        qismlar.append(lab.get("rag_satr") or lab.get("matn") or "")
     elif lab:
         qismlar.append(f"Lab: {lab.get('xabar')}")
     if ecg and ecg.get("ok"):

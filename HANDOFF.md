@@ -1,66 +1,253 @@
 # HANDOFF — cardio-ai-system
 
-Ish va uy kompyuterida davom ettirish uchun. Har muhim o‘zgarishdan keyin shu fayl yangilanadi.
+**Qoida:** yangi sessiyada butun loyihani qidirmang. Shu faylni o‘qing, «Hozir qayerdamiz» va 14 bosqich statusini qarang, keyingi **ochiq** bosqichni bajaring, oxirida shu fayldagi statusni yangilang, commit/push.
 
-## Git / GitHub
+Tizim shifokor o‘rnini bosmaydi. Yakuniy qaror shifokorga tegishli.
 
-- Remote: https://github.com/Abbos8/cardio-ai-system (private)
-- Tarmoq: `main`
-- Uyda: `git clone https://github.com/Abbos8/cardio-ai-system.git` so‘ng `git pull`
-- Ishda: o‘zgarish → `HANDOFF.md` ni yangilang → commit → `git push`
+---
+
+## Hozir qayerdamiz (2026-09-14, kechki)
+
+| Maydon | Qiymat |
+|---|---|
+| Keyingi ish | **6-bosqich** — EKG texnik + EP sifati (2-bosqich DeepSeek ham ochiq) |
+| Oxirgi yopilgan | **5-bosqich** — laboratoriya CSV/PDF + tuzilgan dorilar |
+| GitHub | https://github.com/Abbos8/cardio-ai-system (private, `main`) |
+| UI | `./ishga_tushir.sh` → http://127.0.0.1:8501 |
+
+Bosqichni yopganda: pastdagi jadvalda statusni `qilindi` qiling, «Hozir qayerdamiz» ni yangilang, qisqa «Sessiya yozuvi» qo‘shing.
+
+---
+
+## Git / ishga tushirish
+
+- Remote: https://github.com/Abbos8/cardio-ai-system
+- Uyda: `git clone` / `git pull`. Ishda: o‘zgarish → shu fayl → commit → `git push`.
 
 ```bash
 cd cardio-ai-system
-python3 -m venv venv
-source venv/bin/activate   # Windows: venv\Scripts\activate
-pip install -r requirements.txt
-cp .env.example .env       # DEEPSEEK_API_KEY ixtiyoriy
-streamlit run src/ui/app.py
+./ishga_tushir.sh
+# yoki: conda deactivate && source venv/bin/activate && python -m streamlit run src/ui/app.py
 ```
 
-Smoke-test (venv ichida): `PYTHONPATH=src python3 -c "from agents.chief_agent import ChiefCardiologist"`
+**Ishlatmang:** conda `(base)` ochiqcha `streamlit run ...` — miniconda Streamlit/FAISS + NumPy 2.2.6 aralashadi (`numpy.core.multiarray failed to import`). To‘xtating (Ctrl+C) va `./ishga_tushir.sh`.
 
-## Bugun qilingan (2026-09-14)
+Smoke-test: `PYTHONPATH=src python3 -c "from agents.chief_agent import ChiefCardiologist"`
 
-### Infratuzilma
+Kalitlarni faqat `.env` ga yozing; chatga va gitga tushirmang.
 
-- Git init (`main`), `.gitignore`, `.env.example`.
-- GitHub: https://github.com/Abbos8/cardio-ai-system
-- Cursor qoidasi: `.cursor/rules/handoff.mdc`
+---
 
-### 6 bosqichli workflow (kodda ishlaydi)
+## 14 bosqich — ketma-ket reja
 
-1. **Qabul + murakkablik** — `ChiefCardiologist._murakkablik_baholash`: DeepSeek JSON yoki qoida (troponin, NT-proBNP, echo, ko‘p modalitet). Murakkab → CardiacRAG.
-2. **CardiacRAG** — `MedicalRAG`: FAISS 3n, TF-IDF + MW + PB=1.2 (dastlabki 30%). `reja_tuz` → P. Seed: `src/rag/knowledge/cardiology_seed.txt`. Ingest: BeautifulSoup/Docling ixtiyoriy. `USE_BIOCLINICAL_BERT=1` bo‘lmasa hashing embedding.
-3. **Vositalar** — lab, EKG tozalash + EP (QRS/PR/QT/HRV), echo 11 ko‘rinish (heuristic), LV segmenter interfeysi (og‘irlik yo‘q), fellow.
-4. **Stepwise** — har vositadan keyin S / CONTINUE|STOP / ixtiyoriy P_{s+1}.
-5. **MDT** — MedGemma va Qwen2.5-VL rollari, har raundda I va Z. VLM yo‘q bo‘lsa shablon.
-6. **Xulosa + vizual panel** — Streamlit: reja, C, MDT, EKG o‘lchovlari.
+Har bosqich: **nima**, **qayerda**, **tayyor deb hisoblash**, **status**.
 
-### Hali to‘liq emas
+| # | Bosqich | Status |
+|---|---|---|
+| 1 | Ishga tushirish muhiti | **qilindi** (ish kompyuter) |
+| 2 | DeepSeek-R1 ulash | ochiq — `.env` bor, API/32B tasdiqlanmagan |
+| 3 | BioClinicalBERT + FAISS | **qilindi** |
+| 4 | Bilimlar bazasi (Mayo/NHS/MedlinePlus/ESC) | **qilindi** (Mayo 403 — qo‘lda) |
+| 5 | Laboratoriya vositasini chuqurlashtirish | **qilindi** |
+| 6 | EKG texnik + EP sifati | ochiq |
+| 7 | Echo technician (11 ko‘rinish, DICOM) | ochiq |
+| 8 | Echo segmenter (LV maska) | ochiq |
+| 9 | Cardiology fellow (multimodal) | ochiq |
+| 10 | MDT: MedGemma + Qwen2.5-VL | ochiq |
+| 11 | Vizual tekshirish paneli | ochiq |
+| 12 | UI ni to‘liq oqimga bog‘lash | ochiq |
+| 13 | Test va barqarorlik | ochiq |
+| 14 | Xavfsizlik / klinik tayyorgarlik | ochiq |
 
-- DeepSeek-R1-32B mahalliy inferens (API `.env` orqali).
-- BioClinicalBERT HF yuklash (`USE_BIOCLINICAL_BERT=1`).
-- Mayo/NHS/MedlinePlus/ESC to‘liq crawl (`data/raw/`).
-- DICOM klassifikator va LV segmentatsiya og‘irliklari.
-- Haqiqiy MedGemma / Qwen2.5-VL.
+---
 
-## Keyingi sessiyada
+### 1. Ishga tushirish muhiti — qilindi
 
-1. `.env` ga `DEEPSEEK_API_KEY` yoki mahalliy vLLM.
-2. Ko‘rsatma HTML/PDF ni `data/raw/` ga qo‘yish.
-3. Echo/LV modellarni ulash.
-4. MDT uchun VLM.
+**Nima:** venv, paketlar, `.env`, UI ochilishi.
 
-## Muhim fayllar
+**Qayerda:** `requirements.txt`, `.env.example`, `venv/`, `ishga_tushir.sh`.
 
-- `src/agents/chief_agent.py`
-- `src/agents/mdt.py`
-- `src/rag/medical_rag.py`, `src/rag/ingest.py`
-- `src/tools/*`
-- `src/llm/client.py`
-- `src/ui/app.py`
+**Tayyor:** `pip install` o‘tgan; NeuroKit2/FAISS/Streamlit/torch import; streamlit 8501.
 
-## Tibbiy eslatma
+**Qayd:** ish PC — torch CPU, CUDA yo‘q. UI faqat `./ishga_tushir.sh` (conda `streamlit` ni ishlatmang). Uyda venv + conda aralashmasin.
 
-Tizim shifokor o‘rnini bosmaydi. Yakuniy qaror shifokorga tegishli.
+---
+
+### 2. DeepSeek-R1 ni ulash — ochiq
+
+**Nima:** bosh kardiolog murakkablik, reja `P`, stepwise `S/A`, fellow/xulosa uchun R1 (yoki Distill-Qwen-32B). Kalitsiz — qoida/shablon.
+
+**Qayerda:** `.env` (`DEEPSEEK_API_KEY`, `DEEPSEEK_BASE_URL`, `DEEPSEEK_MODEL`); `src/llm/client.py`.
+
+**Qilish:** kalit yoki mahalliy vLLM; bitta tahlil qilib `manba=llm` va murakkablik JSON kelishini ko‘rish.
+
+**Tayyor:** API/lokal javob bor; kalitsiz ham agent to‘xtamaydi (zaxira saqlansin).
+
+---
+
+### 3. BioClinicalBERT + FAISS indeksi — qilindi
+
+**Nima:** vektor qidiruv; indeksni diskka saqlash.
+
+**Qayerda:** `.env` `USE_BIOCLINICAL_BERT=1`; `src/rag/medical_rag.py`; indeks `data/processed/rag_index/` (`index.faiss`, `chunks.json`, `meta.json`). Model: `emilyalsentzer/Bio_ClinicalBERT` (`_BERT_KESH`, HF `~/.cache/huggingface`).
+
+**Tayyor:** birinchi yuklash ~400 MB internet; keyin disk. Seed SHA o‘zgarmasa UI qayta embedding qilmaydi. BERT yo‘q bo‘lsa hashing zaxira.
+
+---
+
+### 4. Bilimlar bazasini to‘ldirish — qilindi
+
+**Nima:** CardiacRAG manbalari. Seed + rasmiy sahifalar.
+
+**Qayerda:**
+- URL ro‘yxati: `src/rag/manbalar.json` (gitda; xom HTML yo‘q)
+- Yuklash: `src/rag/yuklab_ol.py` → `data/raw/{medlineplus,nhs,esc,mayo}/` (gitignore)
+- Ingest: `src/rag/ingest.py` — overlapping chunk, manba prefiksi `[jild/fayl]`
+- Qurish: `PYTHONPATH=src python src/rag/indeks_qur.py --qayta`
+- Indeks: `data/processed/rag_index/` ; kesh kaliti seed **va** `data/raw` o‘lcham/hash
+
+**Natija (ish PC):** 19 HTML (MedlinePlus 11, NHS 5, ESC 3). **166 chunk**, BERT=True. Retrieve: AF so‘rovi MedlinePlus AFib; ACS da seed + EKG encyclopedia.
+
+**Cheklov:**
+- Mayo Clinic avto-yuklash **403**. HTML ni brauzerdan saqlab `data/raw/mayo/` ga qo‘ying, so‘ng `indeks_qur.py --qayta`.
+- ESC sahifalarida ko‘p huquqiy/nav matn; to‘liq PDF ko‘rsatma yo‘q (mualliflik).
+- Docling qo‘shilmadi — PDF hali yo‘q.
+
+**Qayta qurish:** `conda deactivate && source venv/bin/activate && PYTHONPATH=src python src/rag/indeks_qur.py --qayta`
+
+---
+
+### 5. Laboratoriya vositasini chuqurlashtirish — qilindi
+
+**Nima:** CSV/PDF/forma + tuzilgan dori tarixi → barqaror `rag_satr` / tokenlar.
+
+**Qayerda:** `src/tools/lab_tool.py`; namuna `src/tools/namuna_lab.csv`; UI lab yuklovchi; `pypdf` (`requirements.txt`).
+
+**Format:** `LAB kaliy=3.2 troponin_i=88.0 | MEDS aspirin|75 mg|once daily`. Fayl forma qiymatini ustiga yozadi. Dorilar: `nom | doza | chastota`.
+
+**Tekshiruv:** namuna CSV → 8 analit (sinonims: Troponin I, Potassium); CSV 88 ustun forma 8; tokenlarda aspirin.
+
+**Cheklov:** skan-PDF OCR yo‘q; tashxis qo‘yilmaydi.
+
+---
+
+### 6. EKG ni texnik + EP darajasiga yetkazish — ochiq
+
+**Nima:** tozalash + QRS/PR/QT/HRV bor (`src/tools/ecg_tool.py`). Yomon/sintetik signalda R cho‘qqi yo‘qolishi mumkin.
+
+**Qilish:** haqiqiy 12 tasmali CSV/WFDB; P/QRS/T chizmalari panelga; technician vs electrophysiologist natijasini UI da ajratish.
+
+**Tayyor:** namuna yozuvda intervallar + HRV + tozalangan grafik.
+
+---
+
+### 7. Echo technician (11 ko‘rinish, DICOM) — ochiq
+
+**Nima:** hozir fayl-nomi heuristic (`src/tools/echo_tool.py`). UI da yo‘l matni.
+
+**Qilish:** `pydicom`/video kadr; A2C, A4C, A3C, PLAX, PSAX-*, subcostal, SSN; UI da fayl yuklash.
+
+**Tayyor:** DICOM/videodan ko‘rinish yorlig‘i (model), heuristic emas.
+
+---
+
+### 8. Echo segmenter (LV maska) — ochiq
+
+**Nima:** interfeys bor, maska yaratilmaydi (`src/tools/echo_segmenter.py`).
+
+**Qilish:** LV kontur og‘irliklari; piksel maska + overlay. Yolg‘on maska berilmasin.
+
+**Tayyor:** kadrlar bo‘lsa `ok=True` va ko‘rinadigan maska; yo‘q bo‘lsa aniq xabar.
+
+---
+
+### 9. Cardiology fellow ni multimodal qilish — ochiq
+
+**Nima:** matn yig‘indisi + ixtiyoriy LLM (`src/tools/fellow_tool.py`).
+
+**Qilish:** EKG grafik + echo kadr/maska + lab tokenlarini bir multimodal chaqiriqqa berish.
+
+**Tayyor:** xulosa faqat mavjud dalillardan; `manba` llm/shablon aniq.
+
+---
+
+### 10. MDT: MedGemma + Qwen2.5-VL — ochiq
+
+**Nima:** ikki rol, VLM yo‘qida shablon (`src/agents/mdt.py`).
+
+**Qilish:** MedGemma (tasvir), Qwen2.5-VL (video); har raundda `I` va `Z`; konsensus yoki max raund; bosh umumlashtiradi.
+
+**Tayyor:** GPU/API da ikki model javobi; gallyutsinatsiya uchun I/Z qayta kiritiladi.
+
+---
+
+### 11. Vizual tekshirish paneli — ochiq
+
+**Nima:** asosan xom EKG + raqamlar (`src/ui/app.py` expander).
+
+**Qilish:** tozalangan 12 tasma; echo 11 ko‘rinish; LV overlay; MDT raundlari yonma-yon.
+
+**Tayyor:** shifokor oraliq vizual natijani panelda ko‘radi.
+
+---
+
+### 12. UI ni to‘liq oqimga bog‘lash — ochiq
+
+**Qilish:** RAG/BERT spinner va xato; echo drag-and-drop; reja qadamlari jonli; API yo‘qida «shablon rejimida» yozuvi.
+
+**Tayyor:** 6 bosqichli workflow UI dan boshidan-oxirigacha ko‘rinadi.
+
+---
+
+### 13. Test va barqarorlik — ochiq
+
+**Qilish:** lab-only, EKG-only, echo-only, hammasi bor/yo‘q; LangGraph limiti; GPU yo‘q zaxira (hashing/shablon).
+
+**Tayyor:** asosiy yo‘llar buzilmasdan `STOP` + ehtiyotkor xulosa.
+
+---
+
+### 14. Xavfsizlik va klinik foydalanishga tayyorlash — ochiq
+
+**Qilish:** PII gitda yo‘q; audit (qaysi model, qaysi C); ogohlantirish har ekranda. Keyin alohida: auth, log, klinik validatsiya.
+
+**Tayyor:** demo xavfsiz; klinik production emas — shu yozuv saqlansin.
+
+---
+
+## Kodda allaqachon ishlaydigan 6 bosqichli oqim
+
+Graf: qabul → murakkablik → CardiacRAG reja P → vosita → stepwise CONTINUE/STOP → MDT → xulosa.
+
+Fayllar: `src/agents/chief_agent.py`, `src/agents/mdt.py`, `src/rag/medical_rag.py`, `src/rag/ingest.py`, `src/tools/*`, `src/llm/client.py`, `src/ui/app.py`.
+
+---
+
+## Sessiya yozuvlari
+
+### 2026-09-14 (ish)
+
+- GitHub, LangGraph workflow, HANDOFF.
+- 1: venv, paketlar, `.env` nusxa, UI 8501, torch CPU.
+- 3: `USE_BIOCLINICAL_BERT=1`, indeks `data/processed/rag_index/`.
+- 14-bosqichli reja shu faylga to‘liq kiritildi. Keyingi sessiya: **4**.
+
+### 2026-09-14 (kech, 4-bosqich)
+
+- `manbalar.json` + `yuklab_ol.py` + `indeks_qur.py`.
+- Yuklandi: MedlinePlus, NHS, ESC HTML → `data/raw/` (git emas). Mayo 403.
+- 166 chunk FAISS (BERT). `urug_indeks` endi seed+raw.
+- Keyingi: **5** (lab) yoki **2** (DeepSeek).
+
+### 2026-09-14 (5-bosqich)
+
+- Lab CSV/PDF parser, sinonimlar, fayl forma ustidan.
+- Dorilar `nom|doza|chastota`; `rag_satr` RAG va fellow ga.
+- UI: lab yuklovchi, dori text_area, expander.
+- Namuna: `src/tools/namuna_lab.csv`. Keyingi: **6**.
+
+### 2026-09-14 (kech, HANDOFF + push)
+
+- UI: Streamlit kesh (`bert_ishlatildi`); conda `streamlit` → `numpy.core.multiarray`. Yechim: `./ishga_tushir.sh`.
+- 4–5 bosqich kodlari (RAG ingest, lab CSV/PDF) gitga kiritiladi.
+- Keyingi: **6** (EKG) yoki **2** (DeepSeek).

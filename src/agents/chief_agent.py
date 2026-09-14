@@ -183,9 +183,11 @@ def _rag_sorov_tuz(bemor: Dict[str, Any], ecg: Optional[Dict[str, Any]] = None) 
     anamnez = bemor.get("anamnez") or bemor.get("history")
     if anamnez:
         qismlar.append(f"history: {anamnez}")
-    lab = bemor.get("laboratoriya") or {}
-    if isinstance(lab, dict) and lab:
-        qismlar.append("laboratory " + ", ".join(f"{k}={v}" for k, v in lab.items()))
+    lab_nat = process_lab(bemor)
+    if lab_nat.get("rag_satr"):
+        qismlar.append(lab_nat["rag_satr"])
+    elif isinstance(bemor.get("laboratoriya"), dict) and bemor.get("laboratoriya"):
+        qismlar.append("laboratory " + ", ".join(f"{k}={v}" for k, v in bemor["laboratoriya"].items()))
     if ecg and ecg.get("ok"):
         hr = _son(ecg.get("yurak_chastotasi_bpm"))
         qrs = _son(ecg.get("qrs_ms"))
@@ -775,7 +777,7 @@ def chief_cardiologist_yarat(rag: Optional[MedicalRAG] = None) -> ChiefCardiolog
     """ChiefCardiologist eksemplarini quradi.
 
     Args:
-        rag: Ixtiyoriy MedicalRAG. None bo‘lsa seed indekslanadi (sekin bo‘lishi mumkin).
+        rag: Ixtiyoriy MedicalRAG. None bo‘lsa seed disk keshdan yoki birinchi marta indekslanadi.
 
     Returns:
         Ishga tayyor agent.

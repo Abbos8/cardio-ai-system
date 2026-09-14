@@ -1,0 +1,48 @@
+{
+  "izoh": "Xom HTML data/raw/ da (gitignore). MedlinePlus — NLM, odatda public domain. Mayo/NHS/ESC — mualliflik; faqat lokal indeks, gitga matn kiritilmasin.",
+  "manbalar": [
+    {
+      "id": "medlineplus",
+      "nom": "MedlinePlus",
+      "urls": [
+        "https://medlineplus.gov/heartattack.html",
+        "https://medlineplus.gov/heartfailure.html",
+        "https://medlineplus.gov/coronaryarterydisease.html",
+        "https://medlineplus.gov/angina.html",
+        "https://medlineplus.gov/arrhythmia.html",
+        "https://medlineplus.gov/atrialfibrillation.html",
+        "https://medlineplus.gov/highbloodpressure.html",
+        "https://medlineplus.gov/cholesterol.html",
+        "https://medlineplus.gov/hearthealthtests.html",
+        "https://medlineplus.gov/lab-tests/troponin-test/",
+        "https://medlineplus.gov/ency/article/003868.htm"
+      ]
+    },
+    {
+      "id": "nhs",
+      "nom": "NHS",
+      "urls": [
+        "https://www.nhs.uk/conditions/heart-attack/",
+        "https://www.nhs.uk/conditions/heart-failure/",
+        "https://www.nhs.uk/conditions/angina/",
+        "https://www.nhs.uk/conditions/atrial-fibrillation/",
+        "https://www.nhs.uk/conditions/electrocardiogram/"
+      ]
+    },
+    {
+      "id": "mayo",
+      "nom": "Mayo Clinic",
+      "izoh": "Avto-yuklash 403. HTML ni qo‘lda data/raw/mayo/ ga qo‘ying.",
+      "urls": []
+    },
+    {
+      "id": "esc",
+      "nom": "ESC",
+      "urls": [
+        "https://www.escardio.org/Guidelines/Clinical-Practice-Guidelines/Acute-Coronary-Syndromes-ACS-Guidelines",
+        "https://www.escardio.org/Guidelines/Clinical-Practice-Guidelines/Acute-and-Chronic-Heart-Failure",
+        "https://www.escardio.org/Guidelines/Clinical-Practice-Guidelines/Atrial-Fibrillation-Management"
+      ]
+    }
+  ]
+}
