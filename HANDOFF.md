@@ -10,8 +10,8 @@ Tizim shifokor o‘rnini bosmaydi. Yakuniy qaror shifokorga tegishli.
 
 | Maydon | Qiymat |
 |---|---|
-| Keyingi ish | **13-bosqich** — test va barqarorlik; 2-bosqich DeepSeek ham ochiq |
-| Oxirgi yopilgan | **12-bosqich** — UI ni to‘liq oqimga bog‘lash |
+| Keyingi ish | **14-bosqich** — xavfsizlik / klinik tayyorgarlik; 2-bosqich DeepSeek ham ochiq |
+| Oxirgi yopilgan | **13-bosqich** — test va barqarorlik |
 | GitHub | https://github.com/Abbos8/cardio-ai-system (private, `main`) |
 | UI | `./ishga_tushir.sh` → http://127.0.0.1:8501 |
 
@@ -33,6 +33,7 @@ cd cardio-ai-system
 **Ishlatmang:** conda `(base)` ochiqcha `streamlit run ...` — miniconda Streamlit/FAISS + NumPy 2.2.6 aralashadi (`numpy.core.multiarray failed to import`). To‘xtating (Ctrl+C) va `./ishga_tushir.sh`.
 
 Smoke-test: `PYTHONPATH=src python3 -c "from agents.chief_agent import ChiefCardiologist"`
+Barqarorlik: `PYTHONPATH=src python -m unittest tests.test_barqarorlik -v`
 
 Kalitlarni faqat `.env` ga yozing; chatga va gitga tushirmang.
 
@@ -56,7 +57,7 @@ Har bosqich: **nima**, **qayerda**, **tayyor deb hisoblash**, **status**.
 | 10 | MDT: MedGemma + Qwen2.5-VL | **qilindi** |
 | 11 | Vizual tekshirish paneli | **qilindi** |
 | 12 | UI ni to‘liq oqimga bog‘lash | **qilindi** |
-| 13 | Test va barqarorlik | ochiq |
+| 13 | Test va barqarorlik | **qilindi** |
 | 14 | Xavfsizlik / klinik tayyorgarlik | ochiq |
 
 ---
@@ -225,11 +226,15 @@ Har bosqich: **nima**, **qayerda**, **tayyor deb hisoblash**, **status**.
 
 ---
 
-### 13. Test va barqarorlik — ochiq
+### 13. Test va barqarorlik — qilindi
 
-**Qilish:** lab-only, EKG-only, echo-only, hammasi bor/yo‘q; LangGraph limiti; GPU yo‘q zaxira (hashing/shablon).
+**Nima:** lab-only, EKG-only, echo-only, hammasi, bo‘sh; LangGraph `max_qadam`; kalitsiz shablon; hashing RAG (vaqtinchalik katalog).
 
-**Tayyor:** asosiy yo‘llar buzilmasdan `STOP` + ehtiyotkor xulosa.
+**Qayerda:** `tests/test_barqarorlik.py`. Ishlatish: `PYTHONPATH=src python -m unittest tests.test_barqarorlik -v`
+
+**Tekshiruv:** 10 test, STOP + ehtiyotkor xulosa; LLM kalitsiz `None`; hashing indeksi asosiy BERT indeksiga tegmaydi.
+
+**Cheklov:** API/GPU yo‘li alohida (2-bosqich). Tashxis emas.
 
 ---
 
@@ -310,3 +315,8 @@ Fayllar: `src/agents/chief_agent.py`, `src/agents/mdt.py`, `src/rag/medical_rag.
 
 - UI: 6 bosqich qatori, `run_oqim` bilan jonli reja P, RAG xato/banner, echo drag-and-drop.
 - API yo‘qida «Shablon rejimida» ogohlantirish. Keyingi: **13** (test) yoki **2** (DeepSeek).
+
+### 2026-09-16 (13-bosqich)
+
+- `tests/test_barqarorlik.py`: lab/EKG/echo/bo‘sh/hammasi, LangGraph limiti, hashing RAG, shablon MDT.
+- 10 testdan o‘tdi, STOP + ehtiyotkor xulosa. Keyingi: **14** (xavfsizlik) yoki **2** (DeepSeek).
