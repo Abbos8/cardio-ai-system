@@ -10,8 +10,8 @@ Tizim shifokor o‘rnini bosmaydi. Yakuniy qaror shifokorga tegishli.
 
 | Maydon | Qiymat |
 |---|---|
-| Keyingi ish | **8-bosqich** — Echo segmenter (LV maska); 2-bosqich DeepSeek ham ochiq |
-| Oxirgi yopilgan | **7-bosqich** — Echo technician (DICOM/video, 11 ko‘rinish) |
+| Keyingi ish | **9-bosqich** — Cardiology fellow (multimodal); 2-bosqich DeepSeek ham ochiq |
+| Oxirgi yopilgan | **8-bosqich** — Echo segmenter (LV maska + overlay) |
 | GitHub | https://github.com/Abbos8/cardio-ai-system (private, `main`) |
 | UI | `./ishga_tushir.sh` → http://127.0.0.1:8501 |
 
@@ -51,7 +51,7 @@ Har bosqich: **nima**, **qayerda**, **tayyor deb hisoblash**, **status**.
 | 5 | Laboratoriya vositasini chuqurlashtirish | **qilindi** |
 | 6 | EKG texnik + EP sifati | **qilindi** |
 | 7 | Echo technician (11 ko‘rinish, DICOM) | **qilindi** |
-| 8 | Echo segmenter (LV maska) | ochiq |
+| 8 | Echo segmenter (LV maska) | **qilindi** |
 | 9 | Cardiology fellow (multimodal) | ochiq |
 | 10 | MDT: MedGemma + Qwen2.5-VL | ochiq |
 | 11 | Vizual tekshirish paneli | ochiq |
@@ -159,13 +159,15 @@ Har bosqich: **nima**, **qayerda**, **tayyor deb hisoblash**, **status**.
 
 ---
 
-### 8. Echo segmenter (LV maska) — ochiq
+### 8. Echo segmenter (LV maska) — qilindi
 
-**Nima:** interfeys bor, maska yaratilmaydi (`src/tools/echo_segmenter.py`).
+**Nima:** kadr bor bo‘lsa OpenCV bilan qorong‘i kavak (taxminiy LV) + cyan overlay; yo‘q bo‘lsa aniq rad.
 
-**Qilish:** LV kontur og‘irliklari; piksel maska + overlay. Yolg‘on maska berilmasin.
+**Qayerda:** `src/tools/echo_segmenter.py`; agent `echo_segmenter`; UI overlay (2-ustun + expander).
 
-**Tayyor:** kadrlar bo‘lsa `ok=True` va ko‘rinadigan maska; yo‘q bo‘lsa aniq xabar.
+**Tekshiruv:** namuna A4C DICOM → `ok=True`, ~709 px, overlay PNG; kadr yo‘q → `ok=False` «kadrlar yo‘q». Yolg‘on maska yo‘q.
+
+**Cheklov:** U-Net/klinik og‘irlik emas; EF hisoblanmaydi; tashxis emas.
 
 ---
 
@@ -259,8 +261,14 @@ Fayllar: `src/agents/chief_agent.py`, `src/agents/mdt.py`, `src/rag/medical_rag.
 - Technician vs EP: tozalash/sifat va P/QRS/T + PR/QRS/QT/QTc/HRV alohida.
 - CSV (sarlavha, Hz izohi, time) va WFDB 16/212 o‘qish.
 - UI: tozalangan 12 tasma, P/R/T belgilar, ikki expander.
+
 ### 2026-09-16 (7-bosqich)
 
 - Echo DICOM/video/rasm o‘qish; 11 ko‘rinish (teg + geometrik model).
 - UI: fayl yuklash, kadr + yorliq, expander.
 - Namuna: `namuna_echo_a4c.dcm`, `namuna_echo_plax.dcm`. Keyingi: **8** (LV segmenter) yoki **2** (DeepSeek).
+
+### 2026-09-16 (8-bosqich)
+
+- LV kavak maska (OpenCV) + cyan overlay PNG; kadr yo‘qda rad.
+- Namuna A4C: ok, ~4.3% kadr. EF yo‘q. Keyingi: **9** (fellow multimodal) yoki **2** (DeepSeek).

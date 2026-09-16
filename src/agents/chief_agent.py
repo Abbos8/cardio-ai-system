@@ -125,6 +125,31 @@ def _echo_qisqacha(natija: Optional[Dict[str, Any]]) -> Dict[str, Any]:
     }
 
 
+def _lv_qisqacha(natija: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+    """Graf holatida to‘liq piksel maskani tashlamaydi (faqat overlay PNG).
+
+    Args:
+        natija: segment_lv javobi.
+
+    Returns:
+        Signallarsiz qisqa lug‘at. Overlay kichik PNG.
+    """
+    if not natija:
+        return {}
+    return {
+        "ok": natija.get("ok"),
+        "xabar": natija.get("xabar"),
+        "maydon_px": natija.get("maydon_px"),
+        "ulush": natija.get("ulush"),
+        "shakl": natija.get("shakl"),
+        "korinish": natija.get("korinish"),
+        "fayl": natija.get("fayl"),
+        "model": natija.get("model"),
+        "overlay_png": natija.get("overlay_png"),
+        "kadrlar_soni": natija.get("kadrlar_soni"),
+    }
+
+
 def _ekg_qisqacha(natija: Optional[Dict[str, Any]]) -> Dict[str, Any]:
     """Holatda saqlash uchun EKG dan o‘lchovlarni qoldiradi (katta signal emas).
 
@@ -283,6 +308,14 @@ def _oddiy_reja(bemor: Dict[str, Any]) -> List[Dict[str, Any]]:
                 "id": "p-echo",
                 "vosita": "echo_technician",
                 "tavsif": "DICOM/video 11 ko‘rinish",
+                "holat": "pending",
+            }
+        )
+        qadamlar.append(
+            {
+                "id": "p-lv",
+                "vosita": "echo_segmenter",
+                "tavsif": "LV kontur maska",
                 "holat": "pending",
             }
         )
@@ -558,9 +591,15 @@ class ChiefCardiologist:
                 viz["echo_kadrlar"] = toliq.get("kadrlar_soni")
                 yangi["vizual"] = viz
             elif vosita == "echo_segmenter":
-                yangi["echo_mask"] = segment_lv(bemor=bemor)
+                toliq = segment_lv(
+                    bemor=bemor,
+                    echo_natija=holat.get("echo_natija") or yangi.get("echo_natija"),
+                )
+                yangi["echo_mask"] = _lv_qisqacha(toliq)
                 viz = dict(holat.get("vizual") or {})
-                viz["lv_maska"] = (yangi["echo_mask"] or {}).get("ok")
+                viz["lv_maska"] = bool(toliq.get("ok"))
+                viz["lv_xabar"] = toliq.get("xabar")
+                viz["lv_ulush"] = toliq.get("ulush")
                 yangi["vizual"] = viz
             elif vosita == "cardiology_fellow":
                 yangi["fellow_natija"] = dastlabki_tashxis(

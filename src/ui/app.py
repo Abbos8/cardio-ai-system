@@ -471,6 +471,12 @@ def _echo_kadr_panel(agent_holat: Optional[Dict[str, Any]], bemor: Optional[Dict
             break
     if yol and ko‘rsatilgan == 0:
         st.caption(f"Disk yo‘li: {yol}")
+    mask = (agent_holat or {}).get("echo_mask") or {}
+    if mask.get("overlay_png"):
+        st.subheader("LV maska (overlay)")
+        st.image(mask["overlay_png"], caption=mask.get("xabar") or "LV kontur, tashxis emas", width="stretch")
+    elif mask.get("xabar"):
+        st.caption(mask.get("xabar"))
 
 
 def _ustun3_xulosa(agent_holat: Optional[Dict[str, Any]], bemor: Optional[Dict[str, Any]]) -> None:
@@ -558,14 +564,26 @@ def _ustun3_xulosa(agent_holat: Optional[Dict[str, Any]], bemor: Optional[Dict[s
             yet = echo_n.get("yetishmagan_standart") or []
             if yet:
                 st.caption("Hali yo‘q (11 dan): " + ", ".join(yet))
+    mask_n = agent_holat.get("echo_mask") or {}
+    if mask_n:
+        with st.expander("Echo segmenter (LV maska)"):
+            st.write(mask_n.get("xabar") or "")
+            if mask_n.get("ok"):
+                st.write(
+                    f"ko‘rinish={mask_n.get('korinish')} | {mask_n.get('maydon_px')} px | "
+                    f"ulush={mask_n.get('ulush')} | model={mask_n.get('model')}"
+                )
+            if mask_n.get("overlay_png"):
+                st.image(mask_n["overlay_png"], caption="LV overlay (tashxis emas)")
+            st.caption("Algoritmik kavak; klinik EF emas.")
     with st.expander("Vizual tekshirish paneli"):
         viz = agent_holat.get("vizual") or {}
         st.write(f"EKG tozalangan: {viz.get('ekg_tozalangan')} | sifat: {viz.get('ekg_sifat')}")
         st.write(f"Technician: {viz.get('ekg_xabar')}")
         st.write(f"EP: {viz.get('ekg_ep')}")
         st.write(f"Echo: ok={viz.get('echo_ok')} | {viz.get('echo_korinishlar')} | model={viz.get('echo_model')} | kadr={viz.get('echo_kadrlar')}")
-        st.write(f"LV maska tayyor: {viz.get('lv_maska')}")
-        st.caption("LV maskalari 8-bosqichda shu yerda ko‘rinadi.")
+        st.write(f"LV maska: {viz.get('lv_maska')} | ulush={viz.get('lv_ulush')} | {viz.get('lv_xabar')}")
+        st.caption("Overlay 2-ustunda; klinik EF hisoblanmaydi.")
 
 
 def asosiy() -> None:

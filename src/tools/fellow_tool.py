@@ -56,7 +56,10 @@ def dastlabki_tashxis(
             f"model={echo.get('model')} | {echo.get('xabar')}"
         )
     if segment:
-        qismlar.append(f"LV segmentatsiya: {segment.get('xabar')}")
+        qismlar.append(
+            f"LV segmentatsiya: ok={segment.get('ok')} maydon={segment.get('maydon_px')} "
+            f"ulush={segment.get('ulush')} | {segment.get('xabar')}"
+        )
     if rag_dalillar:
         qismlar.append("Adabiyot (tekshirish uchun): " + " | ".join(rag_dalillar[:3]))
     qismlar.append("Yakuniy qaror shifokorga tegishli.")
