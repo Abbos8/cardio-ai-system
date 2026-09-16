@@ -52,6 +52,7 @@ if str(_SRC) not in sys.path:
     sys.path.insert(0, str(_SRC))
 
 from agents.chief_agent import ChiefCardiologist
+from llm.client import llm_mavjud, vlm_sozlama
 from rag.medical_rag import MedicalRAG
 from tools.ecg_tool import TASMA_NOMLARI, namuna_12_tasma_ekg, tozalangan_matritsa, tasmalarni_tozala
 from tools.ekg_yuklash import ekg_fayllardan_oqish
@@ -77,33 +78,49 @@ LAB_MAYDONLARI: List[Tuple[str, str, str, float, float, float]] = [
 
 
 @st.cache_resource(show_spinner="CardiacRAG: BioClinicalBERT va FAISS yuklanmoqda...")
-def _rag_ol(kesh_versiya: int = 3) -> Optional[MedicalRAG]:
+def _rag_ol(kesh_versiya: int = 4) -> Dict[str, Any]:
     """BERT ni jarayonda bir marta, FAISS ni disk keshdan yuklaydi.
 
     Args:
         kesh_versiya: Streamlit cache kaliti; atributlar o‘zgaganda oshiriladi.
 
     Returns:
-        Indekslangan RAG yoki None. BERT bo‘lmasa hashing zaxirasi.
-        Seed o‘zgarmasa embedding qayta hisoblanmaydi.
+        {ok, rag, xato}. BERT bo‘lmasa hashing; xatoda rag=None.
     """
     try:
         rag = MedicalRAG()
         rag.urug_indeks()
-        return rag
-    except Exception:
-        return None
+        return {"ok": True, "rag": rag, "xato": None}
+    except Exception as exc:
+        return {"ok": False, "rag": None, "xato": str(exc)}
 
 
-def _rag_holat_matn(rag: Optional[MedicalRAG]) -> str:
+def _rag_obyekt(paket: Any) -> Optional[MedicalRAG]:
+    """Eski kesh (to‘g‘ridan-to‘g‘ri RAG) va yangi paketdan obyekt oladi.
+
+    Args:
+        paket: _rag_ol natijasi.
+
+    Returns:
+        MedicalRAG yoki None.
+    """
+    if isinstance(paket, dict):
+        return paket.get("rag")
+    return paket if paket is not None else None
+
+
+def _rag_holat_matn(rag: Optional[MedicalRAG], xato: Optional[str] = None) -> str:
     """UI caption uchun RAG holatini yozadi (eski kesh obyektiga chidamli).
 
     Args:
         rag: MedicalRAG yoki None.
+        xato: Yuklash xatosi.
 
     Returns:
         Qisqa holat matni. Tashxis emas.
     """
+    if xato:
+        return f"CardiacRAG xato: {xato}"
     if rag is None:
         return "CardiacRAG yuklanmadi (hashing/indeks yo‘q)."
     bert = bool(getattr(rag, "bert_ishlatildi", getattr(rag, "model", None) is not None))
@@ -116,13 +133,169 @@ def _rag_holat_matn(rag: Optional[MedicalRAG]) -> str:
     return f"CardiacRAG: hashing zaxirasi ({bolak} bo‘lak). {sabab}"
 
 
+def _rag_banner(paket: Any) -> None:
+    """RAG/BERT muvaffaqiyat yoki xatoni ko‘rsatadi.
+
+    Args:
+        paket: _rag_ol natijasi.
+
+    Returns:
+        None. Tashxis emas.
+    """
+    if isinstance(paket, dict) and not paket.get("ok"):
+        st.error(
+            "CardiacRAG/BERT yuklanmadi: "
+            + str(paket.get("xato") or "noma’lum")
+            + ". Agent hashing/zaxira bilan davom etishi mumkin. Tashxis emas."
+        )
+        if st.button("RAG ni qayta yuklash"):
+            _rag_ol.clear()
+            st.rerun()
+        return
+    rag = _rag_obyekt(paket)
+    matn = _rag_holat_matn(rag, (paket or {}).get("xato") if isinstance(paket, dict) else None)
+    if rag is None:
+        st.warning(matn)
+    elif not getattr(rag, "bert_ishlatildi", True):
+        st.warning(matn)
+    else:
+        st.caption(matn)
+
+
+def _rejim_banner() -> None:
+    """LLM/VLM yo‘qida shablon rejimini ochiq yozadi.
+
+    Returns:
+        None. Kalitni ko‘rsatmaydi.
+    """
+    if llm_mavjud():
+        vlm = vlm_sozlama("medgemma") or vlm_sozlama("qwen_vl")
+        if vlm:
+            st.caption("LLM API ulangan. VLM sozlangan. Yakuniy qaror shifokorga tegishli.")
+        else:
+            st.caption(
+                "LLM API ulangan. MedGemma/Qwen VLM yo‘q — MDT/fellow tasvir **shablon** bo‘lishi mumkin. "
+                "Tashxis emas."
+            )
+        return
+    st.warning(
+        "**Shablon rejimida.** DeepSeek/VLM kaliti yo‘q — murakkablik, reja, fellow va MDT "
+        "qoida/shablon bilan ishlaydi, agent to‘xtamaydi. Tashxis emas."
+    )
+
+
+def _oqim_bosqichlari(holat: Optional[Dict[str, Any]]) -> List[str]:
+    """6 bosqich holatini tarixdan chiqaradi.
+
+    Args:
+        holat: Agent run natijasi.
+
+    Returns:
+        pending|current|done|skip ro‘yxati (6 ta).
+    """
+    nomlar = ["pending"] * 6
+    if not holat:
+        nomlar[0] = "current"
+        return nomlar
+    tarix = [str(t) for t in (holat.get("qadam_tarixi") or [])]
+    belgilar = [
+        any(t.startswith("qabul_qilish") for t in tarix),
+        any(t.startswith("murakkablik") for t in tarix),
+        any("cardiac_rag_reja" in t for t in tarix),
+        any(t.startswith("qadam_bajarish") or t.startswith("stepwise") for t in tarix),
+        bool(holat.get("mdt_natija")) or any(t.startswith("mdt:") for t in tarix),
+        any("xulosa_tayyorlash" in t for t in tarix) or bool(holat.get("xulosa")),
+    ]
+    if belgilar[5] and not belgilar[4]:
+        belgilar[4] = False  # skip later
+    last = -1
+    for i, b in enumerate(belgilar):
+        if b:
+            nomlar[i] = "done"
+            last = i
+    if belgilar[5] and not holat.get("mdt_natija"):
+        nomlar[4] = "skip"
+    elif last >= 0 and last < 5 and not belgilar[5]:
+        nomlar[last + 1] = "current"
+    if belgilar[5]:
+        for i in range(6):
+            if nomlar[i] == "current":
+                nomlar[i] = "done"
+            if nomlar[i] == "pending" and i != 4:
+                nomlar[i] = "done"
+    return nomlar
+
+
+def _olti_bosqich_chiz(holat: Optional[Dict[str, Any]]) -> None:
+    """LangGraph 6 bosqichini progress qatori sifatida chizadi.
+
+    Args:
+        holat: Joriy yoki yakuniy graf holati.
+
+    Returns:
+        None. Tashxis emas.
+    """
+    sarlavhalar = [
+        "1. Qabul",
+        "2. Murakkablik",
+        "3. CardiacRAG reja",
+        "4. Ekspert vositalar",
+        "5. MDT",
+        "6. Xulosa",
+    ]
+    holatlar = _oqim_bosqichlari(holat)
+    st.markdown("**6 bosqichli oqim**")
+    ustunlar = st.columns(6)
+    for i, nom in enumerate(sarlavhalar):
+        with ustunlar[i]:
+            s = holatlar[i]
+            if s == "done":
+                st.success(nom)
+            elif s == "current":
+                st.info("▶ " + nom)
+            elif s == "skip":
+                st.caption(nom + " (o‘tkazildi)")
+            else:
+                st.caption(nom)
+
+
+def _reja_jonli(holat: Optional[Dict[str, Any]]) -> None:
+    """Klinik reja P ni qadam holati bilan ko‘rsatadi.
+
+    Args:
+        holat: reja, reja_indeks.
+
+    Returns:
+        None.
+    """
+    reja = (holat or {}).get("reja") or []
+    indeks = int((holat or {}).get("reja_indeks") or 0)
+    st.markdown("**Klinik reja P (jonli)**")
+    if not reja:
+        st.caption("Reja hali tuzilmagan.")
+        return
+    for i, qadam in enumerate(reja):
+        hol = str(qadam.get("holat") or "pending")
+        if hol == "done":
+            belgi = "✓"
+        elif hol == "xato":
+            belgi = "✗"
+        elif i == indeks:
+            belgi = "▶"
+        else:
+            belgi = "○"
+        st.write(
+            f"{belgi} {qadam.get('id')} [{hol}] {qadam.get('vosita')}: {qadam.get('tavsif')}"
+        )
+
+
 def _agent_ol() -> ChiefCardiologist:
     """LangGraph bosh kardiologini CardiacRAG bilan quradi.
 
     Returns:
         6 bosqichli workflow agenti.
     """
-    return ChiefCardiologist(rag=_rag_ol())
+    return ChiefCardiologist(rag=_rag_obyekt(_rag_ol()))
 
 
 def namuna_ekg_signal(sampling_rate: float = ODATIY_HZ, davomiylik: float = NAMUNA_SONIYA) -> np.ndarray:
@@ -447,12 +620,15 @@ def _ustun1_forma() -> Tuple[Dict[str, Any], Any, float, bool]:
         help="Yoki: aspirin 75 mg od",
     )
     echo_fayl = st.text_input("Echo/DICOM yo‘li (ixtiyoriy, disk)", value="")
+    st.markdown("**Echo faylni shu yerga tashlang** (drag-and-drop) yoki tanlang")
     echo_yuk = st.file_uploader(
         "Echo (DICOM/video/rasm, bir nechta)",
-        type=["dcm", "dicom", "mp4", "avi", "mov", "png", "jpg", "jpeg"],
+        type=["dcm", "dicom", "mp4", "avi", "mov", "mkv", "png", "jpg", "jpeg"],
         accept_multiple_files=True,
-        help="11 ko‘rinish: A2C A4C A3C PLAX PSAX-* subcostal SSN. Tashxis emas.",
+        help="Faylni maydonga tashlang. 11 ko‘rinish: A2C A4C A3C PLAX PSAX-* subcostal SSN. Tashxis emas.",
     )
+    if echo_yuk:
+        st.success("Yuklandi: " + ", ".join(f.name for f in echo_yuk) + f" ({len(echo_yuk)} ta)")
     tahlil_yuqori = st.button("Tahlil qilish", type="primary", width="stretch")
     st.subheader("Laboratoriya")
     st.caption("Qiymatlar orientir; CSV/PDF yuklansa forma ustidan yoziladi. Tashxis emas.")
@@ -704,10 +880,9 @@ def _ustun3_xulosa(agent_holat: Optional[Dict[str, Any]], bemor: Optional[Dict[s
             if lab_n.get("dorilar"):
                 st.write(lab_n.get("dorilar"))
             st.caption("Tokenlar: " + ", ".join(lab_n.get("tokenlar") or []))
-    with st.expander("Klinik reja P"):
-        for qadam in agent_holat.get("reja") or []:
-            st.write(f"{qadam.get('id')} [{qadam.get('holat')}] {qadam.get('vosita')}: {qadam.get('tavsif')}")
-    with st.expander("Qadamlar (LangGraph)"):
+    with st.expander("Klinik reja P", expanded=True):
+        _reja_jonli(agent_holat)
+    with st.expander("Qadamlar (LangGraph)", expanded=True):
         for qator in agent_holat.get("qadam_tarixi") or []:
             st.write(qator)
     dalillar = agent_holat.get("rag_dalillar") or []
@@ -771,6 +946,8 @@ def _ustun3_xulosa(agent_holat: Optional[Dict[str, Any]], bemor: Optional[Dict[s
                 st.caption("Yo‘q (o‘ylab topilmagan): " + ", ".join(fellow_n.get("yoq_dalillar") or []))
             st.write(fellow_n.get("matn") or "")
             st.caption((fellow_n.get("xabar") or "") + " Tashxis emas.")
+            if fellow_n.get("manba") == "shablon" or (agent_holat.get("mdt_natija") or {}).get("medgemma_manba") == "shablon":
+                st.warning("Fellow/MDT **shablon rejimida** (LLM yoki VLM javobi yo‘q).")
     viz = agent_holat.get("vizual") or {}
     st.caption(
         "Vizual panel pastda: tozalangan 12 tasma, echo 11 ko‘rinish, LV overlay, MDT. "
@@ -794,15 +971,15 @@ def asosiy() -> None:
         page_icon="🫀",
     )
     st.title("Kardiologik AI agent")
-    rag = _rag_ol()
+    _rejim_banner()
+    rag_paket = _rag_ol()
+    rag = _rag_obyekt(rag_paket)
     if rag is not None and not hasattr(rag, "bert_ishlatildi"):
         _rag_ol.clear()
-        rag = _rag_ol()
-    rag_holat = _rag_holat_matn(rag)
-    st.caption(
-        "Klinik qaror qo‘llab-quvvatlash. Tashxis va davolash faqat shifokor zimmasida. "
-        + rag_holat
-    )
+        rag_paket = _rag_ol()
+        rag = _rag_obyekt(rag_paket)
+    _rag_banner(rag_paket)
+    st.caption("Klinik qaror qo‘llab-quvvatlash. Tashxis va davolash faqat shifokor zimmasida.")
 
     if "ekg_signal" not in st.session_state:
         st.session_state.ekg_signal = namuna_ekg_signal()
@@ -810,6 +987,12 @@ def asosiy() -> None:
         st.session_state.sampling_rate = ODATIY_HZ
         st.session_state.agent_holat = None
         st.session_state.bemor_tahlil = None
+
+    bosqich_joy = st.empty()
+    with bosqich_joy.container():
+        _olti_bosqich_chiz(st.session_state.agent_holat)
+        if st.session_state.agent_holat:
+            _reja_jonli(st.session_state.agent_holat)
 
     col1, col2, col3 = st.columns([1.05, 1.25, 1.15], gap="large")
     with col1:
@@ -844,22 +1027,38 @@ def asosiy() -> None:
             paket["klinik_savol"] = lab_oldindan["rag_satr"]
         if lab_oldindan.get("dorilar"):
             paket["dorilar_tuzilgan"] = lab_oldindan["dorilar"]
-        with st.spinner("Agent tahlil qilmoqda..."):
-            try:
-                agent = _agent_ol()
-                st.session_state.agent_holat = agent.run(paket)
-            except Exception as exc:
-                st.session_state.agent_holat = {
-                    "amal": "STOP",
-                    "xulosa": (
-                        f"Tahlil bajarilmadi: {exc}. "
-                        "Bu tashxis emas; shifokor bilan ko‘rib chiqing."
-                    ),
-                    "qadam_tarixi": [str(exc)],
-                    "ecg_natija": None,
-                    "rag_dalillar": [],
-                }
-            st.session_state.bemor_tahlil = paket
+        oxirgi: Optional[Dict[str, Any]] = None
+        try:
+            agent = _agent_ol()
+            with st.status("Agent tahlil qilmoqda (6 bosqich)...", expanded=True) as holat_ui:
+                for holat in agent.run_oqim(paket):
+                    oxirgi = holat
+                    holat_ui.update(
+                        label="Oqim: "
+                        + str((holat.get("qadam_tarixi") or ["..."])[-1])[:120],
+                        state="running",
+                    )
+                    with bosqich_joy.container():
+                        _olti_bosqich_chiz(holat)
+                        _reja_jonli(holat)
+                    st.session_state.agent_holat = holat
+                if oxirgi is None:
+                    oxirgi = agent.run(paket)
+                holat_ui.update(label="Tahlil tugadi (tashxis emas).", state="complete")
+            st.session_state.agent_holat = oxirgi
+        except Exception as exc:
+            st.session_state.agent_holat = {
+                "amal": "STOP",
+                "xulosa": (
+                    f"Tahlil bajarilmadi: {exc}. "
+                    "Bu tashxis emas; shifokor bilan ko‘rib chiqing."
+                ),
+                "qadam_tarixi": [str(exc)],
+                "ecg_natija": None,
+                "rag_dalillar": [],
+            }
+            st.error("Tahlil xatosi: " + str(exc))
+        st.session_state.bemor_tahlil = paket
 
     with col2:
         _ustun2_ekg(

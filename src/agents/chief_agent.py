@@ -962,6 +962,20 @@ class ChiefCardiologist:
         boshlangich: ChiefHolat = {"bemor": bemor}
         return self.graf.invoke(boshlangich)
 
+    def run_oqim(self, bemor: Dict[str, Any]):
+        """Grafni tugun-ketma-ket yuritadi (UI da jonli reja).
+
+        Args:
+            bemor: Klinik maydonlar va ixtiyoriy EKG/echo.
+
+        Yields:
+            Har tugundan keyingi to‘liq holat. Tashxis emas.
+        """
+        boshlangich: ChiefHolat = {"bemor": bemor}
+        for holat in self.graf.stream(boshlangich, stream_mode="values"):
+            if isinstance(holat, dict) and (holat.get("qadam_tarixi") or holat.get("xulosa")):
+                yield holat
+
 
 def chief_cardiologist_yarat(rag: Optional[MedicalRAG] = None) -> ChiefCardiologist:
     """ChiefCardiologist eksemplarini quradi.

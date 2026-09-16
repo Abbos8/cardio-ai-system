@@ -10,8 +10,8 @@ Tizim shifokor o‘rnini bosmaydi. Yakuniy qaror shifokorga tegishli.
 
 | Maydon | Qiymat |
 |---|---|
-| Keyingi ish | **12-bosqich** — UI ni to‘liq oqimga bog‘lash; 2-bosqich DeepSeek ham ochiq |
-| Oxirgi yopilgan | **11-bosqich** — vizual tekshirish paneli |
+| Keyingi ish | **13-bosqich** — test va barqarorlik; 2-bosqich DeepSeek ham ochiq |
+| Oxirgi yopilgan | **12-bosqich** — UI ni to‘liq oqimga bog‘lash |
 | GitHub | https://github.com/Abbos8/cardio-ai-system (private, `main`) |
 | UI | `./ishga_tushir.sh` → http://127.0.0.1:8501 |
 
@@ -55,7 +55,7 @@ Har bosqich: **nima**, **qayerda**, **tayyor deb hisoblash**, **status**.
 | 9 | Cardiology fellow (multimodal) | **qilindi** |
 | 10 | MDT: MedGemma + Qwen2.5-VL | **qilindi** |
 | 11 | Vizual tekshirish paneli | **qilindi** |
-| 12 | UI ni to‘liq oqimga bog‘lash | ochiq |
+| 12 | UI ni to‘liq oqimga bog‘lash | **qilindi** |
 | 13 | Test va barqarorlik | ochiq |
 | 14 | Xavfsizlik / klinik tayyorgarlik | ochiq |
 
@@ -213,11 +213,15 @@ Har bosqich: **nima**, **qayerda**, **tayyor deb hisoblash**, **status**.
 
 ---
 
-### 12. UI ni to‘liq oqimga bog‘lash — ochiq
+### 12. UI ni to‘liq oqimga bog‘lash — qilindi
 
-**Qilish:** RAG/BERT spinner va xato; echo drag-and-drop; reja qadamlari jonli; API yo‘qida «shablon rejimida» yozuvi.
+**Nima:** 6 bosqich UI da ko‘rinadi; tahlil paytida reja P jonli; RAG xato; echo drag-and-drop; API yo‘qida shablon yozuvi.
 
-**Tayyor:** 6 bosqichli workflow UI dan boshidan-oxirigacha ko‘rinadi.
+**Qayerda:** `src/ui/app.py`; `ChiefCardiologist.run_oqim` (`graf.stream`).
+
+**Tekshiruv:** sahifa ochilganda 6 bosqich + RAG banner; echo «shu yerga tashlang»; `run_oqim` ≥5 tugun, xulosa STOP. Kalitsiz — sariq «Shablon rejimida».
+
+**Cheklov:** jonli yangilanish tahlil davomida yuqoridagi qator/status; to‘liq xulosa tugagach 3-ustunda. Tashxis emas.
 
 ---
 
@@ -301,3 +305,8 @@ Fayllar: `src/agents/chief_agent.py`, `src/agents/mdt.py`, `src/rag/medical_rag.
 
 - Vizual panel: 12 tasma (tozalangan), echo 11 slot, LV overlay, MDT yonma-yon.
 - 2-ustun qisqa EKG; to‘liq ko‘rinish pastda. Keyingi: **12** (UI oqim) yoki **2** (DeepSeek).
+
+### 2026-09-16 (12-bosqich)
+
+- UI: 6 bosqich qatori, `run_oqim` bilan jonli reja P, RAG xato/banner, echo drag-and-drop.
+- API yo‘qida «Shablon rejimida» ogohlantirish. Keyingi: **13** (test) yoki **2** (DeepSeek).
