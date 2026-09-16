@@ -30,7 +30,8 @@ def _sozlama() -> Dict[str, str]:
         or os.getenv("LLM_MODEL")
         or "deepseek-reasoner"
     )
-    return {"base_url": baza, "api_key": kalit, "model": model}
+    vision = (os.getenv("FELLOW_VISION_MODEL") or os.getenv("DEEPSEEK_VISION_MODEL") or "").strip()
+    return {"base_url": baza, "api_key": kalit, "model": model, "vision_model": vision}
 
 
 def llm_mavjud() -> bool:
@@ -43,16 +44,18 @@ def llm_mavjud() -> bool:
 
 
 def llm_chat(
-    xabarlar: List[Dict[str, str]],
+    xabarlar: List[Dict[str, Any]],
     temperatura: float = 0.2,
     max_token: int = 1200,
+    model: Optional[str] = None,
 ) -> Optional[str]:
     """Chat completion yuboradi; xatoda None (agent to‘xtamaydi).
 
     Args:
-        xabarlar: role/content juftlari (system, user, assistant).
+        xabarlar: role/content (content matn yoki multimodal qismlar ro‘yxati).
         temperatura: Generatsiya tasodifiyligi.
         max_token: Javob uzunligi chegarasi.
+        model: Bo‘sh bo‘lsa DEEPSEEK_MODEL; tasvir uchun vision model.
 
     Returns:
         Model matni yoki None. Tashxis sifatida ishlatilmasin.
@@ -61,7 +64,7 @@ def llm_chat(
     if not soz["api_key"]:
         return None
     tanasi = {
-        "model": soz["model"],
+        "model": model or soz["model"],
         "messages": xabarlar,
         "temperature": temperatura,
         "max_tokens": max_token,
@@ -84,6 +87,18 @@ def llm_chat(
         return (tanlovlar[0].get("message") or {}).get("content")
     except (urllib.error.URLError, TimeoutError, json.JSONDecodeError, KeyError, IndexError):
         return None
+
+
+def llm_vision_model() -> Optional[str]:
+    """Fellow multimodal chaqiriq uchun model nomini beradi.
+
+    Returns:
+        Vision model yoki asosiy chat model (kalit bo‘lsa). Yo‘q bo‘lsa None.
+    """
+    soz = _sozlama()
+    if not soz["api_key"]:
+        return None
+    return soz.get("vision_model") or soz["model"]
 
 
 def llm_json(

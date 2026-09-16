@@ -610,6 +610,10 @@ class ChiefCardiologist:
                     segment=holat.get("echo_mask") or yangi.get("echo_mask"),
                     rag_dalillar=holat.get("rag_dalillar"),
                 )
+                viz = dict(holat.get("vizual") or {})
+                viz["fellow_manba"] = (yangi["fellow_natija"] or {}).get("manba")
+                viz["fellow_dalillar"] = (yangi["fellow_natija"] or {}).get("dalillar")
+                yangi["vizual"] = viz
             else:
                 tarix.append(f"qadam_bajarish: noma’lum vosita {vosita}")
         except Exception as exc:
@@ -805,7 +809,10 @@ class ChiefCardiologist:
             qatorlar.append(f"LV segmentatsiya: {mask.get('xabar')}")
         fellow = holat.get("fellow_natija")
         if fellow:
-            qatorlar.append("Fellow: " + str(fellow.get("matn") or "")[:1200])
+            qatorlar.append(
+                f"Fellow (manba={fellow.get('manba')} dalillar={fellow.get('dalillar')}): "
+                + str(fellow.get("matn") or "")[:1200]
+            )
         if holat.get("rag_dalillar"):
             qatorlar.append("CardiacRAG C (tekshirish uchun):")
             for i, matn in enumerate(holat["rag_dalillar"], start=1):

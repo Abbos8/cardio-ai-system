@@ -10,8 +10,8 @@ Tizim shifokor o‘rnini bosmaydi. Yakuniy qaror shifokorga tegishli.
 
 | Maydon | Qiymat |
 |---|---|
-| Keyingi ish | **9-bosqich** — Cardiology fellow (multimodal); 2-bosqich DeepSeek ham ochiq |
-| Oxirgi yopilgan | **8-bosqich** — Echo segmenter (LV maska + overlay) |
+| Keyingi ish | **10-bosqich** — MDT MedGemma + Qwen2.5-VL; 2-bosqich DeepSeek ham ochiq |
+| Oxirgi yopilgan | **9-bosqich** — Cardiology fellow (multimodal dalillar) |
 | GitHub | https://github.com/Abbos8/cardio-ai-system (private, `main`) |
 | UI | `./ishga_tushir.sh` → http://127.0.0.1:8501 |
 
@@ -52,7 +52,7 @@ Har bosqich: **nima**, **qayerda**, **tayyor deb hisoblash**, **status**.
 | 6 | EKG texnik + EP sifati | **qilindi** |
 | 7 | Echo technician (11 ko‘rinish, DICOM) | **qilindi** |
 | 8 | Echo segmenter (LV maska) | **qilindi** |
-| 9 | Cardiology fellow (multimodal) | ochiq |
+| 9 | Cardiology fellow (multimodal) | **qilindi** |
 | 10 | MDT: MedGemma + Qwen2.5-VL | ochiq |
 | 11 | Vizual tekshirish paneli | ochiq |
 | 12 | UI ni to‘liq oqimga bog‘lash | ochiq |
@@ -171,13 +171,17 @@ Har bosqich: **nima**, **qayerda**, **tayyor deb hisoblash**, **status**.
 
 ---
 
-### 9. Cardiology fellow ni multimodal qilish — ochiq
+### 9. Cardiology fellow ni multimodal qilish — qilindi
 
-**Nima:** matn yig‘indisi + ixtiyoriy LLM (`src/tools/fellow_tool.py`).
+**Nima:** bitta fellow chaqirig‘ida lab token + EKG grafik PNG + echo kadr/LV overlay. Yo‘q modalitet o‘ylab topilmaydi.
 
-**Qilish:** EKG grafik + echo kadr/maska + lab tokenlarini bir multimodal chaqiriqqa berish.
+**Qayerda:** `src/tools/fellow_tool.py`; `llm_chat` multimodal content; `ekg_qisqa_png`; UI expander. `.env.example`: `FELLOW_VISION_MODEL`.
 
-**Tayyor:** xulosa faqat mavjud dalillardan; `manba` llm/shablon aniq.
+**Manba:** `llm_multimodal` (rasm+matn API) → `llm` (faqat matn) → `shablon`. Kalitsiz shablon.
+
+**Tekshiruv:** lab+EKG+A4C+LV → dalillar `lab,ecg,echo,lv_maska,ecg_grafik,lv_overlay`, rasmlar 2 ta; hech narsa yo‘qda echo/ecg `yoq_dalillar` da.
+
+**Cheklov:** DeepSeek-reasoner tasvirni qabul qilmasligi mumkin — zaxira matn/shablon. Tashxis emas.
 
 ---
 
@@ -272,3 +276,8 @@ Fayllar: `src/agents/chief_agent.py`, `src/agents/mdt.py`, `src/rag/medical_rag.
 
 - LV kavak maska (OpenCV) + cyan overlay PNG; kadr yo‘qda rad.
 - Namuna A4C: ok, ~4.3% kadr. EF yo‘q. Keyingi: **9** (fellow multimodal) yoki **2** (DeepSeek).
+
+### 2026-09-16 (9-bosqich)
+
+- Fellow: lab token + EKG PNG + echo/LV overlay bitta chaqiriq; `manba` llm_multimodal|llm|shablon.
+- Yo‘q dalil o‘ylab topilmaydi. Keyingi: **10** (MDT) yoki **2** (DeepSeek).

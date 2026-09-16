@@ -787,3 +787,56 @@ def process_ecg_signal(
     ep_toliq["yetishmagan"] = tech.get("yetishmagan") or []
     ep_toliq["xabar"] = (tech.get("xabar") or "") + " | " + (ep_toliq.get("xabar") or "")
     return ep_toliq
+
+
+def ekg_qisqa_png(
+    signal: Union[np.ndarray, Sequence[Any], Dict[str, Any]],
+    sampling_rate: float = 500.0,
+    tasma: str = "II",
+    max_soniya: float = 4.0,
+) -> Optional[bytes]:
+    """Lead tasma grafigini kichik PNG ga chizadi (fellow/VLM uchun).
+
+    Args:
+        signal: 12 tasma.
+        sampling_rate: Hz.
+        tasma: Qaysi lead (odatda II).
+        max_soniya: Chiziladigan uzunlik.
+
+    Returns:
+        PNG bayt yoki None. Tashxis emas.
+    """
+    import io
+
+    import matplotlib
+
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    try:
+        ajrat = _12_tasma_ajrat(signal)
+        tasmalar = ajrat["tasmalar"]
+        nom = tasma if tasma in tasmalar else "II"
+        if nom not in tasmalar:
+            nom = next(iter(tasmalar))
+        y = np.asarray(tasmalar[nom], dtype=float)
+        n = min(len(y), int(float(sampling_rate) * max_soniya))
+        if n < 10:
+            return None
+        t = np.arange(n) / float(sampling_rate)
+        fig, ax = plt.subplots(figsize=(5.2, 1.8), dpi=80)
+        ax.plot(t, y[:n], color="#b71c1c", linewidth=0.8)
+        ax.set_title(f"EKG {nom} (ko‘rish, tashxis emas)", fontsize=8)
+        ax.set_xlabel("s", fontsize=7)
+        ax.tick_params(labelsize=6)
+        fig.tight_layout()
+        buf = io.BytesIO()
+        fig.savefig(buf, format="png", bbox_inches="tight")
+        plt.close(fig)
+        return buf.getvalue()
+    except Exception:
+        try:
+            plt.close("all")
+        except Exception:
+            pass
+        return None

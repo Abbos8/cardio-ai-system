@@ -576,6 +576,14 @@ def _ustun3_xulosa(agent_holat: Optional[Dict[str, Any]], bemor: Optional[Dict[s
             if mask_n.get("overlay_png"):
                 st.image(mask_n["overlay_png"], caption="LV overlay (tashxis emas)")
             st.caption("Algoritmik kavak; klinik EF emas.")
+    fellow_n = agent_holat.get("fellow_natija") or {}
+    if fellow_n:
+        with st.expander("Cardiology fellow (multimodal)"):
+            st.write(f"manba={fellow_n.get('manba')} | dalillar={fellow_n.get('dalillar')}")
+            if fellow_n.get("yoq_dalillar"):
+                st.caption("Yo‘q (o‘ylab topilmagan): " + ", ".join(fellow_n.get("yoq_dalillar") or []))
+            st.write(fellow_n.get("matn") or "")
+            st.caption((fellow_n.get("xabar") or "") + " Tashxis emas.")
     with st.expander("Vizual tekshirish paneli"):
         viz = agent_holat.get("vizual") or {}
         st.write(f"EKG tozalangan: {viz.get('ekg_tozalangan')} | sifat: {viz.get('ekg_sifat')}")
@@ -583,6 +591,7 @@ def _ustun3_xulosa(agent_holat: Optional[Dict[str, Any]], bemor: Optional[Dict[s
         st.write(f"EP: {viz.get('ekg_ep')}")
         st.write(f"Echo: ok={viz.get('echo_ok')} | {viz.get('echo_korinishlar')} | model={viz.get('echo_model')} | kadr={viz.get('echo_kadrlar')}")
         st.write(f"LV maska: {viz.get('lv_maska')} | ulush={viz.get('lv_ulush')} | {viz.get('lv_xabar')}")
+        st.write(f"Fellow: manba={viz.get('fellow_manba')} | dalillar={viz.get('fellow_dalillar')}")
         st.caption("Overlay 2-ustunda; klinik EF hisoblanmaydi.")
 
 
