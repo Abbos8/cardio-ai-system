@@ -325,6 +325,30 @@ def _oddiy_reja(bemor: Dict[str, Any]) -> List[Dict[str, Any]]:
     return qadamlar
 
 
+def _lugat_z_qisqa(obyekt: Any, max_len: int = 700) -> str:
+    """Z matnida bayt/maska maydonlarini qisqartiradi (MDT gallyutsinatsiya cheklovi).
+
+    Args:
+        obyekt: Vosita natijasi.
+        max_len: Qisqartirish.
+
+    Returns:
+        O‘qiladigan qisqa satr.
+    """
+    if not isinstance(obyekt, dict):
+        return str(obyekt)[:max_len]
+    otkaz = {"overlay_png", "maska", "kadrlar", "preview", "signal"}
+    qism: List[str] = []
+    for kalit, qiymat in obyekt.items():
+        if kalit in otkaz or isinstance(qiymat, (bytes, bytearray)):
+            continue
+        if isinstance(qiymat, dict):
+            qism.append(f"{kalit}={_lugat_z_qisqa(qiymat, 240)}")
+        else:
+            qism.append(f"{kalit}={qiymat}")
+    return "; ".join(qism)[:max_len]
+
+
 def _oraliq_matn(holat: ChiefHolat) -> str:
     """Z — bajarilgan vositalar qisqasi (MDT va yangilanish uchun).
 
@@ -332,21 +356,21 @@ def _oraliq_matn(holat: ChiefHolat) -> str:
         holat: Joriy graf holati.
 
     Returns:
-        Matn.
+        Matn. Overlay PNG kiritilmaydi.
     """
     qism: List[str] = []
     if holat.get("lab_natija"):
-        qism.append("LAB: " + str(holat["lab_natija"]))
+        qism.append("LAB: " + _lugat_z_qisqa(holat["lab_natija"]))
     if holat.get("ecg_technician_natija"):
-        qism.append("ECG_TECH: " + str(holat["ecg_technician_natija"]))
+        qism.append("ECG_TECH: " + _lugat_z_qisqa(holat["ecg_technician_natija"]))
     if holat.get("ep_natija"):
-        qism.append("ECG_EP: " + str(holat["ep_natija"]))
+        qism.append("ECG_EP: " + _lugat_z_qisqa(holat["ep_natija"]))
     elif holat.get("ecg_natija"):
-        qism.append("ECG: " + str(holat["ecg_natija"]))
+        qism.append("ECG: " + _lugat_z_qisqa(holat["ecg_natija"]))
     if holat.get("echo_natija"):
-        qism.append("ECHO: " + str(holat["echo_natija"]))
+        qism.append("ECHO: " + _lugat_z_qisqa(holat["echo_natija"]))
     if holat.get("echo_mask"):
-        qism.append("LV: " + str(holat["echo_mask"]))
+        qism.append("LV: " + _lugat_z_qisqa(holat["echo_mask"]))
     if holat.get("fellow_natija"):
         qism.append("FELLOW: " + str((holat["fellow_natija"] or {}).get("matn", "")[:800]))
     if holat.get("rag_dalillar"):
@@ -668,10 +692,13 @@ class ChiefCardiologist:
         if holat.get("echo_mask") and holat["echo_mask"].get("ok") is False and holat.get("murakkablik") == "murakkab":
             noaniq = True
 
+        bemor = holat.get("bemor") or {}
+        vizual = _ekg_signal_bormi(bemor) or echo_bormi(bemor)
+        murakkab = holat.get("murakkablik") == "murakkab"
         zaxira = {
             "S": "Vosita natijasi qabul qilindi.",
             "A": "CONTINUE" if indeks < len(reja) else "STOP",
-            "mdt": noaniq,
+            "mdt": noaniq or vizual or murakkab,
             "P_next": None,
         }
         if qadam_n >= self.max_qadam:
@@ -693,7 +720,9 @@ class ChiefCardiologist:
             amal = "STOP"
         if qadam_n >= self.max_qadam:
             amal = "STOP"
-        mdt_kerak = bool(natija.get("mdt", zaxira["mdt"])) and amal == "STOP"
+        mdt_kerak = amal == "STOP" and (
+            bool(natija.get("mdt", zaxira["mdt"])) or vizual or murakkab or noaniq
+        )
         s_matn = str(natija.get("S") or zaxira["S"])
         p_next = natija.get("P_next")
         if amal == "CONTINUE" and isinstance(p_next, dict) and p_next.get("vosita"):
@@ -730,8 +759,20 @@ class ChiefCardiologist:
             mdt_natija.
         """
         tarix = list(holat.get("qadam_tarixi") or [])
-        natija = mdt_munozara(holat.get("xom_i") or "", holat.get("oraliq_z") or _oraliq_matn(holat))
-        tarix.append(f"mdt: {natija.get('raund_soni')} raund")
+        natija = mdt_munozara(
+            holat.get("xom_i") or "",
+            holat.get("oraliq_z") or _oraliq_matn(holat),
+            bemor=holat.get("bemor") or {},
+            lab=holat.get("lab_natija"),
+            ecg=holat.get("ecg_natija") or holat.get("ep_natija"),
+            echo=holat.get("echo_natija"),
+            segment=holat.get("echo_mask"),
+        )
+        tarix.append(
+            f"mdt: {natija.get('raund_soni')} raund "
+            f"konsensus={natija.get('konsensus')} "
+            f"med={natija.get('medgemma_manba')} qwen={natija.get('qwen_manba')}"
+        )
         return {
             "mdt_natija": natija,
             "qadam": int(holat.get("qadam") or 0) + 1,
@@ -819,7 +860,12 @@ class ChiefCardiologist:
                 qatorlar.append(f"  {i}. {matn[:400]}")
         mdt = holat.get("mdt_natija")
         if mdt:
-            qatorlar.append("MDT: " + str(mdt.get("umumlashtirish") or "")[:800])
+            qatorlar.append(
+                "MDT: "
+                + str(mdt.get("umumlashtirish") or "")[:800]
+                + f" (konsensus={mdt.get('konsensus')}, "
+                + f"med={mdt.get('medgemma_manba')}, qwen={mdt.get('qwen_manba')})"
+            )
         if holat.get("umumlashtirish"):
             qatorlar.append("Stepwise S: " + str(holat.get("umumlashtirish")))
         qatorlar.append(

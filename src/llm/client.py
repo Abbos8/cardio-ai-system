@@ -34,6 +34,42 @@ def _sozlama() -> Dict[str, str]:
     return {"base_url": baza, "api_key": kalit, "model": model, "vision_model": vision}
 
 
+def vlm_sozlama(rol: str) -> Optional[Dict[str, str]]:
+    """MDT rollari (MedGemma / Qwen2.5-VL) uchun OpenAI-mos ulanish.
+
+    Args:
+        rol: ``medgemma`` yoki ``qwen_vl``.
+
+    Returns:
+        base_url, api_key, model. Yo‘q bo‘lsa None — shablon ishlatiladi.
+    """
+    asos = _sozlama()
+    if rol == "medgemma":
+        maxsus_baza = (os.getenv("MEDGEMMA_BASE_URL") or "").strip().rstrip("/")
+        maxsus_kalit = (os.getenv("MEDGEMMA_API_KEY") or "").strip()
+        maxsus_model = (os.getenv("MEDGEMMA_MODEL") or "").strip()
+    elif rol == "qwen_vl":
+        maxsus_baza = (os.getenv("QWEN_VL_BASE_URL") or "").strip().rstrip("/")
+        maxsus_kalit = (os.getenv("QWEN_VL_API_KEY") or "").strip()
+        maxsus_model = (os.getenv("QWEN_VL_MODEL") or "").strip()
+    else:
+        return None
+    model = maxsus_model or asos.get("vision_model") or ""
+    if maxsus_baza:
+        return {
+            "base_url": maxsus_baza,
+            "api_key": maxsus_kalit or asos["api_key"] or "local",
+            "model": model or rol,
+        }
+    # Faqat maxsus VLM modeli yoki FELLOW_VISION_MODEL — DeepSeek-reasoner tasvirni olmaydi
+    if model and asos["api_key"]:
+        past = model.lower()
+        if "reasoner" in past:
+            return None
+        return {"base_url": asos["base_url"], "api_key": asos["api_key"], "model": model}
+    return None
+
+
 def llm_mavjud() -> bool:
     """API kaliti bor-yo‘qligini bildiradi.
 
@@ -48,6 +84,9 @@ def llm_chat(
     temperatura: float = 0.2,
     max_token: int = 1200,
     model: Optional[str] = None,
+    baza_url: Optional[str] = None,
+    api_kalit: Optional[str] = None,
+    timeout: float = 90.0,
 ) -> Optional[str]:
     """Chat completion yuboradi; xatoda None (agent to‘xtamaydi).
 
@@ -56,12 +95,17 @@ def llm_chat(
         temperatura: Generatsiya tasodifiyligi.
         max_token: Javob uzunligi chegarasi.
         model: Bo‘sh bo‘lsa DEEPSEEK_MODEL; tasvir uchun vision model.
+        baza_url: Ixtiyoriy OpenAI-mos server (MedGemma/Qwen vLLM).
+        api_kalit: Ixtiyoriy kalit; mahalliy vLLM da ``local``.
+        timeout: HTTP kutish (soniya); VLM uchun uzaytiriladi.
 
     Returns:
         Model matni yoki None. Tashxis sifatida ishlatilmasin.
     """
     soz = _sozlama()
-    if not soz["api_key"]:
+    kalit = soz["api_key"] if api_kalit is None else (api_kalit or "").strip()
+    baza = (baza_url or soz["base_url"] or "").rstrip("/")
+    if not kalit or not baza:
         return None
     tanasi = {
         "model": model or soz["model"],
@@ -70,16 +114,16 @@ def llm_chat(
         "max_tokens": max_token,
     }
     talab = urllib.request.Request(
-        f"{soz['base_url']}/v1/chat/completions",
+        f"{baza}/v1/chat/completions",
         data=json.dumps(tanasi).encode("utf-8"),
         headers={
             "Content-Type": "application/json",
-            "Authorization": f"Bearer {soz['api_key']}",
+            "Authorization": f"Bearer {kalit}",
         },
         method="POST",
     )
     try:
-        with urllib.request.urlopen(talab, timeout=90) as javob:
+        with urllib.request.urlopen(talab, timeout=timeout) as javob:
             yuk = json.loads(javob.read().decode("utf-8"))
         tanlovlar = yuk.get("choices") or []
         if not tanlovlar:

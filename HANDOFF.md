@@ -10,8 +10,8 @@ Tizim shifokor o‘rnini bosmaydi. Yakuniy qaror shifokorga tegishli.
 
 | Maydon | Qiymat |
 |---|---|
-| Keyingi ish | **10-bosqich** — MDT MedGemma + Qwen2.5-VL; 2-bosqich DeepSeek ham ochiq |
-| Oxirgi yopilgan | **9-bosqich** — Cardiology fellow (multimodal dalillar) |
+| Keyingi ish | **11-bosqich** — vizual tekshirish paneli; 2-bosqich DeepSeek ham ochiq |
+| Oxirgi yopilgan | **10-bosqich** — MDT MedGemma + Qwen2.5-VL |
 | GitHub | https://github.com/Abbos8/cardio-ai-system (private, `main`) |
 | UI | `./ishga_tushir.sh` → http://127.0.0.1:8501 |
 
@@ -53,7 +53,7 @@ Har bosqich: **nima**, **qayerda**, **tayyor deb hisoblash**, **status**.
 | 7 | Echo technician (11 ko‘rinish, DICOM) | **qilindi** |
 | 8 | Echo segmenter (LV maska) | **qilindi** |
 | 9 | Cardiology fellow (multimodal) | **qilindi** |
-| 10 | MDT: MedGemma + Qwen2.5-VL | ochiq |
+| 10 | MDT: MedGemma + Qwen2.5-VL | **qilindi** |
 | 11 | Vizual tekshirish paneli | ochiq |
 | 12 | UI ni to‘liq oqimga bog‘lash | ochiq |
 | 13 | Test va barqarorlik | ochiq |
@@ -185,13 +185,19 @@ Har bosqich: **nima**, **qayerda**, **tayyor deb hisoblash**, **status**.
 
 ---
 
-### 10. MDT: MedGemma + Qwen2.5-VL — ochiq
+### 10. MDT: MedGemma + Qwen2.5-VL — qilindi
 
-**Nima:** ikki rol, VLM yo‘qida shablon (`src/agents/mdt.py`).
+**Nima:** MedGemma still tasvir (EKG grafik, echo kadr, LV overlay); Qwen2.5-VL echo cine/video kadrlar. Har raundda `I` va `Z` qayta kiritiladi. Konsensus yoki max 3 raund; VLM yo‘qida 1 raund shablon.
 
-**Qilish:** MedGemma (tasvir), Qwen2.5-VL (video); har raundda `I` va `Z`; konsensus yoki max raund; bosh umumlashtiradi.
+**Qayerda:** `src/agents/mdt.py`; `vlm_sozlama` `src/llm/client.py`; graf `chief_agent._mdt`; UI expander yonma-yon. `.env.example`: `MEDGEMMA_*`, `QWEN_VL_*`.
 
-**Tayyor:** GPU/API da ikki model javobi; gallyutsinatsiya uchun I/Z qayta kiritiladi.
+**Manba:** `vlm` (maxsus URL/model) → `llm` (vision nom, reasoner emas) → `shablon`. DeepSeek-reasoner tasvirga yuborilmaydi.
+
+**MDT qachon:** STOP va (EKG/echo bor yoki murakkab yoki noaniq).
+
+**Tekshiruv:** namuna EKG + A4C DICOM + 4 kadrli mp4 → still `ecg_grafik,lv_overlay,echo_still_*`, video 4 kadr; I/Z shablonda; bo‘sh bemorda echo/ecg `yoq_dalillar`. Kalitsiz/VLM yo‘q — shablon.
+
+**Cheklov:** GPU da MedGemma/Qwen vLLM yoki mos VLM API kerak; hozir ish PC da shablon. Tashxis emas.
 
 ---
 
@@ -281,3 +287,10 @@ Fayllar: `src/agents/chief_agent.py`, `src/agents/mdt.py`, `src/rag/medical_rag.
 
 - Fellow: lab token + EKG PNG + echo/LV overlay bitta chaqiriq; `manba` llm_multimodal|llm|shablon.
 - Yo‘q dalil o‘ylab topilmaydi. Keyingi: **10** (MDT) yoki **2** (DeepSeek).
+
+### 2026-09-16 (10-bosqich)
+
+- MDT: MedGemma still (EKG/echo/LV), Qwen2.5-VL cine/video; har raund I/Z qayta.
+- `MEDGEMMA_*` / `QWEN_VL_*`; reasoner ga rasm yuborilmaydi; VLM yo‘qida shablon.
+- STOP da vizual/murakkab holatda MDT; UI da ikki ustun + I/Z.
+- Keyingi: **11** (vizual panel) yoki **2** (DeepSeek).

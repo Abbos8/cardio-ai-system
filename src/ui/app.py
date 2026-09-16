@@ -524,12 +524,32 @@ def _ustun3_xulosa(agent_holat: Optional[Dict[str, Any]], bemor: Optional[Dict[s
             st.write(d)
     mdt = agent_holat.get("mdt_natija")
     if mdt:
-        with st.expander("MDT munozara"):
+        with st.expander("MDT munozara (MedGemma + Qwen2.5-VL)", expanded=True):
+            st.caption(
+                f"Raund={mdt.get('raund_soni')} | konsensus={mdt.get('konsensus')} | "
+                f"MedGemma={mdt.get('medgemma_manba')} | Qwen={mdt.get('qwen_manba')} | "
+                f"still={mdt.get('still_id')} | video={mdt.get('video_id')}"
+            )
             st.write(mdt.get("umumlashtirish"))
+            if mdt.get("konsensus_sabab"):
+                st.caption("Konsensus: " + str(mdt.get("konsensus_sabab")))
+            with st.expander("I va Z (qayta kiritilgan)"):
+                st.markdown("**I (xom)**")
+                st.write(mdt.get("xom_i") or agent_holat.get("xom_i") or "")
+                st.markdown("**Z (oraliq)**")
+                st.write(mdt.get("oraliq_z") or agent_holat.get("oraliq_z") or "")
             for r in mdt.get("raundlar") or []:
                 st.markdown(f"**Raund {r.get('raund')}**")
-                st.write("MedGemma: " + str(r.get("medgemma"))[:800])
-                st.write("Qwen2.5-VL: " + str(r.get("qwen"))[:800])
+                chap, ong = st.columns(2)
+                with chap:
+                    st.markdown("MedGemma (tasvir)")
+                    st.caption("manba=" + str(r.get("medgemma_manba") or mdt.get("medgemma_manba")))
+                    st.write(str(r.get("medgemma") or "")[:1200])
+                with ong:
+                    st.markdown("Qwen2.5-VL (video)")
+                    st.caption("manba=" + str(r.get("qwen_manba") or mdt.get("qwen_manba")))
+                    st.write(str(r.get("qwen") or "")[:1200])
+                st.caption("Raund konsensus: " + str(r.get("konsensus")))
     tech_n = agent_holat.get("ecg_technician_natija") or {}
     if tech_n:
         with st.expander("EKG technician (tozalash / sifat)"):
