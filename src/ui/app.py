@@ -1,7 +1,8 @@
 """Kardiologik AI agent uchun 3 ustunli Streamlit interfeysi.
 
 1-ustun: bemor va laboratoriya. 2-ustun: 12 tasmali EKG grafigi.
-3-ustun: ChiefCardiologist xulosasi. Tashxis o‘rnini bosmaydi.
+3-ustun: ChiefCardiologist xulosasi. Pastda vizual tekshirish paneli.
+Tashxis o‘rnini bosmaydi.
 """
 
 from __future__ import annotations
@@ -54,6 +55,7 @@ from agents.chief_agent import ChiefCardiologist
 from rag.medical_rag import MedicalRAG
 from tools.ecg_tool import TASMA_NOMLARI, namuna_12_tasma_ekg, tozalangan_matritsa, tasmalarni_tozala
 from tools.ekg_yuklash import ekg_fayllardan_oqish
+from tools.echo_view_model import ECHO_KORINISHLAR
 from tools.echo_yuklash import echo_fayldan_kadrlar
 from tools.lab_tool import process_lab
 
@@ -243,6 +245,127 @@ def ekg_grafik_chiz(
     return fig
 
 
+def _kadr_rgb(kadr: Any) -> np.ndarray:
+    """Kulrang echo kaderni Streamlit image uchun RGB qiladi.
+
+    Args:
+        kadr: 2D yoki 3D massiv.
+
+    Returns:
+        uint8 RGB. Tashxis emas.
+    """
+    arr = np.asarray(kadr)
+    if arr.ndim == 2:
+        if arr.dtype != np.uint8:
+            a_min, a_max = float(arr.min()), float(arr.max())
+            if a_max > a_min:
+                arr = (255.0 * (arr - a_min) / (a_max - a_min)).clip(0, 255).astype(np.uint8)
+            else:
+                arr = np.zeros_like(arr, dtype=np.uint8)
+        return np.stack([arr, arr, arr], axis=-1)
+    return arr
+
+
+def _tozalangan_ekg(signal: Optional[np.ndarray], sampling_rate: float) -> Tuple[Optional[np.ndarray], str]:
+    """Technician filtrini qo‘llab (n, 12) chizma massivini beradi.
+
+    Args:
+        signal: Xom EKG.
+        sampling_rate: Hz.
+
+    Returns:
+        Massiv va sarlavha. Tozalash ishlamasa xom signal.
+    """
+    if signal is None:
+        return None, "EKG yo‘q."
+    massiv = np.asarray(signal, dtype=float)
+    if massiv.ndim == 2 and massiv.shape[0] == 12 and massiv.shape[1] != 12:
+        massiv = massiv.T
+    if massiv.ndim != 2 or massiv.shape[1] != 12:
+        return massiv, "Xom EKG (12 tasma emas, tashxis emas)"
+    try:
+        tasmalar = {nom: massiv[:, i] for i, nom in enumerate(TASMA_NOMLARI)}
+        toz = tasmalarni_tozala(tasmalar, sampling_rate)["tozalangan"]
+        mat = tozalangan_matritsa(toz)
+        if mat is not None:
+            return mat, "Tozalangan 12 tasma (ko‘rish, tashxis emas)"
+    except Exception:
+        pass
+    return massiv, "Xom EKG (tozalash ishlamadi, tashxis emas)"
+
+
+def _echo_kadr_xarita(bemor: Optional[Dict[str, Any]], echo: Dict[str, Any]) -> Dict[str, List[Dict[str, Any]]]:
+    """Yuklangan echo fayllarni 11 ko‘rinish yorlig‘iga bog‘laydi.
+
+    Args:
+        bemor: echo_fayllar.
+        echo: classify_echo_views qisqasi.
+
+    Returns:
+        yorliq → [{nom, kadrlar}]. Tashxis emas.
+    """
+    xarita: Dict[str, List[Dict[str, Any]]] = {k: [] for k in ECHO_KORINISHLAR}
+    xarita["ANIQLANMAGAN"] = []
+    yozuv_yorliq = {z.get("fayl"): z for z in (echo.get("yozuvlar") or [])}
+    for element in (bemor or {}).get("echo_fayllar") or []:
+        nom = element.get("nom")
+        bayt = element.get("bayt")
+        if not bayt:
+            continue
+        oq = echo_fayldan_kadrlar(str(nom), bytes(bayt))
+        if not oq.get("ok") or not oq.get("kadrlar"):
+            continue
+        yor = str((yozuv_yorliq.get(nom) or {}).get("asosiy") or "ANIQLANMAGAN")
+        if yor not in xarita:
+            yor = "ANIQLANMAGAN"
+        xarita[yor].append(
+            {
+                "nom": nom,
+                "kadrlar": oq["kadrlar"],
+                "manba": (yozuv_yorliq.get(nom) or {}).get("manba"),
+                "ehtimol": (yozuv_yorliq.get(nom) or {}).get("ehtimol"),
+            }
+        )
+    return xarita
+
+
+def _mdt_yonma_yon(mdt: Dict[str, Any], agent_holat: Optional[Dict[str, Any]] = None) -> None:
+    """MDT raundlarini MedGemma | Qwen yonma-yon chizadi.
+
+    Args:
+        mdt: mdt_munozara natijasi.
+        agent_holat: I/Z zaxira.
+
+    Returns:
+        None. Streamlit. Tashxis emas.
+    """
+    holat = agent_holat or {}
+    st.caption(
+        f"Raund={mdt.get('raund_soni')} | konsensus={mdt.get('konsensus')} | "
+        f"MedGemma={mdt.get('medgemma_manba')} | Qwen={mdt.get('qwen_manba')}"
+    )
+    st.write(mdt.get("umumlashtirish"))
+    if mdt.get("konsensus_sabab"):
+        st.caption("Konsensus: " + str(mdt.get("konsensus_sabab")))
+    with st.expander("I va Z (qayta kiritilgan)"):
+        st.markdown("**I (xom)**")
+        st.write(mdt.get("xom_i") or holat.get("xom_i") or "")
+        st.markdown("**Z (oraliq)**")
+        st.write(mdt.get("oraliq_z") or holat.get("oraliq_z") or "")
+    for r in mdt.get("raundlar") or []:
+        st.markdown(f"**Raund {r.get('raund')}**")
+        chap, ong = st.columns(2)
+        with chap:
+            st.markdown("MedGemma (tasvir)")
+            st.caption("manba=" + str(r.get("medgemma_manba") or mdt.get("medgemma_manba")))
+            st.write(str(r.get("medgemma") or "")[:1200])
+        with ong:
+            st.markdown("Qwen2.5-VL (video)")
+            st.caption("manba=" + str(r.get("qwen_manba") or mdt.get("qwen_manba")))
+            st.write(str(r.get("qwen") or "")[:1200])
+        st.caption("Raund konsensus: " + str(r.get("konsensus")))
+
+
 def laboratoriya_matn(lab: Dict[str, float]) -> str:
     """Laboratoriya qiymatlarini agent so‘roviga qo‘shiladigan matnga aylantiradi.
 
@@ -389,28 +512,19 @@ def _ustun2_ekg(
     st.subheader("EKG signali")
     if signal is None:
         st.info("CSV/WFDB yuklang yoki namuna EKG ni belgilang.")
-        _echo_kadr_panel(agent_holat, st.session_state.get("bemor_tahlil"))
         return
     st.caption(xabar)
     tasma = st.selectbox("Ko‘rsatish", ["12 tasma"] + TASMA_NOMLARI, index=2)
     tozalangan_kor = st.checkbox("Tozalangan signal", value=True)
     belgi = st.checkbox("P / QRS / T belgilari (EP)", value=True)
-    chizma = np.asarray(signal, dtype=float)
-    sarlavha = "Xom EKG (ko‘rish, tashxis emas)"
     if tozalangan_kor:
-        try:
-            massiv = chizma
-            if massiv.ndim == 2 and massiv.shape[0] == 12 and massiv.shape[1] != 12:
-                massiv = massiv.T
-            if massiv.ndim == 2 and massiv.shape[1] == 12:
-                tasmalar = {nom: massiv[:, i] for i, nom in enumerate(TASMA_NOMLARI)}
-                toz = tasmalarni_tozala(tasmalar, sampling_rate)["tozalangan"]
-                mat = tozalangan_matritsa(toz)
-                if mat is not None:
-                    chizma = mat
-                    sarlavha = "Tozalangan EKG (ko‘rish, tashxis emas)"
-        except Exception:
-            pass
+        chizma, sarlavha = _tozalangan_ekg(signal, sampling_rate)
+        if chizma is None:
+            chizma = np.asarray(signal, dtype=float)
+            sarlavha = "Xom EKG (ko‘rish, tashxis emas)"
+    else:
+        chizma = np.asarray(signal, dtype=float)
+        sarlavha = "Xom EKG (ko‘rish, tashxis emas)"
     holat = agent_holat or {}
     ecg = holat.get("ecg_natija") or {}
     ep = holat.get("ep_natija") if isinstance(holat.get("ep_natija"), dict) else {}
@@ -428,55 +542,134 @@ def _ustun2_ekg(
     )
     st.pyplot(fig, width="stretch")
     plt.close(fig)
-    _echo_kadr_panel(agent_holat, st.session_state.get("bemor_tahlil"))
+    holat = agent_holat or {}
+    echo_n = holat.get("echo_natija") or {}
+    if echo_n.get("korinishlar"):
+        st.caption("Echo: " + ", ".join(echo_n.get("korinishlar") or []) + " — 11 ko‘rinish pastdagi panelda.")
+    if (holat.get("echo_mask") or {}).get("ok"):
+        st.caption("LV overlay pastdagi vizual panelda.")
+    if holat.get("mdt_natija"):
+        st.caption("MDT raundlari pastdagi panelda yonma-yon.")
 
 
-def _echo_kadr_panel(agent_holat: Optional[Dict[str, Any]], bemor: Optional[Dict[str, Any]]) -> None:
-    """Echo kadrlarini yorliq bilan ko‘rsatadi (tashxis emas).
+def _vizual_tekshirish_paneli(
+    agent_holat: Optional[Dict[str, Any]],
+    bemor: Optional[Dict[str, Any]],
+    signal: Optional[np.ndarray],
+    sampling_rate: float,
+) -> None:
+    """Shifokor uchun oraliq vizual natijalar: EKG, 11 echo, LV, MDT.
 
     Args:
-        agent_holat: echo_natija.
-        bemor: Yuklangan echo_fayllar.
+        agent_holat: run() natijasi.
+        bemor: Yuklangan echo fayllar.
+        signal: EKG massivi.
+        sampling_rate: Hz.
 
     Returns:
-        None.
+        None. Tashxis o‘rnini bosmaydi.
     """
-    echo = (agent_holat or {}).get("echo_natija") or {}
-    fayllar = (bemor or {}).get("echo_fayllar") or []
-    yol = (bemor or {}).get("echo_fayl")
-    if not echo and not fayllar and not yol:
-        return
-    st.subheader("Echo (11 ko‘rinish)")
-    if echo:
-        st.caption((echo.get("xabar") or "") + " Tashxis emas.")
-        st.write("Topilgan: " + ", ".join(echo.get("korinishlar") or []))
-    yozuv_yorliq = {z.get("fayl"): z for z in (echo.get("yozuvlar") or [])}
-    ko‘rsatilgan = 0
-    for element in fayllar:
-        nom = element.get("nom")
-        bayt = element.get("bayt")
-        if not bayt:
-            continue
-        oq = echo_fayldan_kadrlar(nom, bayt)
-        if not oq.get("ok") or not oq.get("kadrlar"):
-            continue
-        yor = yozuv_yorliq.get(nom) or {}
-        st.caption(
-            f"{nom}: {yor.get('asosiy') or '—'} "
-            f"({yor.get('manba')}, p={yor.get('ehtimol')})"
-        )
-        st.image(oq["kadrlar"][0], caption="Birinchi kadr (ko‘rish)", width="stretch")
-        ko‘rsatilgan += 1
-        if ko‘rsatilgan >= 4:
-            break
-    if yol and ko‘rsatilgan == 0:
-        st.caption(f"Disk yo‘li: {yol}")
-    mask = (agent_holat or {}).get("echo_mask") or {}
-    if mask.get("overlay_png"):
-        st.subheader("LV maska (overlay)")
-        st.image(mask["overlay_png"], caption=mask.get("xabar") or "LV kontur, tashxis emas", width="stretch")
-    elif mask.get("xabar"):
-        st.caption(mask.get("xabar"))
+    holat = agent_holat or {}
+    st.divider()
+    st.subheader("Vizual tekshirish paneli")
+    st.caption(
+        "Oraliq natijalar (tozalangan EKG, 11 echo ko‘rinish, LV overlay, MDT). "
+        "Tashxis emas; yakuniy qaror shifokorga tegishli."
+    )
+    viz = holat.get("vizual") or {}
+    e1, e2, e3, e4 = st.columns(4)
+    e1.metric("EKG sifat", str(viz.get("ekg_sifat") or "—"))
+    e2.metric(
+        "Echo ko‘rinish",
+        len(viz.get("echo_korinishlar") or (holat.get("echo_natija") or {}).get("korinishlar") or []),
+    )
+    e3.metric("LV maska", "bor" if (holat.get("echo_mask") or {}).get("ok") else "yo‘q")
+    e4.metric("MDT raund", viz.get("mdt_raund") if viz.get("mdt_raund") is not None else ((holat.get("mdt_natija") or {}).get("raund_soni") or "—"))
+
+    tab_ekg, tab_echo, tab_lv, tab_mdt = st.tabs(
+        ["Tozalangan 12 tasma", "Echo 11 ko‘rinish", "LV overlay", "MDT raundlari"]
+    )
+    with tab_ekg:
+        chizma, sarlavha = _tozalangan_ekg(signal, sampling_rate)
+        if chizma is None:
+            st.info("EKG yo‘q — CSV/WFDB yoki namuna belgilang.")
+        else:
+            ep = holat.get("ep_natija") if isinstance(holat.get("ep_natija"), dict) else {}
+            ecg = holat.get("ecg_natija") or {}
+            m1, m2, m3, m4, m5 = st.columns(5)
+            m1.metric("HR", ecg.get("yurak_chastotasi_bpm") or ep.get("yurak_chastotasi_bpm") or "—")
+            m2.metric("PR ms", ecg.get("pr_ms") or ep.get("pr_ms") or "—")
+            m3.metric("QRS ms", ecg.get("qrs_ms") or ep.get("qrs_ms") or "—")
+            m4.metric("QT ms", ecg.get("qt_ms") or ep.get("qt_ms") or "—")
+            m5.metric("QTc", ecg.get("qtc_bazett_ms") or ep.get("qtc_bazett_ms") or "—")
+            fig = ekg_grafik_chiz(
+                chizma,
+                sampling_rate,
+                "12 tasma",
+                tolqinlar=(ep or {}).get("tolqinlar") or ecg.get("tolqinlar"),
+                ep_tasma=(ep or {}).get("tasma") or ecg.get("tasma"),
+                sarlavha=sarlavha,
+            )
+            st.pyplot(fig, width="stretch")
+            plt.close(fig)
+            st.caption(viz.get("ekg_xabar") or (holat.get("ecg_technician_natija") or {}).get("xabar") or "")
+
+    with tab_echo:
+        echo = holat.get("echo_natija") or {}
+        if echo.get("xabar"):
+            st.caption(str(echo.get("xabar")) + " Tashxis emas.")
+        xarita = _echo_kadr_xarita(bemor, echo)
+        yet = echo.get("yetishmagan_standart") or viz.get("echo_yetishmagan") or []
+        qatorlar = [ECHO_KORINISHLAR[i : i + 4] for i in range(0, len(ECHO_KORINISHLAR), 4)]
+        for qator in qatorlar:
+            ustunlar = st.columns(len(qator))
+            for i, yorliq in enumerate(qator):
+                with ustunlar[i]:
+                    st.markdown(f"**{yorliq}**")
+                    yozuvlar = xarita.get(yorliq) or []
+                    if not yozuvlar:
+                        st.info("yo‘q")
+                        continue
+                    bir = yozuvlar[0]
+                    kadrlar = bir.get("kadrlar") or []
+                    st.image(_kadr_rgb(kadrlar[0]), caption=str(bir.get("nom") or ""), width="stretch")
+                    if len(kadrlar) >= 2:
+                        kichik = st.columns(min(3, len(kadrlar)))
+                        idx = [int(round(j * (len(kadrlar) - 1) / (len(kichik) - 1))) for j in range(len(kichik))] if len(kichik) > 1 else [0]
+                        for j, col in enumerate(kichik):
+                            with col:
+                                st.image(_kadr_rgb(kadrlar[idx[j]]), width="stretch")
+                    st.caption(f"{bir.get('manba') or ''} p={bir.get('ehtimol')}")
+        if yet:
+            st.caption("11 dan hali yo‘q: " + ", ".join(yet))
+        if xarita.get("ANIQLANMAGAN"):
+            st.markdown("**ANIQLANMAGAN**")
+            for yoz in xarita["ANIQLANMAGAN"]:
+                st.image(_kadr_rgb(yoz["kadrlar"][0]), caption=str(yoz.get("nom")), width="stretch")
+
+    with tab_lv:
+        mask = holat.get("echo_mask") or {}
+        if mask.get("overlay_png"):
+            st.image(
+                mask["overlay_png"],
+                caption=mask.get("xabar") or "LV kontur (algoritmik, EF/tashxis emas)",
+                width="stretch",
+            )
+            st.write(
+                f"ko‘rinish={mask.get('korinish')} | {mask.get('maydon_px')} px | "
+                f"ulush={mask.get('ulush')} | model={mask.get('model')}"
+            )
+        elif mask.get("xabar"):
+            st.warning(mask.get("xabar"))
+        else:
+            st.info("LV overlay yo‘q — echo kadr tahlildan keyin chiqadi.")
+
+    with tab_mdt:
+        mdt = holat.get("mdt_natija")
+        if mdt:
+            _mdt_yonma_yon(mdt, holat)
+        else:
+            st.info("MDT hali yo‘q. EKG/echo yoki murakkab holatda tahlildan keyin chiqadi.")
 
 
 def _ustun3_xulosa(agent_holat: Optional[Dict[str, Any]], bemor: Optional[Dict[str, Any]]) -> None:
@@ -524,32 +717,8 @@ def _ustun3_xulosa(agent_holat: Optional[Dict[str, Any]], bemor: Optional[Dict[s
             st.write(d)
     mdt = agent_holat.get("mdt_natija")
     if mdt:
-        with st.expander("MDT munozara (MedGemma + Qwen2.5-VL)", expanded=True):
-            st.caption(
-                f"Raund={mdt.get('raund_soni')} | konsensus={mdt.get('konsensus')} | "
-                f"MedGemma={mdt.get('medgemma_manba')} | Qwen={mdt.get('qwen_manba')} | "
-                f"still={mdt.get('still_id')} | video={mdt.get('video_id')}"
-            )
-            st.write(mdt.get("umumlashtirish"))
-            if mdt.get("konsensus_sabab"):
-                st.caption("Konsensus: " + str(mdt.get("konsensus_sabab")))
-            with st.expander("I va Z (qayta kiritilgan)"):
-                st.markdown("**I (xom)**")
-                st.write(mdt.get("xom_i") or agent_holat.get("xom_i") or "")
-                st.markdown("**Z (oraliq)**")
-                st.write(mdt.get("oraliq_z") or agent_holat.get("oraliq_z") or "")
-            for r in mdt.get("raundlar") or []:
-                st.markdown(f"**Raund {r.get('raund')}**")
-                chap, ong = st.columns(2)
-                with chap:
-                    st.markdown("MedGemma (tasvir)")
-                    st.caption("manba=" + str(r.get("medgemma_manba") or mdt.get("medgemma_manba")))
-                    st.write(str(r.get("medgemma") or "")[:1200])
-                with ong:
-                    st.markdown("Qwen2.5-VL (video)")
-                    st.caption("manba=" + str(r.get("qwen_manba") or mdt.get("qwen_manba")))
-                    st.write(str(r.get("qwen") or "")[:1200])
-                st.caption("Raund konsensus: " + str(r.get("konsensus")))
+        with st.expander("MDT munozara (qisqa)", expanded=False):
+            _mdt_yonma_yon(mdt, agent_holat)
     tech_n = agent_holat.get("ecg_technician_natija") or {}
     if tech_n:
         with st.expander("EKG technician (tozalash / sifat)"):
@@ -593,9 +762,7 @@ def _ustun3_xulosa(agent_holat: Optional[Dict[str, Any]], bemor: Optional[Dict[s
                     f"ko‘rinish={mask_n.get('korinish')} | {mask_n.get('maydon_px')} px | "
                     f"ulush={mask_n.get('ulush')} | model={mask_n.get('model')}"
                 )
-            if mask_n.get("overlay_png"):
-                st.image(mask_n["overlay_png"], caption="LV overlay (tashxis emas)")
-            st.caption("Algoritmik kavak; klinik EF emas.")
+            st.caption("Algoritmik kavak; klinik EF emas. To‘liq rasm pastdagi vizual panelda.")
     fellow_n = agent_holat.get("fellow_natija") or {}
     if fellow_n:
         with st.expander("Cardiology fellow (multimodal)"):
@@ -604,15 +771,12 @@ def _ustun3_xulosa(agent_holat: Optional[Dict[str, Any]], bemor: Optional[Dict[s
                 st.caption("Yo‘q (o‘ylab topilmagan): " + ", ".join(fellow_n.get("yoq_dalillar") or []))
             st.write(fellow_n.get("matn") or "")
             st.caption((fellow_n.get("xabar") or "") + " Tashxis emas.")
-    with st.expander("Vizual tekshirish paneli"):
-        viz = agent_holat.get("vizual") or {}
-        st.write(f"EKG tozalangan: {viz.get('ekg_tozalangan')} | sifat: {viz.get('ekg_sifat')}")
-        st.write(f"Technician: {viz.get('ekg_xabar')}")
-        st.write(f"EP: {viz.get('ekg_ep')}")
-        st.write(f"Echo: ok={viz.get('echo_ok')} | {viz.get('echo_korinishlar')} | model={viz.get('echo_model')} | kadr={viz.get('echo_kadrlar')}")
-        st.write(f"LV maska: {viz.get('lv_maska')} | ulush={viz.get('lv_ulush')} | {viz.get('lv_xabar')}")
-        st.write(f"Fellow: manba={viz.get('fellow_manba')} | dalillar={viz.get('fellow_dalillar')}")
-        st.caption("Overlay 2-ustunda; klinik EF hisoblanmaydi.")
+    viz = agent_holat.get("vizual") or {}
+    st.caption(
+        "Vizual panel pastda: tozalangan 12 tasma, echo 11 ko‘rinish, LV overlay, MDT. "
+        f"sifat={viz.get('ekg_sifat')} echo={viz.get('echo_korinishlar')} "
+        f"lv={viz.get('lv_maska')} mdt_raund={viz.get('mdt_raund')}."
+    )
 
 
 def asosiy() -> None:
@@ -706,6 +870,13 @@ def asosiy() -> None:
         )
     with col3:
         _ustun3_xulosa(st.session_state.agent_holat, st.session_state.bemor_tahlil)
+
+    _vizual_tekshirish_paneli(
+        st.session_state.agent_holat,
+        st.session_state.bemor_tahlil,
+        st.session_state.ekg_signal,
+        float(st.session_state.sampling_rate),
+    )
 
 
 asosiy()

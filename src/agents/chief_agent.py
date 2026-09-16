@@ -613,6 +613,7 @@ class ChiefCardiologist:
                 viz["echo_korinishlar"] = toliq.get("korinishlar")
                 viz["echo_model"] = toliq.get("model")
                 viz["echo_kadrlar"] = toliq.get("kadrlar_soni")
+                viz["echo_yetishmagan"] = toliq.get("yetishmagan_standart") or []
                 yangi["vizual"] = viz
             elif vosita == "echo_segmenter":
                 toliq = segment_lv(
@@ -773,8 +774,14 @@ class ChiefCardiologist:
             f"konsensus={natija.get('konsensus')} "
             f"med={natija.get('medgemma_manba')} qwen={natija.get('qwen_manba')}"
         )
+        viz = dict(holat.get("vizual") or {})
+        viz["mdt_raund"] = natija.get("raund_soni")
+        viz["mdt_konsensus"] = natija.get("konsensus")
+        viz["mdt_med"] = natija.get("medgemma_manba")
+        viz["mdt_qwen"] = natija.get("qwen_manba")
         return {
             "mdt_natija": natija,
+            "vizual": viz,
             "qadam": int(holat.get("qadam") or 0) + 1,
             "qadam_tarixi": tarix,
             "amal": "STOP",

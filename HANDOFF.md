@@ -10,8 +10,8 @@ Tizim shifokor o‘rnini bosmaydi. Yakuniy qaror shifokorga tegishli.
 
 | Maydon | Qiymat |
 |---|---|
-| Keyingi ish | **11-bosqich** — vizual tekshirish paneli; 2-bosqich DeepSeek ham ochiq |
-| Oxirgi yopilgan | **10-bosqich** — MDT MedGemma + Qwen2.5-VL |
+| Keyingi ish | **12-bosqich** — UI ni to‘liq oqimga bog‘lash; 2-bosqich DeepSeek ham ochiq |
+| Oxirgi yopilgan | **11-bosqich** — vizual tekshirish paneli |
 | GitHub | https://github.com/Abbos8/cardio-ai-system (private, `main`) |
 | UI | `./ishga_tushir.sh` → http://127.0.0.1:8501 |
 
@@ -54,7 +54,7 @@ Har bosqich: **nima**, **qayerda**, **tayyor deb hisoblash**, **status**.
 | 8 | Echo segmenter (LV maska) | **qilindi** |
 | 9 | Cardiology fellow (multimodal) | **qilindi** |
 | 10 | MDT: MedGemma + Qwen2.5-VL | **qilindi** |
-| 11 | Vizual tekshirish paneli | ochiq |
+| 11 | Vizual tekshirish paneli | **qilindi** |
 | 12 | UI ni to‘liq oqimga bog‘lash | ochiq |
 | 13 | Test va barqarorlik | ochiq |
 | 14 | Xavfsizlik / klinik tayyorgarlik | ochiq |
@@ -201,13 +201,15 @@ Har bosqich: **nima**, **qayerda**, **tayyor deb hisoblash**, **status**.
 
 ---
 
-### 11. Vizual tekshirish paneli — ochiq
+### 11. Vizual tekshirish paneli — qilindi
 
-**Nima:** asosan xom EKG + raqamlar (`src/ui/app.py` expander).
+**Nima:** sahifa pastida to‘liq kenglikdagi panel: tozalangan 12 tasma, 11 echo slot, LV overlay, MDT yonma-yon.
 
-**Qilish:** tozalangan 12 tasma; echo 11 ko‘rinish; LV overlay; MDT raundlari yonma-yon.
+**Qayerda:** `src/ui/app.py` (`_vizual_tekshirish_paneli`); `vizual` maydonlari `chief_agent` (echo_yetishmagan, mdt_raund).
 
-**Tayyor:** shifokor oraliq vizual natijani panelda ko‘radi.
+**Tekshiruv:** namuna EKG → tozalangan (n,12); A4C+PLAX → 11 gridda ikkalasi, 9 ta «yo‘q»; tahlilsiz MDT/LV bo‘sh izoh.
+
+**Cheklov:** tahlildan oldin echo/LV/MDT bo‘sh; overlay agent `echo_mask` dan. Tashxis emas.
 
 ---
 
@@ -294,3 +296,8 @@ Fayllar: `src/agents/chief_agent.py`, `src/agents/mdt.py`, `src/rag/medical_rag.
 - `MEDGEMMA_*` / `QWEN_VL_*`; reasoner ga rasm yuborilmaydi; VLM yo‘qida shablon.
 - STOP da vizual/murakkab holatda MDT; UI da ikki ustun + I/Z.
 - Keyingi: **11** (vizual panel) yoki **2** (DeepSeek).
+
+### 2026-09-16 (11-bosqich)
+
+- Vizual panel: 12 tasma (tozalangan), echo 11 slot, LV overlay, MDT yonma-yon.
+- 2-ustun qisqa EKG; to‘liq ko‘rinish pastda. Keyingi: **12** (UI oqim) yoki **2** (DeepSeek).
