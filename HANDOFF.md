@@ -6,12 +6,12 @@ Tizim shifokor o‘rnini bosmaydi. Yakuniy qaror shifokorga tegishli.
 
 ---
 
-## Hozir qayerdamiz (2026-09-14, kechki)
+## Hozir qayerdamiz (2026-09-16)
 
 | Maydon | Qiymat |
 |---|---|
-| Keyingi ish | **6-bosqich** — EKG texnik + EP sifati (2-bosqich DeepSeek ham ochiq) |
-| Oxirgi yopilgan | **5-bosqich** — laboratoriya CSV/PDF + tuzilgan dorilar |
+| Keyingi ish | **7-bosqich** — Echo technician (11 ko‘rinish, DICOM); 2-bosqich DeepSeek ham ochiq |
+| Oxirgi yopilgan | **6-bosqich** — EKG texnik + EP (CSV/WFDB, P/QRS/T, UI ajratish) |
 | GitHub | https://github.com/Abbos8/cardio-ai-system (private, `main`) |
 | UI | `./ishga_tushir.sh` → http://127.0.0.1:8501 |
 
@@ -49,7 +49,7 @@ Har bosqich: **nima**, **qayerda**, **tayyor deb hisoblash**, **status**.
 | 3 | BioClinicalBERT + FAISS | **qilindi** |
 | 4 | Bilimlar bazasi (Mayo/NHS/MedlinePlus/ESC) | **qilindi** (Mayo 403 — qo‘lda) |
 | 5 | Laboratoriya vositasini chuqurlashtirish | **qilindi** |
-| 6 | EKG texnik + EP sifati | ochiq |
+| 6 | EKG texnik + EP sifati | **qilindi** |
 | 7 | Echo technician (11 ko‘rinish, DICOM) | ochiq |
 | 8 | Echo segmenter (LV maska) | ochiq |
 | 9 | Cardiology fellow (multimodal) | ochiq |
@@ -131,13 +131,17 @@ Har bosqich: **nima**, **qayerda**, **tayyor deb hisoblash**, **status**.
 
 ---
 
-### 6. EKG ni texnik + EP darajasiga yetkazish — ochiq
+### 6. EKG ni texnik + EP darajasiga yetkazish — qilindi
 
-**Nima:** tozalash + QRS/PR/QT/HRV bor (`src/tools/ecg_tool.py`). Yomon/sintetik signalda R cho‘qqi yo‘qolishi mumkin.
+**Nima:** technician tozalash/sifat; EP da P/QRS/T, PR/QRS/QT/QTc, HRV. CSV va WFDB (.hea+.dat format 16/212).
 
-**Qilish:** haqiqiy 12 tasmali CSV/WFDB; P/QRS/T chizmalari panelga; technician vs electrophysiologist natijasini UI da ajratish.
+**Qayerda:** `src/tools/ecg_tool.py`, `src/tools/ekg_yuklash.py`; namuna `src/tools/namuna_ekg.csv` (+ `.hea`/`.dat`); UI 2-ustun va expanderlar.
 
-**Tayyor:** namuna yozuvda intervallar + HRV + tozalangan grafik.
+**Format:** CSV `# sampling_rate=500`, `time` + I..V6 (yoki 12 ustun). WFDB: ikkala faylni birga yuklash.
+
+**Tekshiruv:** namuna 8 s / 500 Hz → technician 12 tasma, 9 R, HR 72; EP P/T=9, PR/QRS/QT/QTc, UI da technician vs EP.
+
+**Cheklov:** sintetik yozuvda QRS/QT DWT noaniq bo‘lishi mumkin (zaxira Q–S); tashxis qo‘yilmaydi.
 
 ---
 
@@ -246,8 +250,9 @@ Fayllar: `src/agents/chief_agent.py`, `src/agents/mdt.py`, `src/rag/medical_rag.
 - UI: lab yuklovchi, dori text_area, expander.
 - Namuna: `src/tools/namuna_lab.csv`. Keyingi: **6**.
 
-### 2026-09-14 (kech, HANDOFF + push)
+### 2026-09-16 (6-bosqich)
 
-- UI: Streamlit kesh (`bert_ishlatildi`); conda `streamlit` → `numpy.core.multiarray`. Yechim: `./ishga_tushir.sh`.
-- 4–5 bosqich kodlari (RAG ingest, lab CSV/PDF) gitga kiritiladi.
-- Keyingi: **6** (EKG) yoki **2** (DeepSeek).
+- Technician vs EP: tozalash/sifat va P/QRS/T + PR/QRS/QT/QTc/HRV alohida.
+- CSV (sarlavha, Hz izohi, time) va WFDB 16/212 o‘qish.
+- UI: tozalangan 12 tasma, P/R/T belgilar, ikki expander.
+- Namuna: `src/tools/namuna_ekg.csv` / `.hea` / `.dat`. Keyingi: **7** (echo) yoki **2** (DeepSeek).

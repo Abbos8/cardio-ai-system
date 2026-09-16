@@ -20,7 +20,7 @@ if str(_SRC) not in sys.path:
 from agents.mdt import mdt_munozara
 from llm.client import llm_json
 from rag.medical_rag import MedicalRAG
-from tools.ecg_tool import process_ecg_signal
+from tools.ecg_tool import ecg_technician_tahlil, electrophysiologist_tahlil
 from tools.echo_segmenter import segment_lv
 from tools.echo_tool import classify_echo_views
 from tools.fellow_tool import dastlabki_tashxis
@@ -47,6 +47,8 @@ class ChiefHolat(TypedDict, total=False):
     reja_indeks: int
     lab_natija: Optional[Dict[str, Any]]
     ecg_natija: Optional[Dict[str, Any]]
+    ecg_technician_natija: Optional[Dict[str, Any]]
+    ep_natija: Optional[Dict[str, Any]]
     echo_natija: Optional[Dict[str, Any]]
     echo_mask: Optional[Dict[str, Any]]
     fellow_natija: Optional[Dict[str, Any]]
@@ -105,13 +107,15 @@ def _ekg_qisqacha(natija: Optional[Dict[str, Any]]) -> Dict[str, Any]:
     """Holatda saqlash uchun EKG dan o‘lchovlarni qoldiradi (katta signal emas).
 
     Args:
-        natija: process_ecg_signal javobi.
+        natija: process_ecg_signal / technician / EP javobi.
 
     Returns:
-        Signallarsiz qisqa lug‘at.
+        Signallarsiz qisqa lug‘at (to‘lqin indekslari saqlanadi).
     """
     if not natija:
         return {}
+    tech = natija.get("technician")
+    ep = natija.get("ep")
     return {
         "ok": natija.get("ok"),
         "xabar": natija.get("xabar"),
@@ -119,10 +123,16 @@ def _ekg_qisqacha(natija: Optional[Dict[str, Any]]) -> Dict[str, Any]:
         "qrs_ms": natija.get("qrs_ms"),
         "pr_ms": natija.get("pr_ms"),
         "qt_ms": natija.get("qt_ms"),
+        "qtc_bazett_ms": natija.get("qtc_bazett_ms"),
         "tasma": natija.get("tasma"),
         "urishlar_soni": natija.get("urishlar_soni"),
         "hrv_sdnn_ms": natija.get("hrv_sdnn_ms"),
         "hrv_rmssd_ms": natija.get("hrv_rmssd_ms"),
+        "tolqinlar": natija.get("tolqinlar") or {},
+        "yetishmagan": natija.get("yetishmagan") or [],
+        "technician": tech,
+        "ep": ep,
+        "sifat": (tech or {}).get("sifat") if isinstance(tech, dict) else None,
     }
 
 
@@ -230,13 +240,18 @@ def _oddiy_reja(bemor: Dict[str, Any]) -> List[Dict[str, Any]]:
     ]
     if _ekg_signal_bormi(bemor):
         qadamlar.append(
-            {"id": "p2", "vosita": "ecg_technician", "tavsif": "EKG tozalash", "holat": "pending"}
+            {
+                "id": "p2",
+                "vosita": "ecg_technician",
+                "tavsif": "EKG tozalash va sifat",
+                "holat": "pending",
+            }
         )
         qadamlar.append(
             {
                 "id": "p3",
                 "vosita": "electrophysiologist",
-                "tavsif": "QRS/PR/QT/HRV",
+                "tavsif": "P/QRS/T, PR/QRS/QT/QTc, HRV",
                 "holat": "pending",
             }
         )
@@ -258,7 +273,11 @@ def _oraliq_matn(holat: ChiefHolat) -> str:
     qism: List[str] = []
     if holat.get("lab_natija"):
         qism.append("LAB: " + str(holat["lab_natija"]))
-    if holat.get("ecg_natija"):
+    if holat.get("ecg_technician_natija"):
+        qism.append("ECG_TECH: " + str(holat["ecg_technician_natija"]))
+    if holat.get("ep_natija"):
+        qism.append("ECG_EP: " + str(holat["ep_natija"]))
+    elif holat.get("ecg_natija"):
         qism.append("ECG: " + str(holat["ecg_natija"]))
     if holat.get("echo_natija"):
         qism.append("ECHO: " + str(holat["echo_natija"]))
@@ -314,6 +333,8 @@ class ChiefCardiologist:
             "reja_indeks": 0,
             "lab_natija": None,
             "ecg_natija": None,
+            "ecg_technician_natija": None,
+            "ep_natija": None,
             "echo_natija": None,
             "echo_mask": None,
             "fellow_natija": None,
@@ -460,22 +481,41 @@ class ChiefCardiologist:
             elif vosita == "ecg_technician":
                 signal = _ekg_signal_ol(bemor)
                 if signal is None:
-                    yangi["ecg_natija"] = {"ok": False, "xabar": "EKG signali yo‘q."}
+                    tech_q = {"ok": False, "xabar": "EKG signali yo‘q."}
+                    yangi["ecg_technician_natija"] = tech_q
+                    yangi["ecg_natija"] = tech_q
                 else:
-                    toliq = process_ecg_signal(signal, sampling_rate=bemor.get("sampling_rate", 500.0))
-                    yangi["ecg_natija"] = _ekg_qisqacha(toliq)
+                    toliq = ecg_technician_tahlil(signal, sampling_rate=bemor.get("sampling_rate", 500.0))
+                    tech_q = _ekg_qisqacha(toliq)
+                    yangi["ecg_technician_natija"] = tech_q.get("technician") or tech_q
+                    yangi["ecg_natija"] = tech_q
                     viz = dict(holat.get("vizual") or {})
                     viz["ekg_tozalangan"] = bool(toliq.get("tozalangan_signallar"))
                     viz["ekg_xabar"] = toliq.get("xabar")
+                    viz["ekg_sifat"] = (toliq.get("technician") or {}).get("sifat")
                     yangi["vizual"] = viz
             elif vosita == "electrophysiologist":
-                if holat.get("ecg_natija"):
-                    yangi["ecg_natija"] = holat.get("ecg_natija")
-                    tarix.append("electrophysiologist: EKG intervallari/HRV allaqachon olingan")
+                signal = _ekg_signal_ol(bemor)
+                if signal is None:
+                    ep_q = {"ok": False, "xabar": "EKG signali yo‘q."}
+                    yangi["ep_natija"] = ep_q
+                    yangi["ecg_natija"] = holat.get("ecg_natija") or ep_q
+                    tarix.append("electrophysiologist: signal yo‘q")
                 else:
-                    signal = _ekg_signal_ol(bemor)
-                    toliq = process_ecg_signal(signal, sampling_rate=bemor.get("sampling_rate", 500.0))
-                    yangi["ecg_natija"] = _ekg_qisqacha(toliq)
+                    toliq = electrophysiologist_tahlil(
+                        signal, sampling_rate=bemor.get("sampling_rate", 500.0)
+                    )
+                    ep_q = _ekg_qisqacha(toliq)
+                    yangi["ep_natija"] = ep_q.get("ep") or ep_q
+                    birlash = dict(holat.get("ecg_natija") or {})
+                    birlash.update(ep_q)
+                    birlash["technician"] = (holat.get("ecg_technician_natija") or birlash.get("technician"))
+                    yangi["ecg_natija"] = birlash
+                    viz = dict(holat.get("vizual") or {})
+                    viz["ekg_ep"] = ep_q.get("xabar")
+                    viz["ekg_tasma"] = ep_q.get("tasma")
+                    yangi["vizual"] = viz
+                    tarix.append("electrophysiologist: P/QRS/T va intervallar")
             elif vosita == "echo_technician":
                 yangi["echo_natija"] = classify_echo_views(bemor)
             elif vosita == "echo_segmenter":
@@ -643,11 +683,19 @@ class ChiefCardiologist:
         if ecg:
             if ecg.get("ok"):
                 qatorlar.append(
-                    "EKG (taxminiy): "
-                    f"HR={ecg.get('yurak_chastotasi_bpm')} bpm, QRS={ecg.get('qrs_ms')} ms, "
-                    f"PR={ecg.get('pr_ms')} ms, QT={ecg.get('qt_ms')} ms, "
+                    "EKG EP (taxminiy): "
+                    f"tasma={ecg.get('tasma')}, HR={ecg.get('yurak_chastotasi_bpm')} bpm, "
+                    f"QRS={ecg.get('qrs_ms')} ms, PR={ecg.get('pr_ms')} ms, "
+                    f"QT={ecg.get('qt_ms')} ms, QTc_Bazett={ecg.get('qtc_bazett_ms')} ms, "
                     f"SDNN={ecg.get('hrv_sdnn_ms')}, RMSSD={ecg.get('hrv_rmssd_ms')}."
                 )
+                tech = holat.get("ecg_technician_natija") or ecg.get("technician")
+                if isinstance(tech, dict) and tech.get("sifat"):
+                    qatorlar.append(
+                        f"EKG technician: sifat={tech.get('sifat')}, "
+                        f"tozalangan_tasma={tech.get('tozalangan_tasma_soni')}, "
+                        f"{tech.get('xabar') or ''}"
+                    )
                 ogoh: List[str] = []
                 hr, qrs, pr, qt = (
                     _son(ecg.get("yurak_chastotasi_bpm")),

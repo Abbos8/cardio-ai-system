@@ -1,0 +1,13 @@
+namuna_ekg 12 500 4000
+namuna_ekg.dat 16 200.0(mV) 16 0 0 0 0 I
+namuna_ekg.dat 16 200.0(mV) 16 0 0 0 0 II
+namuna_ekg.dat 16 200.0(mV) 16 0 0 0 0 III
+namuna_ekg.dat 16 200.0(mV) 16 0 0 0 0 aVR
+namuna_ekg.dat 16 200.0(mV) 16 0 0 0 0 aVL
+namuna_ekg.dat 16 200.0(mV) 16 0 0 0 0 aVF
+namuna_ekg.dat 16 200.0(mV) 16 0 0 0 0 V1
+namuna_ekg.dat 16 200.0(mV) 16 0 0 0 0 V2
+namuna_ekg.dat 16 200.0(mV) 16 0 0 0 0 V3
+namuna_ekg.dat 16 200.0(mV) 16 0 0 0 0 V4
+namuna_ekg.dat 16 200.0(mV) 16 0 0 0 0 V5
+namuna_ekg.dat 16 200.0(mV) 16 0 0 0 0 V6

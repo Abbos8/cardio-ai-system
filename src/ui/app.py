@@ -6,8 +6,6 @@
 
 from __future__ import annotations
 
-import csv
-import io
 import sys
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
@@ -54,7 +52,8 @@ if str(_SRC) not in sys.path:
 
 from agents.chief_agent import ChiefCardiologist
 from rag.medical_rag import MedicalRAG
-from tools.ecg_tool import TASMA_NOMLARI
+from tools.ecg_tool import TASMA_NOMLARI, namuna_12_tasma_ekg, tozalangan_matritsa, tasmalarni_tozala
+from tools.ekg_yuklash import ekg_fayllardan_oqish
 from tools.lab_tool import process_lab
 
 # Namuna EKG: kamida 2 s (ecg_tool talabi)
@@ -133,71 +132,41 @@ def namuna_ekg_signal(sampling_rate: float = ODATIY_HZ, davomiylik: float = NAMU
     Returns:
         (n, 12) massiv. Haqiqiy bemor EKG si emas.
     """
-    n = int(sampling_rate * davomiylik)
-    t = np.arange(n) / sampling_rate
-    hr = 72.0
-    rr = 60.0 / hr
-    asos = np.zeros(n)
-    for k in np.arange(0.3, davomiylik - 0.3, rr):
-        asos += 0.12 * np.exp(-((t - (k - 0.16)) ** 2) / (2 * 0.012**2))
-        asos += 1.15 * np.exp(-((t - k) ** 2) / (2 * 0.012**2))
-        asos -= 0.18 * np.exp(-((t - (k + 0.04)) ** 2) / (2 * 0.016**2))
-        asos += 0.28 * np.exp(-((t - (k + 0.22)) ** 2) / (2 * 0.05**2))
-    asos += 0.02 * np.sin(2 * np.pi * 0.25 * t)
-    shkala = np.array([1.0, 1.1, 0.35, -0.55, 0.45, 0.7, 0.5, 0.85, 1.05, 1.2, 1.1, 0.95])
-    shovqin = 0.015 * np.random.default_rng(7).normal(size=(n, 12))
-    return (asos[:, None] * shkala[None, :]) + shovqin
+    return namuna_12_tasma_ekg(sampling_rate=sampling_rate, davomiylik=davomiylik)
 
 
-def csv_dan_ekg(fayl_bayt: bytes) -> Tuple[Optional[np.ndarray], str]:
+def csv_dan_ekg(fayl_bayt: bytes, sampling_rate_hint: float = ODATIY_HZ) -> Tuple[Optional[np.ndarray], str, float]:
     """CSV fayldan 12 tasmali EKG o‘qiydi (sarlavha I..V6 yoki 12 ustun).
 
     Args:
         fayl_bayt: Yuklangan CSV baytlari.
+        sampling_rate_hint: Hz izohi yo‘q bo‘lsa.
 
     Returns:
-        (massiv, xabar). Xatoda massiv None. Tashxis qo‘yilmaydi.
+        (massiv, xabar, hz). Xatoda massiv None. Tashxis qo‘yilmaydi.
     """
-    try:
-        matn = fayl_bayt.decode("utf-8-sig")
-    except UnicodeDecodeError:
-        matn = fayl_bayt.decode("latin-1")
-    oquvchi = csv.reader(io.StringIO(matn))
-    qatorlar = [[c.strip() for c in q] for q in oquvchi if any(x.strip() for x in q)]
-    if not qatorlar:
-        return None, "CSV bo‘sh."
-    birinchi = [c.upper().replace("AVR", "aVR").replace("AVL", "aVL").replace("AVF", "aVF") for c in qatorlar[0]]
-    if all(nom in birinchi for nom in TASMA_NOMLARI):
-        indekslar = [birinchi.index(nom) for nom in TASMA_NOMLARI]
-        sonlar: List[List[float]] = []
-        for qator in qatorlar[1:]:
-            try:
-                sonlar.append([float(qator[i]) for i in indekslar])
-            except (ValueError, IndexError):
-                continue
-        if not sonlar:
-            return None, "Sarlavhali CSV da sonli qator topilmadi."
-        return np.asarray(sonlar, dtype=float), "12 tasma sarlavha bo‘yicha o‘qildi."
-    sonlar = []
-    for qator in qatorlar:
-        if len(qator) < 12:
-            continue
-        try:
-            sonlar.append([float(x) for x in qator[:12]])
-        except ValueError:
-            continue
-    if not sonlar:
-        return None, "CSV da 12 ustunli sonlar yo‘q. Sarlavha: I,II,...,V6."
-    return np.asarray(sonlar, dtype=float), "12 ustunli CSV o‘qildi."
+    natija = ekg_fayllardan_oqish([("ekg.csv", fayl_bayt)], sampling_rate_hint=sampling_rate_hint)
+    hz = float(natija.get("sampling_rate") or sampling_rate_hint)
+    return natija.get("signal"), str(natija.get("xabar") or ""), hz
 
 
-def ekg_grafik_chiz(signal: np.ndarray, sampling_rate: float, tasma_tanlov: str) -> plt.Figure:
-    """EKG ni Streamlit uchun matplotlib figuraga chizadi.
+def ekg_grafik_chiz(
+    signal: np.ndarray,
+    sampling_rate: float,
+    tasma_tanlov: str,
+    tolqinlar: Optional[Dict[str, Any]] = None,
+    ep_tasma: Optional[str] = None,
+    sarlavha: str = "EKG (ko‘rish, tashxis emas)",
+) -> plt.Figure:
+    """EKG ni Streamlit uchun matplotlib figuraga chizadi (ixtiyoriy P/QRS/T).
 
     Args:
         signal: (n, 12) yoki (12, n) massiv.
         sampling_rate: Hz.
         tasma_tanlov: Bitta tasma nomi yoki \"12 tasma\".
+        tolqinlar: EP indekslari (r/p/t cho‘qqilar).
+        ep_tasma: Intervallar olingan tasma.
+        sarlavha: Figura sarlavhasi.
 
     Returns:
         Figura. O‘lchov emas, faqat ko‘rish.
@@ -220,25 +189,55 @@ def ekg_grafik_chiz(signal: np.ndarray, sampling_rate: float, tasma_tanlov: str)
         plt.style.use("seaborn-v0_8-whitegrid")
     except OSError:
         plt.style.use("ggplot")
+
+    def _belgi(ax: Any, y: np.ndarray) -> None:
+        if not tolqinlar:
+            return
+        hz = float(sampling_rate)
+
+        def nuqta(indekslar: List[int], rang: str, nom: str) -> None:
+            if not indekslar:
+                return
+            idx = [i for i in indekslar if 0 <= i < len(y)]
+            if not idx:
+                return
+            ax.scatter(
+                np.asarray(idx) / hz,
+                y[idx],
+                s=18,
+                c=rang,
+                label=nom,
+                zorder=3,
+            )
+
+        nuqta(list(tolqinlar.get("p_choqqilar") or []), "#1565c0", "P")
+        nuqta(list(tolqinlar.get("r_choqqilar") or []), "#c62828", "R")
+        nuqta(list(tolqinlar.get("t_choqqilar") or []), "#2e7d32", "T")
+
     if tasma_tanlov == "12 tasma":
         fig, oqlar = plt.subplots(6, 2, figsize=(8.2, 9.2), sharex=True)
         for i, nom in enumerate(TASMA_NOMLARI):
             ax = oqlar[i // 2][i % 2]
             ax.plot(t, massiv[:, i], color="#b71c1c", linewidth=0.7)
+            if ep_tasma == nom or (ep_tasma is None and nom == "II"):
+                _belgi(ax, massiv[:, i])
             ax.set_ylabel(nom, rotation=0, labelpad=18, va="center", fontsize=9)
             ax.set_yticks([])
         oqlar[-1][0].set_xlabel("Vaqt (s)")
         oqlar[-1][1].set_xlabel("Vaqt (s)")
-        fig.suptitle("12 tasmali EKG (ko‘rish, tashxis emas)", fontsize=11)
+        fig.suptitle(sarlavha, fontsize=11)
         fig.tight_layout()
         return fig
 
     idx = TASMA_NOMLARI.index(tasma_tanlov) if tasma_tanlov in TASMA_NOMLARI else 1
     fig, ax = plt.subplots(figsize=(8.2, 3.6))
     ax.plot(t, massiv[:, idx], color="#b71c1c", linewidth=0.9)
+    _belgi(ax, massiv[:, idx])
+    if tolqinlar and (tolqinlar.get("p_choqqilar") or tolqinlar.get("r_choqqilar")):
+        ax.legend(loc="upper right", fontsize=8)
     ax.set_xlabel("Vaqt (s)")
     ax.set_ylabel("Amplitude (shartli)")
-    ax.set_title(f"Tasma {tasma_tanlov} (ko‘rish, tashxis emas)")
+    ax.set_title(f"{sarlavha} — {tasma_tanlov}")
     fig.tight_layout()
     return fig
 
@@ -287,7 +286,8 @@ def ehtiyotkor_tavsiyalar(bemor: Dict[str, Any], agent_holat: Dict[str, Any]) ->
     if ecg.get("ok"):
         tavsiya.append(
             f"EKG o‘lchovlari taxminiy: HR {ecg.get('yurak_chastotasi_bpm')} bpm, "
-            f"QRS {ecg.get('qrs_ms')} ms, PR {ecg.get('pr_ms')} ms, QT {ecg.get('qt_ms')} ms."
+            f"QRS {ecg.get('qrs_ms')} ms, PR {ecg.get('pr_ms')} ms, "
+            f"QT {ecg.get('qt_ms')} ms, QTc {ecg.get('qtc_bazett_ms')} ms."
         )
     elif bemor.get("ecg_signal") is not None:
         tavsiya.append("EKG o‘lchovi to‘liq chiqmadi; xom grafikni shifokor ko‘rsin.")
@@ -301,7 +301,7 @@ def _ustun1_forma() -> Tuple[Dict[str, Any], Any, float, bool]:
         Yo‘q. Streamlit widgetlari.
 
     Returns:
-        bemor lug‘ati (EKGsiz), yuklangan fayl, sampling_rate, tahlil tugmasi.
+        bemor lug‘ati (EKGsiz), yuklangan EKG fayllar ro‘yxati, sampling_rate, tahlil tugmasi.
     """
     st.subheader("Bemor ma’lumotlari")
     yosh = st.number_input("Yosh (yil)", min_value=0, max_value=120, value=58, step=1)
@@ -333,7 +333,12 @@ def _ustun1_forma() -> Tuple[Dict[str, Any], Any, float, bool]:
             st.number_input(sarlavha, min_value=past, max_value=yuqori, value=odatiy, step=0.1, help=izoh)
         )
     sampling_rate = st.number_input("EKG sampling_rate (Hz)", min_value=100.0, max_value=2000.0, value=ODATIY_HZ)
-    fayl = st.file_uploader("EKG CSV (12 tasma)", type=["csv"])
+    st.caption("CSV: I..V6 yoki 12 ustun; ixtiyoriy `# sampling_rate=500` va `time` ustuni. WFDB: .hea va .dat ni birga.")
+    fayllar = st.file_uploader(
+        "EKG fayl(lar) (CSV yoki WFDB .hea+.dat)",
+        type=["csv", "hea", "dat", "txt"],
+        accept_multiple_files=True,
+    )
     namuna = st.checkbox("Namuna (sintetik) EKG ishlatish", value=True)
     tahlil_past = st.button("Tahlil qilish", type="primary", width="stretch", key="tahlil_past")
     tahlil = bool(tahlil_yuqori or tahlil_past)
@@ -352,27 +357,65 @@ def _ustun1_forma() -> Tuple[Dict[str, Any], Any, float, bool]:
     if lab_fayl is not None:
         bemor["lab_fayl_bayt"] = lab_fayl.getvalue()
         bemor["lab_fayl_nomi"] = lab_fayl.name
-    return bemor, fayl, float(sampling_rate), tahlil
+    return bemor, fayllar, float(sampling_rate), tahlil
 
 
-def _ustun2_ekg(signal: Optional[np.ndarray], sampling_rate: float, xabar: str) -> None:
-    """2-ustunda EKG grafigini chiqaradi.
+def _ustun2_ekg(
+    signal: Optional[np.ndarray],
+    sampling_rate: float,
+    xabar: str,
+    agent_holat: Optional[Dict[str, Any]] = None,
+) -> None:
+    """2-ustunda EKG grafigini chiqaradi (tozalangan + P/QRS/T).
 
     Args:
         signal: (n, 12) massiv yoki None.
         sampling_rate: Hz.
         xabar: Yuklash/namuna izohi.
+        agent_holat: EP to‘lqin indekslari uchun.
 
     Returns:
         None. Streamlit ga chizadi.
     """
     st.subheader("EKG signali")
     if signal is None:
-        st.info("CSV yuklang yoki namuna EKG ni belgilang.")
+        st.info("CSV/WFDB yuklang yoki namuna EKG ni belgilang.")
         return
     st.caption(xabar)
     tasma = st.selectbox("Ko‘rsatish", ["12 tasma"] + TASMA_NOMLARI, index=2)
-    fig = ekg_grafik_chiz(signal, sampling_rate, tasma)
+    tozalangan_kor = st.checkbox("Tozalangan signal", value=True)
+    belgi = st.checkbox("P / QRS / T belgilari (EP)", value=True)
+    chizma = np.asarray(signal, dtype=float)
+    sarlavha = "Xom EKG (ko‘rish, tashxis emas)"
+    if tozalangan_kor:
+        try:
+            massiv = chizma
+            if massiv.ndim == 2 and massiv.shape[0] == 12 and massiv.shape[1] != 12:
+                massiv = massiv.T
+            if massiv.ndim == 2 and massiv.shape[1] == 12:
+                tasmalar = {nom: massiv[:, i] for i, nom in enumerate(TASMA_NOMLARI)}
+                toz = tasmalarni_tozala(tasmalar, sampling_rate)["tozalangan"]
+                mat = tozalangan_matritsa(toz)
+                if mat is not None:
+                    chizma = mat
+                    sarlavha = "Tozalangan EKG (ko‘rish, tashxis emas)"
+        except Exception:
+            pass
+    holat = agent_holat or {}
+    ecg = holat.get("ecg_natija") or {}
+    ep = holat.get("ep_natija") if isinstance(holat.get("ep_natija"), dict) else {}
+    tolqinlar = (ep or {}).get("tolqinlar") or ecg.get("tolqinlar")
+    if not belgi:
+        tolqinlar = None
+    ep_tasma = (ep or {}).get("tasma") or ecg.get("tasma")
+    fig = ekg_grafik_chiz(
+        chizma,
+        sampling_rate,
+        tasma,
+        tolqinlar=tolqinlar,
+        ep_tasma=ep_tasma,
+        sarlavha=sarlavha,
+    )
     st.pyplot(fig, width="stretch")
     plt.close(fig)
 
@@ -428,19 +471,39 @@ def _ustun3_xulosa(agent_holat: Optional[Dict[str, Any]], bemor: Optional[Dict[s
                 st.markdown(f"**Raund {r.get('raund')}**")
                 st.write("MedGemma: " + str(r.get("medgemma"))[:800])
                 st.write("Qwen2.5-VL: " + str(r.get("qwen"))[:800])
+    tech_n = agent_holat.get("ecg_technician_natija") or {}
+    if tech_n:
+        with st.expander("EKG technician (tozalash / sifat)"):
+            st.write(tech_n.get("xabar") or "")
+            st.write(
+                f"Sifat: {tech_n.get('sifat')} | tasma {tech_n.get('tasma')} | "
+                f"R={tech_n.get('urishlar_soni')} | HR≈{tech_n.get('yurak_chastotasi_bpm')} | "
+                f"{tech_n.get('davomiylik_s')} s @ {tech_n.get('sampling_rate')} Hz"
+            )
+            if tech_n.get("yetishmagan"):
+                st.caption("Yetishmagan tasma: " + ", ".join(tech_n.get("yetishmagan") or []))
+    ep_n = agent_holat.get("ep_natija") or {}
+    if ep_n:
+        with st.expander("Elektrofiziolog (P/QRS/T, intervallar)"):
+            st.write(ep_n.get("xabar") or "")
+            st.write(
+                f"tasma {ep_n.get('tasma')} | HR {ep_n.get('yurak_chastotasi_bpm')} | "
+                f"PR {ep_n.get('pr_ms')} | QRS {ep_n.get('qrs_ms')} | "
+                f"QT {ep_n.get('qt_ms')} | QTc {ep_n.get('qtc_bazett_ms')} | "
+                f"SDNN {ep_n.get('hrv_sdnn_ms')} | RMSSD {ep_n.get('hrv_rmssd_ms')} | "
+                f"P={ep_n.get('p_soni')} T={ep_n.get('t_soni')}"
+            )
+            if ep_n.get("eslatmalar"):
+                for e in ep_n.get("eslatmalar") or []:
+                    st.markdown(f"- {e}")
+            st.caption("Qiymatlar taxminiy; tashxis emas.")
     with st.expander("Vizual tekshirish paneli"):
         viz = agent_holat.get("vizual") or {}
-        st.write(f"EKG tozalangan signal saqlangan: {viz.get('ekg_tozalangan')}")
-        st.write(f"EKG izoh: {viz.get('ekg_xabar')}")
+        st.write(f"EKG tozalangan: {viz.get('ekg_tozalangan')} | sifat: {viz.get('ekg_sifat')}")
+        st.write(f"Technician: {viz.get('ekg_xabar')}")
+        st.write(f"EP: {viz.get('ekg_ep')}")
         st.write(f"LV maska tayyor: {viz.get('lv_maska')}")
         st.caption("Echo proyeksiyalari va LV maskalari model ulangach shu yerda ko‘rinadi.")
-        ecg = agent_holat.get("ecg_natija") or {}
-        if ecg:
-            st.write(
-                f"HR {ecg.get('yurak_chastotasi_bpm')} | QRS {ecg.get('qrs_ms')} | "
-                f"PR {ecg.get('pr_ms')} | QT {ecg.get('qt_ms')} | "
-                f"SDNN {ecg.get('hrv_sdnn_ms')} | RMSSD {ecg.get('hrv_rmssd_ms')}"
-            )
 
 
 def asosiy() -> None:
@@ -477,13 +540,18 @@ def asosiy() -> None:
 
     col1, col2, col3 = st.columns([1.05, 1.25, 1.15], gap="large")
     with col1:
-        bemor, fayl, sampling_rate, tahlil = _ustun1_forma()
+        bemor, fayllar, sampling_rate, tahlil = _ustun1_forma()
 
     signal = st.session_state.ekg_signal
     xabar = st.session_state.ekg_xabar
     if tahlil:
-        if fayl is not None:
-            signal, xabar = csv_dan_ekg(fayl.getvalue())
+        if fayllar:
+            juft = [(f.name, f.getvalue()) for f in fayllar]
+            natija = ekg_fayllardan_oqish(juft, sampling_rate_hint=sampling_rate)
+            signal = natija.get("signal")
+            xabar = str(natija.get("xabar") or "")
+            if natija.get("sampling_rate"):
+                sampling_rate = float(natija["sampling_rate"])
         elif bemor.get("namuna_ekg"):
             signal = namuna_ekg_signal(sampling_rate)
             xabar = "Sintetik namuna EKG (haqiqiy yozuv emas)."
@@ -525,6 +593,7 @@ def asosiy() -> None:
             st.session_state.ekg_signal,
             float(st.session_state.sampling_rate),
             st.session_state.ekg_xabar,
+            st.session_state.agent_holat,
         )
     with col3:
         _ustun3_xulosa(st.session_state.agent_holat, st.session_state.bemor_tahlil)

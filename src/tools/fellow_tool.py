@@ -39,10 +39,15 @@ def dastlabki_tashxis(
         qismlar.append(f"Lab: {lab.get('xabar')}")
     if ecg and ecg.get("ok"):
         qismlar.append(
-            f"EKG: HR={ecg.get('yurak_chastotasi_bpm')} bpm, QRS={ecg.get('qrs_ms')} ms, "
+            f"EKG EP: HR={ecg.get('yurak_chastotasi_bpm')} bpm, QRS={ecg.get('qrs_ms')} ms, "
             f"PR={ecg.get('pr_ms')} ms, QT={ecg.get('qt_ms')} ms, "
-            f"HRV_SDNN={ecg.get('hrv_sdnn_ms')}, HRV_RMSSD={ecg.get('hrv_rmssd_ms')}."
+            f"QTc_Bazett={ecg.get('qtc_bazett_ms')} ms, "
+            f"HRV_SDNN={ecg.get('hrv_sdnn_ms')}, HRV_RMSSD={ecg.get('hrv_rmssd_ms')}, "
+            f"tasma={ecg.get('tasma')}."
         )
+        tech = ecg.get("technician")
+        if isinstance(tech, dict):
+            qismlar.append(f"EKG technician sifat={tech.get('sifat')}: {tech.get('xabar')}")
     elif ecg:
         qismlar.append(f"EKG: {ecg.get('xabar')}")
     if echo:
