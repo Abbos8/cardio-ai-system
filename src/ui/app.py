@@ -54,6 +54,7 @@ from agents.chief_agent import ChiefCardiologist
 from rag.medical_rag import MedicalRAG
 from tools.ecg_tool import TASMA_NOMLARI, namuna_12_tasma_ekg, tozalangan_matritsa, tasmalarni_tozala
 from tools.ekg_yuklash import ekg_fayllardan_oqish
+from tools.echo_yuklash import echo_fayldan_kadrlar
 from tools.lab_tool import process_lab
 
 # Namuna EKG: kamida 2 s (ecg_tool talabi)
@@ -322,7 +323,13 @@ def _ustun1_forma() -> Tuple[Dict[str, Any], Any, float, bool]:
         height=70,
         help="Yoki: aspirin 75 mg od",
     )
-    echo_fayl = st.text_input("Echo/DICOM yo‘li (ixtiyoriy)", value="")
+    echo_fayl = st.text_input("Echo/DICOM yo‘li (ixtiyoriy, disk)", value="")
+    echo_yuk = st.file_uploader(
+        "Echo (DICOM/video/rasm, bir nechta)",
+        type=["dcm", "dicom", "mp4", "avi", "mov", "png", "jpg", "jpeg"],
+        accept_multiple_files=True,
+        help="11 ko‘rinish: A2C A4C A3C PLAX PSAX-* subcostal SSN. Tashxis emas.",
+    )
     tahlil_yuqori = st.button("Tahlil qilish", type="primary", width="stretch")
     st.subheader("Laboratoriya")
     st.caption("Qiymatlar orientir; CSV/PDF yuklansa forma ustidan yoziladi. Tashxis emas.")
@@ -357,6 +364,8 @@ def _ustun1_forma() -> Tuple[Dict[str, Any], Any, float, bool]:
     if lab_fayl is not None:
         bemor["lab_fayl_bayt"] = lab_fayl.getvalue()
         bemor["lab_fayl_nomi"] = lab_fayl.name
+    if echo_yuk:
+        bemor["echo_fayllar"] = [{"nom": f.name, "bayt": f.getvalue()} for f in echo_yuk]
     return bemor, fayllar, float(sampling_rate), tahlil
 
 
@@ -380,6 +389,7 @@ def _ustun2_ekg(
     st.subheader("EKG signali")
     if signal is None:
         st.info("CSV/WFDB yuklang yoki namuna EKG ni belgilang.")
+        _echo_kadr_panel(agent_holat, st.session_state.get("bemor_tahlil"))
         return
     st.caption(xabar)
     tasma = st.selectbox("Ko‘rsatish", ["12 tasma"] + TASMA_NOMLARI, index=2)
@@ -418,6 +428,49 @@ def _ustun2_ekg(
     )
     st.pyplot(fig, width="stretch")
     plt.close(fig)
+    _echo_kadr_panel(agent_holat, st.session_state.get("bemor_tahlil"))
+
+
+def _echo_kadr_panel(agent_holat: Optional[Dict[str, Any]], bemor: Optional[Dict[str, Any]]) -> None:
+    """Echo kadrlarini yorliq bilan ko‘rsatadi (tashxis emas).
+
+    Args:
+        agent_holat: echo_natija.
+        bemor: Yuklangan echo_fayllar.
+
+    Returns:
+        None.
+    """
+    echo = (agent_holat or {}).get("echo_natija") or {}
+    fayllar = (bemor or {}).get("echo_fayllar") or []
+    yol = (bemor or {}).get("echo_fayl")
+    if not echo and not fayllar and not yol:
+        return
+    st.subheader("Echo (11 ko‘rinish)")
+    if echo:
+        st.caption((echo.get("xabar") or "") + " Tashxis emas.")
+        st.write("Topilgan: " + ", ".join(echo.get("korinishlar") or []))
+    yozuv_yorliq = {z.get("fayl"): z for z in (echo.get("yozuvlar") or [])}
+    ko‘rsatilgan = 0
+    for element in fayllar:
+        nom = element.get("nom")
+        bayt = element.get("bayt")
+        if not bayt:
+            continue
+        oq = echo_fayldan_kadrlar(nom, bayt)
+        if not oq.get("ok") or not oq.get("kadrlar"):
+            continue
+        yor = yozuv_yorliq.get(nom) or {}
+        st.caption(
+            f"{nom}: {yor.get('asosiy') or '—'} "
+            f"({yor.get('manba')}, p={yor.get('ehtimol')})"
+        )
+        st.image(oq["kadrlar"][0], caption="Birinchi kadr (ko‘rish)", width="stretch")
+        ko‘rsatilgan += 1
+        if ko‘rsatilgan >= 4:
+            break
+    if yol and ko‘rsatilgan == 0:
+        st.caption(f"Disk yo‘li: {yol}")
 
 
 def _ustun3_xulosa(agent_holat: Optional[Dict[str, Any]], bemor: Optional[Dict[str, Any]]) -> None:
@@ -497,13 +550,22 @@ def _ustun3_xulosa(agent_holat: Optional[Dict[str, Any]], bemor: Optional[Dict[s
                 for e in ep_n.get("eslatmalar") or []:
                     st.markdown(f"- {e}")
             st.caption("Qiymatlar taxminiy; tashxis emas.")
+    echo_n = agent_holat.get("echo_natija") or {}
+    if echo_n:
+        with st.expander("Echo technician (11 ko‘rinish)"):
+            st.write(echo_n.get("xabar") or "")
+            st.write(echo_n.get("yozuvlar") or echo_n.get("korinishlar"))
+            yet = echo_n.get("yetishmagan_standart") or []
+            if yet:
+                st.caption("Hali yo‘q (11 dan): " + ", ".join(yet))
     with st.expander("Vizual tekshirish paneli"):
         viz = agent_holat.get("vizual") or {}
         st.write(f"EKG tozalangan: {viz.get('ekg_tozalangan')} | sifat: {viz.get('ekg_sifat')}")
         st.write(f"Technician: {viz.get('ekg_xabar')}")
         st.write(f"EP: {viz.get('ekg_ep')}")
+        st.write(f"Echo: ok={viz.get('echo_ok')} | {viz.get('echo_korinishlar')} | model={viz.get('echo_model')} | kadr={viz.get('echo_kadrlar')}")
         st.write(f"LV maska tayyor: {viz.get('lv_maska')}")
-        st.caption("Echo proyeksiyalari va LV maskalari model ulangach shu yerda ko‘rinadi.")
+        st.caption("LV maskalari 8-bosqichda shu yerda ko‘rinadi.")
 
 
 def asosiy() -> None:

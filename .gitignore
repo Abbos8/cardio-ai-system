@@ -30,6 +30,7 @@ data/raw/
 data/processed/
 *.dcm
 *.dicom
+!src/tools/namuna_echo_*.dcm
 
 # OS
 .DS_Store

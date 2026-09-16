@@ -9,3 +9,6 @@ transformers
 beautifulsoup4
 python-dotenv
 pypdf
+pydicom
+opencv-python-headless
+scikit-learn

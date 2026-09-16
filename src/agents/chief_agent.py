@@ -22,7 +22,7 @@ from llm.client import llm_json
 from rag.medical_rag import MedicalRAG
 from tools.ecg_tool import ecg_technician_tahlil, electrophysiologist_tahlil
 from tools.echo_segmenter import segment_lv
-from tools.echo_tool import classify_echo_views
+from tools.echo_tool import classify_echo_views, echo_bormi
 from tools.fellow_tool import dastlabki_tashxis
 from tools.lab_tool import process_lab
 
@@ -101,6 +101,28 @@ def _son(qiymat: Any) -> Optional[float]:
         return float(qiymat)
     except (TypeError, ValueError):
         return None
+
+
+def _echo_qisqacha(natija: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+    """Graf holatida katta kadr massivlarini saqlamaslik.
+
+    Args:
+        natija: classify_echo_views javobi.
+
+    Returns:
+        Preview-siz qisqa lug‘at.
+    """
+    if not natija:
+        return {}
+    return {
+        "ok": natija.get("ok"),
+        "xabar": natija.get("xabar"),
+        "korinishlar": natija.get("korinishlar") or [],
+        "yozuvlar": natija.get("yozuvlar") or [],
+        "kadrlar_soni": natija.get("kadrlar_soni"),
+        "model": natija.get("model"),
+        "yetishmagan_standart": natija.get("yetishmagan_standart") or [],
+    }
 
 
 def _ekg_qisqacha(natija: Optional[Dict[str, Any]]) -> Dict[str, Any]:
@@ -255,6 +277,15 @@ def _oddiy_reja(bemor: Dict[str, Any]) -> List[Dict[str, Any]]:
                 "holat": "pending",
             }
         )
+    if echo_bormi(bemor):
+        qadamlar.append(
+            {
+                "id": "p-echo",
+                "vosita": "echo_technician",
+                "tavsif": "DICOM/video 11 ko‘rinish",
+                "holat": "pending",
+            }
+        )
     qadamlar.append(
         {"id": "p4", "vosita": "cardiology_fellow", "tavsif": "Dastlabki xulosa", "holat": "pending"}
     )
@@ -320,7 +351,8 @@ class ChiefCardiologist:
         xom = (
             f"yosh={bemor.get('yosh')} jins={bemor.get('jins')} "
             f"shikoyat={bemor.get('shikoyatlar')} anamnez={bemor.get('anamnez')} "
-            f"lab={bemor.get('laboratoriya')} ekg_bor={_ekg_signal_bormi(bemor)}"
+            f"lab={bemor.get('laboratoriya')} ekg_bor={_ekg_signal_bormi(bemor)} "
+            f"echo_bor={echo_bormi(bemor)}"
         )
         tarix = list(holat.get("qadam_tarixi") or [])
         tarix.append("qabul_qilish: bemor yozuvi o‘qildi")
@@ -365,7 +397,7 @@ class ChiefCardiologist:
         lab = bemor.get("laboratoriya") or {}
         trop = _son(lab.get("troponin_i") or lab.get("troponin"))
         ntp = _son(lab.get("nt_probnp"))
-        echo_bor = bool(bemor.get("echo_fayl") or bemor.get("dicom") or bemor.get("echo_kadrlar"))
+        echo_bor = echo_bormi(bemor)
         belgilar = []
         if trop is not None and trop >= 34:
             belgilar.append("yuqori troponin")
@@ -517,7 +549,14 @@ class ChiefCardiologist:
                     yangi["vizual"] = viz
                     tarix.append("electrophysiologist: P/QRS/T va intervallar")
             elif vosita == "echo_technician":
-                yangi["echo_natija"] = classify_echo_views(bemor)
+                toliq = classify_echo_views(bemor)
+                yangi["echo_natija"] = _echo_qisqacha(toliq)
+                viz = dict(holat.get("vizual") or {})
+                viz["echo_ok"] = bool(toliq.get("ok"))
+                viz["echo_korinishlar"] = toliq.get("korinishlar")
+                viz["echo_model"] = toliq.get("model")
+                viz["echo_kadrlar"] = toliq.get("kadrlar_soni")
+                yangi["vizual"] = viz
             elif vosita == "echo_segmenter":
                 yangi["echo_mask"] = segment_lv(bemor=bemor)
                 viz = dict(holat.get("vizual") or {})
@@ -717,7 +756,11 @@ class ChiefCardiologist:
                 qatorlar.append(f"EKG: {ecg.get('xabar')}")
         echo = holat.get("echo_natija")
         if echo:
-            qatorlar.append(f"Echo: {echo.get('xabar')}")
+            qatorlar.append(
+                f"Echo technician: ko‘rinishlar={echo.get('korinishlar')} "
+                f"model={echo.get('model')} kadr={echo.get('kadrlar_soni')}. "
+                f"{echo.get('xabar')}"
+            )
         mask = holat.get("echo_mask")
         if mask:
             qatorlar.append(f"LV segmentatsiya: {mask.get('xabar')}")

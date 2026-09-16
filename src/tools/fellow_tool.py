@@ -51,7 +51,10 @@ def dastlabki_tashxis(
     elif ecg:
         qismlar.append(f"EKG: {ecg.get('xabar')}")
     if echo:
-        qismlar.append(f"Echo tasnif: {echo.get('xabar')} | ko‘rinishlar={echo.get('korinishlar')}")
+        qismlar.append(
+            f"Echo technician: ko‘rinishlar={echo.get('korinishlar')} "
+            f"model={echo.get('model')} | {echo.get('xabar')}"
+        )
     if segment:
         qismlar.append(f"LV segmentatsiya: {segment.get('xabar')}")
     if rag_dalillar:

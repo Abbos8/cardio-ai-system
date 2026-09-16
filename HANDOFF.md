@@ -10,8 +10,8 @@ Tizim shifokor o‘rnini bosmaydi. Yakuniy qaror shifokorga tegishli.
 
 | Maydon | Qiymat |
 |---|---|
-| Keyingi ish | **7-bosqich** — Echo technician (11 ko‘rinish, DICOM); 2-bosqich DeepSeek ham ochiq |
-| Oxirgi yopilgan | **6-bosqich** — EKG texnik + EP (CSV/WFDB, P/QRS/T, UI ajratish) |
+| Keyingi ish | **8-bosqich** — Echo segmenter (LV maska); 2-bosqich DeepSeek ham ochiq |
+| Oxirgi yopilgan | **7-bosqich** — Echo technician (DICOM/video, 11 ko‘rinish) |
 | GitHub | https://github.com/Abbos8/cardio-ai-system (private, `main`) |
 | UI | `./ishga_tushir.sh` → http://127.0.0.1:8501 |
 
@@ -50,7 +50,7 @@ Har bosqich: **nima**, **qayerda**, **tayyor deb hisoblash**, **status**.
 | 4 | Bilimlar bazasi (Mayo/NHS/MedlinePlus/ESC) | **qilindi** (Mayo 403 — qo‘lda) |
 | 5 | Laboratoriya vositasini chuqurlashtirish | **qilindi** |
 | 6 | EKG texnik + EP sifati | **qilindi** |
-| 7 | Echo technician (11 ko‘rinish, DICOM) | ochiq |
+| 7 | Echo technician (11 ko‘rinish, DICOM) | **qilindi** |
 | 8 | Echo segmenter (LV maska) | ochiq |
 | 9 | Cardiology fellow (multimodal) | ochiq |
 | 10 | MDT: MedGemma + Qwen2.5-VL | ochiq |
@@ -145,13 +145,17 @@ Har bosqich: **nima**, **qayerda**, **tayyor deb hisoblash**, **status**.
 
 ---
 
-### 7. Echo technician (11 ko‘rinish, DICOM) — ochiq
+### 7. Echo technician (11 ko‘rinish, DICOM) — qilindi
 
-**Nima:** hozir fayl-nomi heuristic (`src/tools/echo_tool.py`). UI da yo‘l matni.
+**Nima:** DICOM/video/rasm kadr + 11 yorliq (A2C, A4C, A3C, PLAX, PSAX-*, subcostal, SSN). Fayl-nomi heuristic asosiy emas.
 
-**Qilish:** `pydicom`/video kadr; A2C, A4C, A3C, PLAX, PSAX-*, subcostal, SSN; UI da fayl yuklash.
+**Qayerda:** `src/tools/echo_tool.py`, `echo_yuklash.py`, `echo_view_model.py`; UI yuklovchi; namuna `src/tools/namuna_echo_a4c.dcm`, `namuna_echo_plax.dcm`. Paketlar: `pydicom`, `opencv-python-headless`, `scikit-learn`.
 
-**Tayyor:** DICOM/videodan ko‘rinish yorlig‘i (model), heuristic emas.
+**Tasnif:** avval DICOM SeriesDescription/Protocol; bo‘lmasa geometrik model (sintetik shablonlarda o‘qitilgan). `manba=dicom_teg|geometrik_model`.
+
+**Tekshiruv:** namuna A4C DICOM → A4C (`dicom_teg+geometrik_model`); A4C+PLAX → ikkala yorliq; agent rejasida `echo_technician`.
+
+**Cheklov:** geometrik model demo (klinik tarmoq emas); video tegsizda xato yorliq bo‘lishi mumkin. Tashxis emas.
 
 ---
 
@@ -255,4 +259,8 @@ Fayllar: `src/agents/chief_agent.py`, `src/agents/mdt.py`, `src/rag/medical_rag.
 - Technician vs EP: tozalash/sifat va P/QRS/T + PR/QRS/QT/QTc/HRV alohida.
 - CSV (sarlavha, Hz izohi, time) va WFDB 16/212 o‘qish.
 - UI: tozalangan 12 tasma, P/R/T belgilar, ikki expander.
-- Namuna: `src/tools/namuna_ekg.csv` / `.hea` / `.dat`. Keyingi: **7** (echo) yoki **2** (DeepSeek).
+### 2026-09-16 (7-bosqich)
+
+- Echo DICOM/video/rasm o‘qish; 11 ko‘rinish (teg + geometrik model).
+- UI: fayl yuklash, kadr + yorliq, expander.
+- Namuna: `namuna_echo_a4c.dcm`, `namuna_echo_plax.dcm`. Keyingi: **8** (LV segmenter) yoki **2** (DeepSeek).
