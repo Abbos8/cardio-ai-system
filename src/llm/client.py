@@ -10,7 +10,16 @@ import json
 import os
 import urllib.error
 import urllib.request
+from pathlib import Path
 from typing import Any, Dict, List, Optional
+
+try:
+    from dotenv import load_dotenv
+
+    # Kalit venv ichida emas — loyiha ildizidagi .env (gitga kirmaydi)
+    load_dotenv(Path(__file__).resolve().parents[2] / ".env")
+except ImportError:
+    pass
 
 
 def _sozlama() -> Dict[str, str]:

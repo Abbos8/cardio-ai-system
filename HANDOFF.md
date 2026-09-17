@@ -10,7 +10,7 @@ Tizim shifokor o‘rnini bosmaydi. Yakuniy qaror shifokorga tegishli.
 
 | Maydon | Qiymat |
 |---|---|
-| Keyingi ish | **2-bosqich** — DeepSeek-R1 ulash (API/32B tasdiqlash) |
+| Keyingi ish | **2-bosqich** — DeepSeek chaqiruvini tasdiqlash (kalit `.env` da, qayta so‘ralmasin) |
 | Oxirgi yopilgan | **14-bosqich** — xavfsizlik / klinik tayyorgarlik (demo) |
 | GitHub | https://github.com/Abbos8/cardio-ai-system (private, `main`) |
 | UI | `./ishga_tushir.sh` → http://127.0.0.1:8501 |
@@ -35,7 +35,7 @@ cd cardio-ai-system
 Smoke-test: `PYTHONPATH=src python3 -c "from agents.chief_agent import ChiefCardiologist"`
 Barqarorlik: `PYTHONPATH=src python -m unittest tests.test_barqarorlik -v`
 
-Kalitlarni faqat `.env` ga yozing; chatga va gitga tushirmang.
+Kalitlarni faqat loyiha ildizidagi `.env` ga yozing (`venv/` emas); chatga va gitga tushirmang. `src/llm/client.py` shu `.env` ni o‘qiydi.
 
 ---
 
@@ -46,7 +46,7 @@ Har bosqich: **nima**, **qayerda**, **tayyor deb hisoblash**, **status**.
 | # | Bosqich | Status |
 |---|---|---|
 | 1 | Ishga tushirish muhiti | **qilindi** (ish kompyuter) |
-| 2 | DeepSeek-R1 ulash | ochiq — `.env` bor, API/32B tasdiqlanmagan |
+| 2 | DeepSeek-R1 ulash | ochiq — `.env` da kalit bor; jonli `manba=llm` hali tasdiqlanmagan |
 | 3 | BioClinicalBERT + FAISS | **qilindi** |
 | 4 | Bilimlar bazasi (Mayo/NHS/MedlinePlus/ESC) | **qilindi** (Mayo 403 — qo‘lda) |
 | 5 | Laboratoriya vositasini chuqurlashtirish | **qilindi** |
@@ -78,11 +78,13 @@ Har bosqich: **nima**, **qayerda**, **tayyor deb hisoblash**, **status**.
 
 **Nima:** bosh kardiolog murakkablik, reja `P`, stepwise `S/A`, fellow/xulosa uchun R1 (yoki Distill-Qwen-32B). Kalitsiz — qoida/shablon.
 
-**Qayerda:** `.env` (`DEEPSEEK_API_KEY`, `DEEPSEEK_BASE_URL`, `DEEPSEEK_MODEL`); `src/llm/client.py`.
+**Qayerda:** loyiha `.env` (`DEEPSEEK_API_KEY`, `DEEPSEEK_BASE_URL`, `DEEPSEEK_MODEL`); `src/llm/client.py` (`load_dotenv`). Kalit **`venv/` da emas**.
 
-**Qilish:** kalit yoki mahalliy vLLM; bitta tahlil qilib `manba=llm` va murakkablik JSON kelishini ko‘rish.
+**Qilish:** kalitni qayta so‘ramaslik — `.env` to‘ldirilgan (2026-09-14). Bitta tahlil: `llm_mavjud()==True`, javob bor, murakkablik JSON / fellow `manba=llm`. Kalitni chatga yozmang.
 
 **Tayyor:** API/lokal javob bor; kalitsiz ham agent to‘xtamaydi (zaxira saqlansin).
+
+**Deploy (reja, hali kod yo‘q):** demo — `./ishga_tushir.sh`; bo‘lim — LAN + VPN/HTTPS; barqaror — Docker; tashqi ochish — VM + login (auth hali yo‘q). Streamlit Cloud / Spaces — haqiqiy bemor uchun yo‘q. VLM — alohida GPU/vLLM. **Klinik production emas.**
 
 ---
 
@@ -337,3 +339,9 @@ Fayllar: `src/agents/chief_agent.py`, `src/agents/mdt.py`, `src/rag/medical_rag.
 - Audit: model nomlari + C manba id; `data/audit/*.json` (git emas).
 - UI: sticky ogohlantirish, audit paneli, xulosada model/C.
 - 17 test OK. **Klinik production emas.** Keyingi: **2** (DeepSeek).
+
+### 2026-09-17 (kech, 2-bosqich qisman)
+
+- Kalit loyiha `.env` da; `venv` faqat paketlar. Client endi `.env` ni o‘zi yuklaydi.
+- Jonli DeepSeek chaqiruvi (`manba=llm`) hali yopilmagan. Kalitni qayta so‘ramang.
+- Deploy: LAN/Docker/VM muhokama; kod/Dockerfile yo‘q. Keyingi: **2** tasdiqlash.
