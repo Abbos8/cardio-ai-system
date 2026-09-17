@@ -28,6 +28,10 @@ models/
 # Xom ma’lumot (seed kodda; katta DICOM/PDF gitga kirmasin)
 data/raw/
 data/processed/
+data/audit/
+data/uploads/
+*.log
+logs/
 *.dcm
 *.dicom
 !src/tools/namuna_echo_*.dcm

@@ -25,6 +25,7 @@ from tools.echo_segmenter import segment_lv
 from tools.echo_tool import classify_echo_views, echo_bormi
 from tools.fellow_tool import dastlabki_tashxis
 from tools.lab_tool import process_lab
+from xavfsizlik.audit import KLINIK_OGOHLANTIRISH, audit_saqla, audit_yig
 
 Amal = Literal["CONTINUE", "STOP"]
 MAX_QADAM = 16
@@ -64,6 +65,7 @@ class ChiefHolat(TypedDict, total=False):
     rejali_tugun: str
     qadam_tarixi: List[str]
     xulosa: str
+    audit: Dict[str, Any]
 
 
 def _bemorni_normallashtir(malumot: Any) -> Dict[str, Any]:
@@ -861,10 +863,21 @@ class ChiefCardiologist:
                 f"Fellow (manba={fellow.get('manba')} dalillar={fellow.get('dalillar')}): "
                 + str(fellow.get("matn") or "")[:1200]
             )
+        yozuv = audit_yig({**holat})
         if holat.get("rag_dalillar"):
-            qatorlar.append("CardiacRAG C (tekshirish uchun):")
+            qatorlar.append("CardiacRAG C (tekshirish uchun, manba: " + ", ".join(yozuv.get("C") or []) + "):")
             for i, matn in enumerate(holat["rag_dalillar"], start=1):
                 qatorlar.append(f"  {i}. {matn[:400]}")
+        else:
+            qatorlar.append("CardiacRAG C: yo‘q (oddiy reja yoki RAG o‘tkazildi).")
+        qatorlar.append(
+            "Modellar: chat={chat}, fellow={fellow}, MedGemma={med}, Qwen={qwen}.".format(
+                chat=(yozuv.get("modellar") or {}).get("chat"),
+                fellow=yozuv.get("fellow_model"),
+                med=yozuv.get("mdt_medgemma_model"),
+                qwen=yozuv.get("mdt_qwen_model"),
+            )
+        )
         mdt = holat.get("mdt_natija")
         if mdt:
             qatorlar.append(
@@ -875,16 +888,15 @@ class ChiefCardiologist:
             )
         if holat.get("umumlashtirish"):
             qatorlar.append("Stepwise S: " + str(holat.get("umumlashtirish")))
-        qatorlar.append(
-            "Bu tizim shifokor o‘rnini bosmaydi. Yakuniy qaror klinik ko‘rik, "
-            "to‘liq EKG, laboratoriya va tasvir asosida shifokorga tegishli."
-        )
+        qatorlar.append(KLINIK_OGOHLANTIRISH)
         tarix = list(holat.get("qadam_tarixi") or [])
         tarix.append("xulosa_tayyorlash: STOP")
+        audit_saqla(yozuv)
         return {
             "xulosa": "\n".join(q for q in qatorlar if q),
             "amal": "STOP",
             "qadam_tarixi": tarix,
+            "audit": yozuv,
         }
 
     def _keyingi_amal_reja(self, holat: ChiefHolat) -> str:

@@ -37,6 +37,7 @@ def _kalitlarni_ol() -> None:
         "FELLOW_VISION_MODEL",
     ):
         os.environ.pop(nom, None)
+    os.environ["AUDIT_YOZ"] = "0"
 
 
 _kalitlarni_ol()

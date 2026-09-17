@@ -79,6 +79,43 @@ def llm_mavjud() -> bool:
     return bool(_sozlama()["api_key"])
 
 
+def _host_qisqa(url: str) -> str:
+    """Base URL dan hostni oladi (kalit/so‘rov parametri yo‘q).
+
+    Args:
+        url: OpenAI-mos baza.
+
+    Returns:
+        host yoki bo‘sh satr.
+    """
+    if not url:
+        return ""
+    qism = url.split("://", 1)[-1]
+    return qism.split("/", 1)[0].split("@")[-1]
+
+
+def model_qisqacha() -> Dict[str, Any]:
+    """Audit va UI uchun model nomlari (API kalitsiz).
+
+    Returns:
+        chat/fellow/VLM nomlari va ulanish holati. Tashxis emas.
+    """
+    soz = _sozlama()
+    ulangan = bool(soz["api_key"])
+    med = vlm_sozlama("medgemma")
+    qwen = vlm_sozlama("qwen_vl")
+    chat = soz["model"] if ulangan else "shablon"
+    vision = (soz.get("vision_model") or soz["model"]) if ulangan else "shablon"
+    return {
+        "llm_ulangan": ulangan,
+        "chat": chat,
+        "fellow_vision": vision,
+        "medgemma": (med or {}).get("model") if med else "shablon",
+        "qwen_vl": (qwen or {}).get("model") if qwen else "shablon",
+        "chat_host": _host_qisqa(soz["base_url"]) if ulangan else "",
+    }
+
+
 def llm_chat(
     xabarlar: List[Dict[str, Any]],
     temperatura: float = 0.2,

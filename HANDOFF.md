@@ -6,12 +6,12 @@ Tizim shifokor o‘rnini bosmaydi. Yakuniy qaror shifokorga tegishli.
 
 ---
 
-## Hozir qayerdamiz (2026-09-16)
+## Hozir qayerdamiz (2026-09-17)
 
 | Maydon | Qiymat |
 |---|---|
-| Keyingi ish | **14-bosqich** — xavfsizlik / klinik tayyorgarlik; 2-bosqich DeepSeek ham ochiq |
-| Oxirgi yopilgan | **13-bosqich** — test va barqarorlik |
+| Keyingi ish | **2-bosqich** — DeepSeek-R1 ulash (API/32B tasdiqlash) |
+| Oxirgi yopilgan | **14-bosqich** — xavfsizlik / klinik tayyorgarlik (demo) |
 | GitHub | https://github.com/Abbos8/cardio-ai-system (private, `main`) |
 | UI | `./ishga_tushir.sh` → http://127.0.0.1:8501 |
 
@@ -58,7 +58,7 @@ Har bosqich: **nima**, **qayerda**, **tayyor deb hisoblash**, **status**.
 | 11 | Vizual tekshirish paneli | **qilindi** |
 | 12 | UI ni to‘liq oqimga bog‘lash | **qilindi** |
 | 13 | Test va barqarorlik | **qilindi** |
-| 14 | Xavfsizlik / klinik tayyorgarlik | ochiq |
+| 14 | Xavfsizlik / klinik tayyorgarlik | **qilindi** (demo; production emas) |
 
 ---
 
@@ -238,11 +238,21 @@ Har bosqich: **nima**, **qayerda**, **tayyor deb hisoblash**, **status**.
 
 ---
 
-### 14. Xavfsizlik va klinik foydalanishga tayyorlash — ochiq
+### 14. Xavfsizlik va klinik foydalanishga tayyorlash — qilindi
 
-**Qilish:** PII gitda yo‘q; audit (qaysi model, qaysi C); ogohlantirish har ekranda. Keyin alohida: auth, log, klinik validatsiya.
+**Nima:** PII/sir gitda yo‘q; har tahlilda audit (qaysi model, qaysi CardiacRAG C); ogohlantirish har ekranda.
 
-**Tayyor:** demo xavfsiz; klinik production emas — shu yozuv saqlansin.
+**Qayerda:**
+- `src/xavfsizlik/audit.py`, `himoya.py`; UI `_klinik_ogohlantirish`, `_audit_paneli`
+- `.gitignore`: `data/audit/`, `data/uploads/`, `logs/`
+- `.env.example`: `AUDIT_YOZ`, `AUDIT_DIR` (kalit yozilmaydi)
+- Test: `tests/test_xavfsizlik.py`
+
+**Format:** audit JSON — model nomlari, C manba id (`medlineplus/...` yoki `seed/cardiology`), fellow/MDT `manba`. EKG signal, overlay bayt, API kalit, bemor ismi yo‘q.
+
+**Tekshiruv:** 7 xavfsizlik + 10 barqarorlik test OK. Git track da `.env`/`data/raw` yo‘q. Kalitsiz `chat=shablon`. UI yuqori sticky + pastki caption + xulosa/tavsiya.
+
+**Cheklov:** **klinik production emas.** Auth, markaziy log, klinik validatsiya keyingi ish (alohida). Tashxis emas.
 
 ---
 
@@ -320,3 +330,10 @@ Fayllar: `src/agents/chief_agent.py`, `src/agents/mdt.py`, `src/rag/medical_rag.
 
 - `tests/test_barqarorlik.py`: lab/EKG/echo/bo‘sh/hammasi, LangGraph limiti, hashing RAG, shablon MDT.
 - 10 testdan o‘tdi, STOP + ehtiyotkor xulosa. Keyingi: **14** (xavfsizlik) yoki **2** (DeepSeek).
+
+### 2026-09-17 (14-bosqich, ish)
+
+- Git: `.env`, `data/raw|processed|audit|uploads` track qilinmasin; kalit naqshi testi.
+- Audit: model nomlari + C manba id; `data/audit/*.json` (git emas).
+- UI: sticky ogohlantirish, audit paneli, xulosada model/C.
+- 17 test OK. **Klinik production emas.** Keyingi: **2** (DeepSeek).

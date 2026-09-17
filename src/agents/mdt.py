@@ -9,7 +9,7 @@ from __future__ import annotations
 import base64
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
-from llm.client import llm_chat, llm_json, vlm_sozlama
+from llm.client import llm_chat, llm_json, model_qisqacha, vlm_sozlama
 from tools.ecg_tool import ekg_qisqa_png
 
 MAX_RAUND = 3
@@ -479,6 +479,7 @@ def mdt_munozara(
             f"Konsensus={konsensus} ({konsensus_sabab}). "
             "Qo‘shimcha klinik tasdiq kerak. Tashxis emas."
         )
+    model = model_qisqacha()
     return {
         "ok": True,
         "raundlar": raundlar,
@@ -488,6 +489,8 @@ def mdt_munozara(
         "konsensus_sabab": konsensus_sabab,
         "medgemma_manba": med_manba,
         "qwen_manba": qwen_manba,
+        "medgemma_model": model.get("medgemma") if med_manba != "shablon" else "shablon",
+        "qwen_model": model.get("qwen_vl") if qwen_manba != "shablon" else "shablon",
         "still_id": viz.get("still_id") or [],
         "video_id": viz.get("video_id") or [],
         "yoq_dalillar": yoq,

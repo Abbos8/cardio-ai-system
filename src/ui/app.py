@@ -10,6 +10,7 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
+import html
 
 
 def _conda_numpy_aralashmasin() -> None:
@@ -52,13 +53,14 @@ if str(_SRC) not in sys.path:
     sys.path.insert(0, str(_SRC))
 
 from agents.chief_agent import ChiefCardiologist
-from llm.client import llm_mavjud, vlm_sozlama
+from llm.client import llm_mavjud, model_qisqacha, vlm_sozlama
 from rag.medical_rag import MedicalRAG
 from tools.ecg_tool import TASMA_NOMLARI, namuna_12_tasma_ekg, tozalangan_matritsa, tasmalarni_tozala
 from tools.ekg_yuklash import ekg_fayllardan_oqish
 from tools.echo_view_model import ECHO_KORINISHLAR
 from tools.echo_yuklash import echo_fayldan_kadrlar
 from tools.lab_tool import process_lab
+from xavfsizlik.audit import KLINIK_OGOHLANTIRISH, KLINIK_PRODUCTION
 
 # Namuna EKG: kamida 2 s (ecg_tool talabi)
 NAMUNA_SONIYA = 8.0
@@ -182,6 +184,61 @@ def _rejim_banner() -> None:
         "**Shablon rejimida.** DeepSeek/VLM kaliti yo‘q — murakkablik, reja, fellow va MDT "
         "qoida/shablon bilan ishlaydi, agent to‘xtamaydi. Tashxis emas."
     )
+
+
+def _klinik_ogohlantirish() -> None:
+    """Har sahifada yuqori ogohlantirish (sticky).
+
+    Returns:
+        None. Tashxis o‘rnini bosmaydi.
+    """
+    st.markdown(
+        """
+<style>
+.klinik-ogoh {
+  position: sticky; top: 0; z-index: 999;
+  background: #fff3cd; border: 1px solid #ffc107; color: #4a3800;
+  padding: 0.55rem 0.8rem; border-radius: 6px; margin-bottom: 0.6rem;
+  font-size: 0.92rem; line-height: 1.35;
+}
+</style>
+""",
+        unsafe_allow_html=True,
+    )
+    holat = "demo — klinik production emas" if not KLINIK_PRODUCTION else "production"
+    st.markdown(
+        f'<div class="klinik-ogoh">{html.escape(KLINIK_OGOHLANTIRISH)} ({holat})</div>',
+        unsafe_allow_html=True,
+    )
+
+
+def _audit_paneli(agent_holat: Optional[Dict[str, Any]]) -> None:
+    """Qaysi model va qaysi C ishlatilganini ko‘rsatadi.
+
+    Args:
+        agent_holat: run() natijasi.
+
+    Returns:
+        None. Kalit va PII yo‘q.
+    """
+    st.subheader("Audit (model va C)")
+    model = model_qisqacha()
+    st.caption(
+        f"chat={model.get('chat')} | fellow_vision={model.get('fellow_vision')} | "
+        f"MedGemma={model.get('medgemma')} | Qwen={model.get('qwen_vl')} | "
+        f"LLM ulangan={model.get('llm_ulangan')}"
+    )
+    yozuv = (agent_holat or {}).get("audit") or {}
+    if not yozuv:
+        st.info("Tahlildan keyin shu yerga model va CardiacRAG C manbalari yoziladi.")
+        return
+    st.write("C manbalari: " + (", ".join(yozuv.get("C") or []) or "yo‘q"))
+    st.write(
+        f"fellow={yozuv.get('fellow_manba')}/{yozuv.get('fellow_model')} | "
+        f"MDT MedGemma={yozuv.get('mdt_medgemma_manba')}/{yozuv.get('mdt_medgemma_model')} | "
+        f"Qwen={yozuv.get('mdt_qwen_manba')}/{yozuv.get('mdt_qwen_model')}"
+    )
+    st.caption("Audit JSON mahalliy `data/audit/` da (git emas). Kalit va EKG signal yozilmaydi.")
 
 
 def _oqim_bosqichlari(holat: Optional[Dict[str, Any]]) -> List[str]:
@@ -563,7 +620,7 @@ def ehtiyotkor_tavsiyalar(bemor: Dict[str, Any], agent_holat: Dict[str, Any]) ->
         Shifokor o‘rnini bosmaydigan qisqa bandlar.
     """
     tavsiya = [
-        "Bu tizim shifokor o‘rnini bosmaydi; yakuniy qaror klinik ko‘rikka tegishli.",
+        KLINIK_OGOHLANTIRISH,
         "O‘tkir ko‘krak og‘rig‘i, nafas qisishi yoki hushdan ketishda zudlik bilan shifokorga murojaat.",
     ]
     lab = (agent_holat.get("lab_natija") or {}).get("qiymatlar") or bemor.get("laboratoriya") or {}
@@ -941,7 +998,7 @@ def _ustun3_xulosa(agent_holat: Optional[Dict[str, Any]], bemor: Optional[Dict[s
     fellow_n = agent_holat.get("fellow_natija") or {}
     if fellow_n:
         with st.expander("Cardiology fellow (multimodal)"):
-            st.write(f"manba={fellow_n.get('manba')} | dalillar={fellow_n.get('dalillar')}")
+            st.write(f"manba={fellow_n.get('manba')} model={fellow_n.get('model')} | dalillar={fellow_n.get('dalillar')}")
             if fellow_n.get("yoq_dalillar"):
                 st.caption("Yo‘q (o‘ylab topilmagan): " + ", ".join(fellow_n.get("yoq_dalillar") or []))
             st.write(fellow_n.get("matn") or "")
@@ -971,6 +1028,7 @@ def asosiy() -> None:
         page_icon="🫀",
     )
     st.title("Kardiologik AI agent")
+    _klinik_ogohlantirish()
     _rejim_banner()
     rag_paket = _rag_ol()
     rag = _rag_obyekt(rag_paket)
@@ -979,7 +1037,7 @@ def asosiy() -> None:
         rag_paket = _rag_ol()
         rag = _rag_obyekt(rag_paket)
     _rag_banner(rag_paket)
-    st.caption("Klinik qaror qo‘llab-quvvatlash. Tashxis va davolash faqat shifokor zimmasida.")
+    st.caption(KLINIK_OGOHLANTIRISH)
 
     if "ekg_signal" not in st.session_state:
         st.session_state.ekg_signal = namuna_ekg_signal()
@@ -1069,6 +1127,7 @@ def asosiy() -> None:
         )
     with col3:
         _ustun3_xulosa(st.session_state.agent_holat, st.session_state.bemor_tahlil)
+        _audit_paneli(st.session_state.agent_holat)
 
     _vizual_tekshirish_paneli(
         st.session_state.agent_holat,
@@ -1076,6 +1135,7 @@ def asosiy() -> None:
         st.session_state.ekg_signal,
         float(st.session_state.sampling_rate),
     )
+    st.caption(KLINIK_OGOHLANTIRISH)
 
 
 asosiy()

@@ -9,7 +9,7 @@ from __future__ import annotations
 import base64
 from typing import Any, Dict, List, Optional, Tuple
 
-from llm.client import llm_chat, llm_vision_model
+from llm.client import llm_chat, llm_vision_model, model_qisqacha
 from tools.ecg_tool import ekg_qisqa_png
 
 
@@ -248,12 +248,17 @@ def dastlabki_tashxis(
         if javob:
             manba = "llm"
 
+    model_nom = "shablon"
+    if manba != "shablon":
+        qisqa = model_qisqacha()
+        model_nom = qisqa.get("fellow_vision") if manba == "llm_multimodal" else qisqa.get("chat")
     return {
         "ok": True,
         "matn": javob.strip() if javob else shablon,
         "manba": manba,
+        "model": model_nom,
         "dalillar": bor,
         "yoq_dalillar": yoq,
         "rasmlar": rasm_id,
-        "xabar": f"Fellow xulosa (manba={manba}). Tashxis emas.",
+        "xabar": f"Fellow xulosa (manba={manba}, model={model_nom}). Tashxis emas.",
     }
