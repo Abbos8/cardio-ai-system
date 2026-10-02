@@ -9,7 +9,7 @@ from __future__ import annotations
 import base64
 from typing import Any, Dict, List, Optional, Tuple
 
-from llm.client import llm_chat, llm_vision_model, model_qisqacha
+from llm.client import fellow_vision_sozlama, llm_chat, model_qisqacha
 from tools.ecg_tool import ekg_qisqa_png
 
 
@@ -229,13 +229,18 @@ def dastlabki_tashxis(
                     "image_url": {"url": _data_url(r["png"])},
                 }
             )
-        javob = llm_chat(
-            [
-                {"role": "system", "content": tizim},
-                {"role": "user", "content": qismlar},
-            ],
-            model=llm_vision_model(),
-        )
+        vision = fellow_vision_sozlama()
+        if vision:
+            javob = llm_chat(
+                [
+                    {"role": "system", "content": tizim},
+                    {"role": "user", "content": qismlar},
+                ],
+                model=vision["model"],
+                baza_url=vision["base_url"],
+                api_kalit=vision["api_key"],
+                timeout=120.0,
+            )
         if javob:
             manba = "llm_multimodal"
     if javob is None:

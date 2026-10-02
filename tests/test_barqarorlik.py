@@ -35,6 +35,8 @@ def _kalitlarni_ol() -> None:
         "MEDGEMMA_API_KEY",
         "QWEN_VL_API_KEY",
         "FELLOW_VISION_MODEL",
+        "FELLOW_VISION_BASE_URL",
+        "FELLOW_VISION_API_KEY",
     ):
         os.environ.pop(nom, None)
     os.environ["AUDIT_YOZ"] = "0"

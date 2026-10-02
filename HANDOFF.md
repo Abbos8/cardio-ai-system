@@ -6,14 +6,15 @@ Tizim shifokor o‘rnini bosmaydi. Yakuniy qaror shifokorga tegishli.
 
 ---
 
-## Hozir qayerdamiz (2026-09-17)
+## Hozir qayerdamiz (2026-10-02)
 
 | Maydon | Qiymat |
 |---|---|
-| Keyingi ish | **2-bosqich** — DeepSeek chaqiruvini tasdiqlash (kalit `.env` da, qayta so‘ralmasin) |
+| Keyingi ish | Fellow vision jonli javobi: OpenRouter `QWEN_VL_API_KEY` muddati o‘tgan (401). Yangi kalit `.env` da. DeepSeek tasdiqlash (2-bosqich) ochiq qoladi. |
 | Oxirgi yopilgan | **14-bosqich** — xavfsizlik / klinik tayyorgarlik (demo) |
 | GitHub | https://github.com/Abbos8/cardio-ai-system (private, `main`) |
 | UI | `./ishga_tushir.sh` → http://127.0.0.1:8501 |
+| Yo‘riqnoma | `YORIQNOMA.md` — noldan, butun loyiha |
 
 Bosqichni yopganda: pastdagi jadvalda statusni `qilindi` qiling, «Hozir qayerdamiz» ni yangilang, qisqa «Sessiya yozuvi» qo‘shing.
 
@@ -36,6 +37,8 @@ Smoke-test: `PYTHONPATH=src python3 -c "from agents.chief_agent import ChiefCard
 Barqarorlik: `PYTHONPATH=src python -m unittest tests.test_barqarorlik -v`
 
 Kalitlarni faqat loyiha ildizidagi `.env` ga yozing (`venv/` emas); chatga va gitga tushirmang. `src/llm/client.py` shu `.env` ni o‘qiydi.
+
+To‘liq foydalanish yo‘riqnomasi: `YORIQNOMA.md`.
 
 ---
 
@@ -178,13 +181,13 @@ Har bosqich: **nima**, **qayerda**, **tayyor deb hisoblash**, **status**.
 
 **Nima:** bitta fellow chaqirig‘ida lab token + EKG grafik PNG + echo kadr/LV overlay. Yo‘q modalitet o‘ylab topilmaydi.
 
-**Qayerda:** `src/tools/fellow_tool.py`; `llm_chat` multimodal content; `ekg_qisqa_png`; UI expander. `.env.example`: `FELLOW_VISION_MODEL`.
+**Qayerda:** `src/tools/fellow_tool.py`; `fellow_vision_sozlama` `src/llm/client.py`; `.env.example`: `FELLOW_VISION_MODEL`, `FELLOW_VISION_BASE_URL`, `FELLOW_VISION_API_KEY`.
 
-**Manba:** `llm_multimodal` (rasm+matn API) → `llm` (faqat matn) → `shablon`. Kalitsiz shablon.
+**Manba:** `llm_multimodal` (vision endpoint) → `llm` (faqat matn, DeepSeek) → `shablon`. Reasoner ga rasm yuborilmaydi. Vision URL/kalit bo‘sh bo‘lsa Qwen VL (`QWEN_VL_*`) dan olinadi.
 
-**Tekshiruv:** lab+EKG+A4C+LV → dalillar `lab,ecg,echo,lv_maska,ecg_grafik,lv_overlay`, rasmlar 2 ta; hech narsa yo‘qda echo/ecg `yoq_dalillar` da.
+**Tekshiruv:** lab+EKG+A4C+LV → dalillar `lab,ecg,echo,lv_maska,ecg_grafik,lv_overlay`, rasmlar 2 ta; hech narsa yo‘qda echo/ecg `yoq_dalillar` da. 2026-09-29 jonli chaqiruv: model va host to‘g‘ri, OpenRouter **401 kalit muddati o‘tgan**.
 
-**Cheklov:** DeepSeek-reasoner tasvirni qabul qilmasligi mumkin — zaxira matn/shablon. Tashxis emas.
+**Cheklov:** yangi `QWEN_VL_API_KEY` yoki `FELLOW_VISION_API_KEY` bo‘lmaguncha fellow rasmi shablon/matnga tushadi. Tashxis emas.
 
 ---
 
@@ -345,3 +348,13 @@ Fayllar: `src/agents/chief_agent.py`, `src/agents/mdt.py`, `src/rag/medical_rag.
 - Kalit loyiha `.env` da; `venv` faqat paketlar. Client endi `.env` ni o‘zi yuklaydi.
 - Jonli DeepSeek chaqiruvi (`manba=llm`) hali yopilmagan. Kalitni qayta so‘ramang.
 - Deploy: LAN/Docker/VM muhokama; kod/Dockerfile yo‘q. Keyingi: **2** tasdiqlash.
+
+### 2026-09-18
+
+- `YORIQNOMA.md`: noldan to‘liq yo‘riqnoma (UI, 6 bosqich, vositalar, RAG, VLM, `.env`, test, deploy).
+
+### 2026-10-02
+
+- Fellow rasmlari `FELLOW_VISION_MODEL` + `FELLOW_VISION_BASE_URL` orqali ketadi; `deepseek-reasoner` ga tasvir yuborilmaydi.
+- Model: `qwen/qwen-2.5-vl-72b-instruct`, host OpenRouter. Alohida kalit bo‘sh — `QWEN_VL_API_KEY`.
+- Jonli tekshiruv: 401, kalit muddati o‘tgan. `.env` gitga kirmaydi. Yangi kalitdan keyin `./ishga_tushir.sh`.

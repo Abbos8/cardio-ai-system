@@ -114,11 +114,11 @@ def model_qisqacha() -> Dict[str, Any]:
     med = vlm_sozlama("medgemma")
     qwen = vlm_sozlama("qwen_vl")
     chat = soz["model"] if ulangan else "shablon"
-    vision = (soz.get("vision_model") or soz["model"]) if ulangan else "shablon"
+    vision_soz = fellow_vision_sozlama()
     return {
         "llm_ulangan": ulangan,
         "chat": chat,
-        "fellow_vision": vision,
+        "fellow_vision": vision_soz["model"] if vision_soz else "shablon",
         "medgemma": (med or {}).get("model") if med else "shablon",
         "qwen_vl": (qwen or {}).get("model") if qwen else "shablon",
         "chat_host": _host_qisqa(soz["base_url"]) if ulangan else "",
@@ -174,21 +174,59 @@ def llm_chat(
         tanlovlar = yuk.get("choices") or []
         if not tanlovlar:
             return None
-        return (tanlovlar[0].get("message") or {}).get("content")
+        matn = (tanlovlar[0].get("message") or {}).get("content")
+        if isinstance(matn, list):
+            qismlar = []
+            for qism in matn:
+                if isinstance(qism, str):
+                    qismlar.append(qism)
+                elif isinstance(qism, dict):
+                    qismlar.append(str(qism.get("text") or ""))
+            matn = "\n".join(q for q in qismlar if q)
+        return matn if isinstance(matn, str) and matn.strip() else None
     except (urllib.error.URLError, TimeoutError, json.JSONDecodeError, KeyError, IndexError):
         return None
 
 
-def llm_vision_model() -> Optional[str]:
-    """Fellow multimodal chaqiriq uchun model nomini beradi.
+def fellow_vision_sozlama() -> Optional[Dict[str, str]]:
+    """Fellow EKG/echo rasmlari uchun vision endpointini yig‘adi.
+
+    ``FELLOW_VISION_MODEL`` kerak. ``deepseek-reasoner`` tasvir olmaydi.
+    Alohida kalit/URL bo‘lmasa, Qwen VL (OpenRouter) sozlamasidan olinadi.
 
     Returns:
-        Vision model yoki asosiy chat model (kalit bo‘lsa). Yo‘q bo‘lsa None.
+        base_url, api_key, model. Yo‘q yoki reasoner bo‘lsa None.
     """
-    soz = _sozlama()
-    if not soz["api_key"]:
+    model = (os.getenv("FELLOW_VISION_MODEL") or os.getenv("DEEPSEEK_VISION_MODEL") or "").strip()
+    if not model or "reasoner" in model.lower():
         return None
-    return soz.get("vision_model") or soz["model"]
+    baza = (os.getenv("FELLOW_VISION_BASE_URL") or "").strip().rstrip("/")
+    kalit = (os.getenv("FELLOW_VISION_API_KEY") or "").strip()
+    qwen_baza = (os.getenv("QWEN_VL_BASE_URL") or "").strip().rstrip("/")
+    qwen_kalit = (os.getenv("QWEN_VL_API_KEY") or "").strip()
+    qwen_model = (os.getenv("QWEN_VL_MODEL") or "").strip()
+    if not baza and qwen_baza and (model == qwen_model or "qwen" in model.lower()):
+        baza = qwen_baza
+    if not baza:
+        baza = _sozlama()["base_url"]
+    if not kalit:
+        if qwen_kalit and ("openrouter.ai" in baza or baza == qwen_baza):
+            kalit = qwen_kalit
+        else:
+            kalit = _sozlama()["api_key"]
+    if not baza or not kalit:
+        return None
+    return {"base_url": baza, "api_key": kalit, "model": model}
+
+
+def llm_vision_model() -> Optional[str]:
+    """Fellow multimodal chaqiriq uchun vision model nomini beradi.
+
+    Returns:
+        FELLOW_VISION_MODEL. Reasoner yoki sozlama yo‘q bo‘lsa None.
+    """
+    soz = fellow_vision_sozlama()
+    return soz["model"] if soz else None
 
 
 def llm_json(
