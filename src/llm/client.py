@@ -11,7 +11,7 @@ import os
 import urllib.error
 import urllib.request
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 try:
     from dotenv import load_dotenv
@@ -125,7 +125,96 @@ def model_qisqacha() -> Dict[str, Any]:
     }
 
 
-def llm_chat(
+def sorov_tanasi(
+    model: str,
+    xabarlar: List[Dict[str, Any]],
+    temperatura: float,
+    max_token: int,
+) -> Dict[str, Any]:
+    """OpenAI-mos chat tanasini yig‘adi.
+
+    DeepSeek-R1 (reasoner) temperature qabul qilmaydi; yuborilsa chaqiruv yiqiladi
+    va MDT sintezi shablonga tushadi.
+
+    Args:
+        model: Model nomi.
+        xabarlar: role/content.
+        temperatura: Reasoner dan boshqa modellar uchun.
+        max_token: Javob chegarasi. Reasoner da mulohaza ham shu limitdan ketadi.
+
+    Returns:
+        JSON tanasi. Kalit yo‘q.
+    """
+    tanasi: Dict[str, Any] = {
+        "model": model,
+        "messages": xabarlar,
+        "max_tokens": max_token,
+    }
+    if "reasoner" not in (model or "").lower():
+        tanasi["temperature"] = temperatura
+    return tanasi
+
+
+def xabar_matni(message: Dict[str, Any]) -> Tuple[str, str]:
+    """Chat javobidan yakuniy matn va reasoner izini ajratadi.
+
+    DeepSeek-R1 sintezni ``content`` ga, ichki izni ``reasoning_content`` ga yozadi.
+    Limit tugasa content bo‘sh qoladi — shu holda izning oxirgi abzasi sintez o‘rnini bosadi.
+
+    Args:
+        message: choices[0].message.
+
+    Returns:
+        (yakuniy matn, iz). Bo‘sh bo‘lishi mumkin. Tashxis emas.
+    """
+    def _matn(qiymat: Any) -> str:
+        if isinstance(qiymat, str):
+            return qiymat.strip()
+        if isinstance(qiymat, list):
+            qismlar = []
+            for qism in qiymat:
+                if isinstance(qism, str):
+                    qismlar.append(qism)
+                elif isinstance(qism, dict):
+                    qismlar.append(str(qism.get("text") or ""))
+            return "\n".join(q for q in qismlar if q).strip()
+        return ""
+
+    content = _matn(message.get("content"))
+    iz = _matn(message.get("reasoning_content"))
+    if content:
+        return content, iz
+    if not iz:
+        return "", ""
+    abzaslar = [q.strip() for q in iz.split("\n\n") if q.strip()]
+    return (abzaslar[-1] if abzaslar else iz), iz
+
+
+def _xato_qisqa(kod: int, body: str) -> str:
+    """HTTP xatosini shifokor ko‘radigan qisqa sababga aylantiradi.
+
+    Args:
+        kod: HTTP status.
+        body: Javob tanasi (kalit yo‘q).
+
+    Returns:
+        Qisqa sabab. Hisob raqami yoki kalit kirmaydi.
+    """
+    xabar = body
+    try:
+        yuk = json.loads(body)
+        xabar = str((yuk.get("error") or {}).get("message") or body)
+    except json.JSONDecodeError:
+        xabar = body
+    past = xabar.lower()
+    if kod == 402 or "insufficient balance" in past:
+        return "balans yetarli emas"
+    if "request_id" in past:
+        xabar = xabar.split("(request_id", 1)[0].strip()
+    return f"HTTP {kod}: {xabar[:160]}"
+
+
+def llm_chat_natija(
     xabarlar: List[Dict[str, Any]],
     temperatura: float = 0.2,
     max_token: int = 1200,
@@ -133,12 +222,12 @@ def llm_chat(
     baza_url: Optional[str] = None,
     api_kalit: Optional[str] = None,
     timeout: float = 90.0,
-) -> Optional[str]:
-    """Chat completion yuboradi; xatoda None (agent to‘xtamaydi).
+) -> Tuple[Optional[str], str]:
+    """Chat completion va qisqa xato sababini qaytaradi.
 
     Args:
         xabarlar: role/content (content matn yoki multimodal qismlar ro‘yxati).
-        temperatura: Generatsiya tasodifiyligi.
+        temperatura: Reasoner da yuborilmaydi.
         max_token: Javob uzunligi chegarasi.
         model: Bo‘sh bo‘lsa DEEPSEEK_MODEL; tasvir uchun vision model.
         baza_url: Ixtiyoriy OpenAI-mos server (MedGemma/Qwen vLLM).
@@ -146,19 +235,15 @@ def llm_chat(
         timeout: HTTP kutish (soniya); VLM uchun uzaytiriladi.
 
     Returns:
-        Model matni yoki None. Tashxis sifatida ishlatilmasin.
+        (matn yoki None, xato sababi yoki bo‘sh). Tashxis sifatida ishlatilmasin.
     """
     soz = _sozlama()
     kalit = soz["api_key"] if api_kalit is None else (api_kalit or "").strip()
     baza = (baza_url or soz["base_url"] or "").rstrip("/")
+    tanlangan = model or soz["model"]
     if not kalit or not baza:
-        return None
-    tanasi = {
-        "model": model or soz["model"],
-        "messages": xabarlar,
-        "temperature": temperatura,
-        "max_tokens": max_token,
-    }
+        return None, "API kaliti yo‘q"
+    tanasi = sorov_tanasi(tanlangan, xabarlar, temperatura, max_token)
     talab = urllib.request.Request(
         f"{baza}/v1/chat/completions",
         data=json.dumps(tanasi).encode("utf-8"),
@@ -173,19 +258,54 @@ def llm_chat(
             yuk = json.loads(javob.read().decode("utf-8"))
         tanlovlar = yuk.get("choices") or []
         if not tanlovlar:
-            return None
-        matn = (tanlovlar[0].get("message") or {}).get("content")
-        if isinstance(matn, list):
-            qismlar = []
-            for qism in matn:
-                if isinstance(qism, str):
-                    qismlar.append(qism)
-                elif isinstance(qism, dict):
-                    qismlar.append(str(qism.get("text") or ""))
-            matn = "\n".join(q for q in qismlar if q)
-        return matn if isinstance(matn, str) and matn.strip() else None
+            return None, "javob bo‘sh"
+        matn, _iz = xabar_matni(tanlovlar[0].get("message") or {})
+        if matn:
+            return matn, ""
+        return None, "yakuniy matn bo‘sh"
+    except urllib.error.HTTPError as xato:
+        try:
+            body = xato.read().decode("utf-8", errors="replace")
+        except Exception:
+            body = ""
+        return None, _xato_qisqa(int(xato.code), body)
     except (urllib.error.URLError, TimeoutError, json.JSONDecodeError, KeyError, IndexError):
-        return None
+        return None, "ulanish yoki javob xatosi"
+
+
+def llm_chat(
+    xabarlar: List[Dict[str, Any]],
+    temperatura: float = 0.2,
+    max_token: int = 1200,
+    model: Optional[str] = None,
+    baza_url: Optional[str] = None,
+    api_kalit: Optional[str] = None,
+    timeout: float = 90.0,
+) -> Optional[str]:
+    """Chat completion yuboradi; xatoda None (agent to‘xtamaydi).
+
+    Args:
+        xabarlar: role/content (content matn yoki multimodal qismlar ro‘yxati).
+        temperatura: Generatsiya tasodifiyligi. Reasoner da yuborilmaydi.
+        max_token: Javob uzunligi chegarasi.
+        model: Bo‘sh bo‘lsa DEEPSEEK_MODEL; tasvir uchun vision model.
+        baza_url: Ixtiyoriy OpenAI-mos server (MedGemma/Qwen vLLM).
+        api_kalit: Ixtiyoriy kalit; mahalliy vLLM da ``local``.
+        timeout: HTTP kutish (soniya); VLM uchun uzaytiriladi.
+
+    Returns:
+        Model matni yoki None. Tashxis sifatida ishlatilmasin.
+    """
+    matn, _xato = llm_chat_natija(
+        xabarlar,
+        temperatura=temperatura,
+        max_token=max_token,
+        model=model,
+        baza_url=baza_url,
+        api_kalit=api_kalit,
+        timeout=timeout,
+    )
+    return matn
 
 
 def fellow_vision_sozlama() -> Optional[Dict[str, str]]:

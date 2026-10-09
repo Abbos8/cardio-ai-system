@@ -1,7 +1,11 @@
-"""Ko‘p tarmoqli munozara (MDT): MedGemma (tasvir) va Qwen2.5-VL (video).
+"""Ko‘p tarmoqli munozara (MDT): Qwen, MedGemma va DeepSeek-R1.
 
-Har raundda xom I va oraliq Z qayta kiritiladi (gallyutsinatsiya cheklovi).
-VLM/API yo‘qida shablon. Konsensus yoki max_raund da to‘xtaydi. Tashxis emas.
+Ketma-ketlik:
+t=1: Qwen(I), MedGemma(I), D1=DeepSeek(Q1,P1);
+t=2: ikkalasi (D1, Z), D2=DeepSeek(Q2,P2);
+t>=3 toq: (D, I), juft: (D, Z); D_t=DeepSeek(Q_t,P_t).
+To‘xtash (t>=3): agree(Q_t, D_{t-1}) va agree(P_t, D_{t-1}), yoki t=T.
+Tasvirlar rolga yopishgan: I raundida MedGemma still, Qwen video. Tashxis emas.
 """
 
 from __future__ import annotations
@@ -10,7 +14,7 @@ import base64
 import re
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
-from llm.client import llm_chat, llm_json, model_qisqacha, vlm_sozlama
+from llm.client import llm_chat, llm_chat_natija, llm_json, model_qisqacha, vlm_sozlama
 from tools.ecg_tool import ekg_qisqa_png
 
 MAX_RAUND = 3
@@ -285,55 +289,179 @@ def medgemma_matnlari(
     return i_toza, z_toza
 
 
+# MedGemma thought izidan keyin haqiqiy izoh shu belgilardan so‘ng keladi
+_YAKUN_BELGILARI = (
+    "**Final Output:**",
+    "Final Output:",
+    "Looks good.",
+    "**Drafting (Uzbek):**",
+    "**Drafting:**",
+)
+
+
+def _takror_qisqart(matn: str) -> str:
+    """Bir xil mulohaza ikki marta yopishtirilgan bo‘lsa, bittasini qoldiradi.
+
+    Args:
+        matn: Model javobining yakuniy qismi.
+
+    Returns:
+        Takrorsiz matn.
+    """
+    t = matn.strip()
+    if len(t) >= 80:
+        bosh = t[:60]
+        ikkinchi = t.find(bosh, 40)
+        if ikkinchi != -1 and ikkinchi < int(len(t) * 0.75):
+            t = t[:ikkinchi].strip()
+    bloklar = []
+    korilgan = set()
+    for blok in t.split("\n\n"):
+        kalit = " ".join(blok.split())
+        if len(kalit) < 8 or kalit in korilgan:
+            continue
+        korilgan.add(kalit)
+        bloklar.append(blok.strip())
+    return "\n\n".join(bloklar).strip()
+
+
+def _mulohazani_ajrat(matn: str) -> str:
+    """Thought izidan klinik mulohazani ajratadi.
+
+    MedGemma ba’zan javobni ``thought`` bilan boshlab bemor qisqasi va
+    oraliq natijani qayta yozadi. Yakuniy jumlalar iz oxirida qoladi.
+    Ekranda shu iz mulohaza o‘rnini bosmasin.
+
+    Args:
+        matn: Modelning xom javobi.
+
+    Returns:
+        Shifokorga ko‘rsatiladigan mulohaza. Bo‘lmasa qisqa ogohlantirish.
+        Tashxis emas.
+    """
+    if not matn or not str(matn).strip():
+        return ""
+    t = str(matn).strip()
+    past = t.lower()
+    if past.startswith("thought") or past.startswith("**thought"):
+        topildi = ""
+        for belgi in _YAKUN_BELGILARI:
+            idx = t.rfind(belgi)
+            if idx == -1:
+                continue
+            qolgan = t[idx + len(belgi) :].strip()
+            review = qolgan.find("**Review")
+            if review != -1:
+                qolgan = qolgan[:review].strip()
+            if len(qolgan) >= 40:
+                topildi = qolgan
+                break
+        if not topildi:
+            return (
+                "Model ichki reja izini qaytardi, yakuniy izoh ajralmadi. "
+                "Shifokor berilgan ma’lumotni o‘zi ko‘rsin. Tashxis emas."
+            )
+        t = topildi
+    t = _takror_qisqart(t)
+    for belgi in (
+        "**Klinik mulohaza:**",
+        "Klinik mulohaza:",
+        "**Ehtiyotkor Izoh:**",
+        "**Ehtiyotkor izoh:**",
+    ):
+        if t.startswith(belgi):
+            t = t[len(belgi) :].strip()
+    return t.strip()
+
+
+def raund_kirish_turi(t: int) -> str:
+    """t-raundda Qwen va MedGemma qaysi matnni olishini belgilaydi.
+
+    Args:
+        t: 1 dan boshlanadigan raund.
+
+    Returns:
+        ``I`` (faqat xom kirish), ``DZ`` (oldingi D va Z), ``DI`` (oldingi D va I).
+    """
+    if t <= 1:
+        return "I"
+    if t % 2 == 0:
+        return "DZ"
+    return "DI"
+
+
+def toxtash_sharti(t: int, chegara: int, qwen_agree: bool, med_agree: bool) -> bool:
+    """Formula bo‘yicha iteratsiyani to‘xtatish.
+
+    t=1 va t=2 har doim bajariladi. t>=3 da ikkala rol oldingi D bilan
+    kelishsa yoki t=T bo‘lsa to‘xtaydi.
+
+    Args:
+        t: Joriy raund.
+        chegara: T, maksimal raund.
+        qwen_agree: agree(Q_t, D_{t-1}).
+        med_agree: agree(P_t, D_{t-1}).
+
+    Returns:
+        True — sikl shu raundda tugaydi.
+    """
+    if t < 3:
+        return False
+    return bool(qwen_agree and med_agree) or t >= chegara
+
+
 def _foydalanuvchi_matn(
-    xom_i: str,
-    oraliq_z: str,
-    oldingi: str,
+    bemor_qisqa: str,
+    oraliq: str,
+    oldingi_d: str,
     rasmlar_id: Sequence[str],
     yoq: Sequence[str],
     video: bool,
 ) -> str:
-    """Har raundda I va Z ni qayta yozadi (o‘ylab topish taqiqlanadi).
+    """Shu raundning formuladagi kirishini yozadi; bo‘sh qism tushadi.
 
     Args:
-        xom_i: Xom kirish.
-        oraliq_z: Vosita natijalari.
-        oldingi: Hamkasb fikri.
+        bemor_qisqa: I. Bo‘sh bo‘lsa bu raundda yuborilmaydi.
+        oraliq: Z. Bo‘sh bo‘lsa yuborilmaydi.
+        oldingi_d: D_{t-1}. Bo‘sh bo‘lsa yuborilmaydi.
         rasmlar_id: Yuborilgan rasm identifikatorlari.
         yoq: Yo‘q modalitetlar.
         video: Qwen cine/kadr ketma-ketligi.
 
     Returns:
-        Prompt matni.
+        Prompt matni. Model klinik izoh yozishi kerak, tashxis emas.
     """
-    tur = "video/kadr ketma-ketligi" if video else "statik tasvirlar (EKG/echo/LV)"
-    return (
-        f"I (xom, qayta):\n{xom_i}\n\n"
-        f"Z (oraliq, qayta):\n{oraliq_z}\n\n"
-        f"Yuborilgan {tur}: {', '.join(rasmlar_id) or 'yo‘q'}.\n"
-        f"Yo‘q dalillar (o‘ylab topmang): {', '.join(yoq) or '—'}.\n\n"
-        f"Hamkasb oxirgi fikri:\n{oldingi or '(birinchi so‘z)'}\n\n"
-        "Faqat I, Z va yuborilgan rasmlarga tayaning. Tashxis qo‘ymang. "
-        "Yakuniy qaror shifokorga tegishli."
-    )
+    tur = "video yoki kadrlar" if video else "tasvirlar"
+    qatorlar = ["Quyidagi ma’lumotni o‘qing. Javobda ro‘yxatni qayta ko‘chirmang.", ""]
+    if bemor_qisqa:
+        qatorlar.append(f"Bemor qisqasi:\n{bemor_qisqa}\n")
+    if oraliq:
+        qatorlar.append(f"Oraliq natijalar:\n{oraliq}\n")
+    if oldingi_d:
+        qatorlar.append(f"Oldingi umumlashtirish:\n{oldingi_d}\n")
+    qatorlar.append(f"Yuborilgan {tur}: {', '.join(rasmlar_id) or 'yo‘q'}.")
+    qatorlar.append(f"Yo‘q dalillar (o‘ylab topmang): {', '.join(yoq) or '—'}.")
+    qatorlar.append("")
+    qatorlar.append("Ehtiyotkor klinik izoh (tashxis emas):")
+    return "\n".join(qatorlar)
 
 
 def _shablon(rol: str, xom_i: str, oraliq_z: str, rasmlar_id: Sequence[str], yoq: Sequence[str]) -> str:
-    """VLM yo‘qida I/Z ni qayta ko‘rsatadigan ehtiyotkor matn.
+    """VLM yo‘qida mulohaza o‘rniga I/Z ni chop etmaydigan ehtiyotkor matn.
 
     Args:
         rol: MedGemma yoki Qwen tavsifi.
-        xom_i, oraliq_z: Qayta kiritilgan kontekst.
+        xom_i, oraliq_z: Kontekst bor-yo‘qligini bilish uchun (matni chiqarilmaydi).
         rasmlar_id, yoq: Vizual dalil holati.
 
     Returns:
-        Shablon fikr. Tashxis emas.
+        Shablon yozuv. Tashxis emas.
     """
+    bosh = "" if (xom_i or oraliq_z) else " Bemor qisqasi va oraliq natija bo‘sh."
     return (
-        f"{rol}: VLM/API ulanmagan, shablon rejimida. "
-        f"I qayta: {xom_i[:400]}. Z qayta: {oraliq_z[:500]}. "
-        f"Rasmlar: {', '.join(rasmlar_id) or 'yo‘q'}; yo‘q: {', '.join(yoq) or '—'}. "
-        "Yetarli vizual model javobi yo‘q — konsensus ehtiyotkor. "
+        f"{rol}: model javobi yo‘q, shablon. Klinik mulohaza shakllanmadi.{bosh} "
+        f"Rasmlar: {', '.join(rasmlar_id) or 'yo‘q'}; yo‘q dalil: {', '.join(yoq) or '—'}. "
+        "I va Z alohida ko‘rsatiladi — ular mulohaza emas. "
         "Tashxis emas; shifokor ko‘rigi shart."
     )
 
@@ -341,28 +469,33 @@ def _shablon(rol: str, xom_i: str, oraliq_z: str, rasmlar_id: Sequence[str], yoq
 def _rol_javobi(
     rol_nom: str,
     tizim: str,
-    xom_i: str,
-    oraliq_z: str,
-    oldingi: str,
+    bemor_qisqa: str,
+    oraliq: str,
+    oldingi_d: str,
     rasmlar: Sequence[Dict[str, Any]],
     yoq: Sequence[str],
     video: bool,
 ) -> Tuple[str, str]:
-    """Bitta VLM/LLM rolida munozara matnini oladi.
+    """Bitta VLM/LLM rolida shu raundning izohini oladi.
+
+    Qwen va MedGemma bir-birining joriy matnini ko‘rmaydi: ikkalasi ham
+    faqat formuladagi kirishni (I, yoki D va Z, yoki D va I) oladi.
 
     Args:
         rol_nom: medgemma yoki qwen_vl (ulanish).
         tizim: System prompt.
-        xom_i, oraliq_z, oldingi: Kontekst.
-        rasmlar: PNG lar.
+        bemor_qisqa: I yoki bo‘sh.
+        oraliq: Z yoki bo‘sh.
+        oldingi_d: D_{t-1} yoki bo‘sh.
+        rasmlar: PNG lar. Z raundida bo‘sh.
         yoq: Yo‘q dalillar.
         video: True — Qwen cine.
 
     Returns:
-        (matn, manba=vlm|llm|shablon).
+        (matn, manba=vlm|llm|shablon). Tashxis emas.
     """
     ids = [str(r.get("id") or "") for r in rasmlar]
-    user = _foydalanuvchi_matn(xom_i, oraliq_z, oldingi, ids, yoq, video)
+    user = _foydalanuvchi_matn(bemor_qisqa, oraliq, oldingi_d, ids, yoq, video)
     soz = vlm_sozlama(rol_nom)
     if soz and rasmlar:
         javob = llm_chat(
@@ -377,7 +510,7 @@ def _rol_javobi(
             max_token=900,
         )
         if javob:
-            return javob.strip(), "vlm"
+            return _mulohazani_ajrat(javob), "vlm"
     if soz:
         javob = llm_chat(
             [
@@ -391,51 +524,177 @@ def _rol_javobi(
             max_token=900,
         )
         if javob:
-            return javob.strip(), "llm"
+            return _mulohazani_ajrat(javob), "llm"
     rol_matn = "MedGemma (tasvir)" if rol_nom == "medgemma" else "Qwen2.5-VL (video)"
-    return _shablon(rol_matn, xom_i, oraliq_z, ids, yoq), "shablon"
+    return _shablon(rol_matn, bemor_qisqa, oraliq, ids, yoq), "shablon"
 
 
-def _konsensus_qoida(med: str, qwen: str) -> bool:
-    """API yo‘qida oddiy matn belgilaridan konsensus.
+def _raund_qismlari(
+    kirish: str,
+    xom_i: str,
+    oraliq_z: str,
+    med_i: str,
+    med_z: str,
+    matritsa: bool,
+    oldingi_d: str,
+) -> Tuple[str, str, str]:
+    """Formuladagi kirishni bemor / oraliq / D qismlariga ajratadi.
+
+    Matritsa bo‘lsa MedGemma va Qwen tozalangan xulosani oladi, namuna emas.
 
     Args:
-        med, qwen: Ikki rol matni.
+        kirish: ``I``, ``DZ`` yoki ``DI``.
+        xom_i, oraliq_z: Asl I va Z.
+        med_i, med_z: Matritsasiz nusxa.
+        matritsa: I yoki Z da uzun raqam ketma-ketligi bor.
+        oldingi_d: D_{t-1}.
 
     Returns:
-        True — to‘xtash mumkin.
+        (bemor_qisqa, oraliq, d). Bo‘sh qism shu raundda yuborilmaydi.
     """
-    m, q = med.lower(), qwen.lower()
-    if "konsensus" in m or "konsensus" in q or "agree" in m or "agree" in q:
-        return True
-    ehtiyot = ("yetarsiz", "insufficient", "shifokor", "ehtiyotkor", "tashxis emas")
-    return any(b in m for b in ehtiyot) and any(b in q for b in ehtiyot)
+    i_matn = med_i if matritsa else xom_i
+    z_matn = med_z if matritsa else oraliq_z
+    if kirish == "DZ":
+        return "", z_matn, oldingi_d
+    if kirish == "DI":
+        return i_matn, "", oldingi_d
+    return i_matn, "", ""
 
 
-def _konsensus_bormi(xom_i: str, oraliq_z: str, med: str, qwen: str) -> Tuple[bool, str]:
-    """Bosh kardiolog (yoki qoida) konsensusni baholaydi.
+def _raund_rasmlari(
+    rol: str,
+    kirish: str,
+    matritsa: bool,
+    viz: Dict[str, Any],
+) -> List[Dict[str, Any]]:
+    """I raundida rolga mos tasvirni beradi; Z raundida faqat matn qoladi.
 
     Args:
-        xom_i, oraliq_z: Qayta kiritilgan I/Z.
-        med, qwen: Joriy raund fikrlari.
+        rol: medgemma yoki qwen_vl.
+        kirish: ``I``, ``DZ``, ``DI``.
+        matritsa: True bo‘lsa MedGemma kadr olmaydi.
+        viz: mdt_vizual_yig natijasi.
 
     Returns:
-        (konsensus, sabab). Tashxis emas.
+        PNG ro‘yxati. Tashxis emas.
+    """
+    if kirish == "DZ":
+        return []
+    if rol == "medgemma":
+        if matritsa:
+            return []
+        return list(viz.get("still") or [])
+    return list(viz.get("video") or [])
+
+
+def _sozlar(matn: str) -> set:
+    """Kelishuv uchun qisqa so‘zlarsiz to‘plam.
+
+    Args:
+        matn: Izoh.
+
+    Returns:
+        Kamida 4 harfli so‘zlar. Shablon iboralar tushirilgan.
+    """
+    shablon_soz = {"tashxis", "emas", "shifokor", "klinik", "javobi", "model", "shablon"}
+    topilgan = set(re.findall(r"[0-9A-Za-zʻʼ'’]{4,}", (matn or "").lower()))
+    return {s for s in topilgan if s not in shablon_soz}
+
+
+def _matn_kelishuvi(a: str, b: str) -> bool:
+    """API yo‘qida ikki matn bir xil klinik faktlarni aytayotganini taxmin qiladi.
+
+    Args:
+        a: Joriy rol izohi (Q yoki P).
+        b: Oldingi D.
+
+    Returns:
+        True — sezilarli so‘z kesishmasi. Tashxis emas.
+    """
+    ta, tb = _sozlar(a), _sozlar(b)
+    if len(ta) < 4 or len(tb) < 4:
+        return False
+    umumiy = ta & tb
+    if len(umumiy) < 4:
+        return False
+    return len(umumiy) / float(len(ta | tb)) >= 0.35
+
+
+def _deepseek_d(qwen: str, med: str) -> Tuple[str, str]:
+    """D_t = DeepSeek-R1(Q_t, P_t).
+
+    Args:
+        qwen: Shu raunddagi Qwen izohi.
+        med: Shu raunddagi MedGemma izohi.
+
+    Returns:
+        (D matni, manba=llm|shablon). Yangi o‘lchov qo‘shilmaydi. Tashxis emas.
+    """
+    # Reasoner mulohazasi max_tokens dan ketadi; 900 da content bo‘sh qoladi
+    javob, xato = llm_chat_natija(
+        [
+            {
+                "role": "system",
+                "content": (
+                    "Siz DeepSeek-R1. Qwen va MedGemma izohlaridan bitta D sintez yozing. "
+                    "Tashxis qo‘ymang. Yangi o‘lchov va kasallik nomi qo‘shmang. "
+                    "Ikkalasi mos kelmasa, farqni yozing. 5–8 jumla. "
+                    "Yakuniy javobni content da qoldiring."
+                ),
+            },
+            {
+                "role": "user",
+                "content": f"Qwen:\n{qwen}\n\nMedGemma:\n{med}\n\nD:",
+            },
+        ],
+        max_token=4096,
+        timeout=180.0,
+    )
+    if javob:
+        return _mulohazani_ajrat(javob), "llm"
+    sabab = xato or "javob bo‘sh"
+    return (
+        f"DeepSeek-R1 sintez qilmadi ({sabab}). "
+        "Quyidagi qator model sintezi emas. "
+        f"Qwen: {qwen[:280]} MedGemma: {med[:280]} "
+        "Hisob to‘ldirilgach D qayta hisoblanadi. Tashxis emas; shifokor ko‘rigi shart."
+    ), "shablon"
+
+
+def _oldingi_d_bilan_kelishuv(qwen: str, med: str, oldingi_d: str) -> Tuple[bool, bool, str]:
+    """agree(Q_t, D_{t-1}) va agree(P_t, D_{t-1}).
+
+    Args:
+        qwen: Joriy Qwen izohi.
+        med: Joriy MedGemma izohi.
+        oldingi_d: O‘tgan raunddagi DeepSeek D.
+
+    Returns:
+        (qwen_agree, medgemma_agree, sabab). Tashxis emas.
     """
     zaxira = {
-        "konsensus": _konsensus_qoida(med, qwen),
-        "sabab": "Qoida: ikkala rol I/Z asosida ehtiyotkor yoki ochiq kelishuv.",
+        "qwen_agree": _matn_kelishuvi(qwen, oldingi_d),
+        "medgemma_agree": _matn_kelishuvi(med, oldingi_d),
+        "sabab": "Qoida: oldingi D bilan so‘z kesishmasi.",
     }
     natija = llm_json(
         tizim=(
-            "Bosh kardiolog MDT raundini baholaydi. JSON: "
-            '{"konsensus":true|false,"sabab":"qisqa"}. '
-            "Tashxis qo‘ymang. Faqat I, Z va ikki fikrga tayaning."
+            "MDT kelishuvini baholang. JSON: "
+            '{"qwen_agree":true|false,"medgemma_agree":true|false,"sabab":"qisqa"}. '
+            "qwen_agree — Qwen izohi oldingi D bilan klinik faktlarda mos. "
+            "medgemma_agree — MedGemma izohi oldingi D bilan mos. "
+            "Yangi tashxis yoki zid o‘lchov bo‘lsa false. Tashxis qo‘ymang."
         ),
-        foydalanuvchi=f"I:\n{xom_i}\nZ:\n{oraliq_z}\nMedGemma:\n{med}\nQwen2.5-VL:\n{qwen}",
+        foydalanuvchi=(
+            f"Oldingi D:\n{oldingi_d}\n\nQwen:\n{qwen}\n\nMedGemma:\n{med}"
+        ),
         zaxira=zaxira,
     )
-    return bool(natija.get("konsensus")), str(natija.get("sabab") or zaxira["sabab"])
+    return (
+        bool(natija.get("qwen_agree")),
+        bool(natija.get("medgemma_agree")),
+        str(natija.get("sabab") or zaxira["sabab"]),
+    )
 
 
 def mdt_munozara(
@@ -448,17 +707,21 @@ def mdt_munozara(
     echo: Optional[Dict[str, Any]] = None,
     segment: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
-    """Ikkita VLM roli mustaqil yozadi, keyin almashadi; bosh umumlashtiradi.
+    """Qwen, MedGemma va DeepSeek-R1 ni berilgan ketma-ketlikda yurgizadi.
+
+    t=1: ikkala VLM faqat I. t=2: ikkalasi D1 va Z. t>=3 toq: D va I,
+    juft: D va Z. Har raunddan keyin D_t = DeepSeek(Q_t, P_t).
+    Yakuniy matn oxirgi D. Tashxis emas.
 
     Args:
-        xom_i: Bemor va xom signallar qisqasi.
-        oraliq_z: Lab, EKG, echo, fellow.
-        max_raund: Maksimal munozara raundlari.
+        xom_i: Bemor va xom signallar qisqasi (I).
+        oraliq_z: Lab, EKG, echo, fellow (Z).
+        max_raund: T, maksimal raund.
         bemor: Vizual fayllar (EKG/echo).
         lab, ecg, echo, segment: Oraliq vosita chiqishlari (Z ga qo‘shimcha).
 
     Returns:
-        raundlar, umumlashtirish, konsensus, manba. Tashxis emas.
+        raundlar, oxirgi D, kelishuv, manba. Tashxis emas.
     """
     viz = mdt_vizual_yig(bemor, ecg, segment)
     z_qosh = oraliq_z or ""
@@ -468,22 +731,26 @@ def mdt_munozara(
     if echo and echo.get("xabar") and "ECHO:" not in z_qosh:
         z_qosh += "\nECHO: " + str(echo.get("xabar"))
     med_i, med_z = medgemma_matnlari(xom_i, z_qosh, lab, ecg, echo, segment)
-    # Matritsa bor edi — MedGemma faqat matn xulosasini oladi, namuna va kadr emas
-    med_rasmlar: Sequence[Dict[str, Any]] = []
-    if med_i == xom_i and med_z == z_qosh:
-        med_rasmlar = viz.get("still") or []
+    matritsa = med_i != xom_i or med_z != z_qosh
     yoq = list(viz.get("yoq_dalillar") or [])
 
     med_tizim = (
-        "Siz MedGemma — tibbiy tasvirlar (EKG grafik, echo still, LV overlay) eksperti. "
-        "Har raundda berilgan I va Z ni qayta o‘qing. Yo‘q dalilni o‘ylab topmang. "
-        "Tashxis qo‘ymang. 5–8 jumla, o‘zbek yoki ingliz."
+        "Siz tibbiy tasvirlar (EKG grafik, echo still, LV overlay) bo‘yicha yordamchisiz. "
+        "Faqat berilgan faktlar asosida 5–8 jumlalik ehtiyotkor klinik izoh yozing: "
+        "nima qayd etilgan, nima yetishmaydi, shifokor nimani o‘zi tekshirsin. "
+        "Kirish matnini qayta ko‘chirmang. Ichki reja yozmang. "
+        "Javob darhol izohdan boshlansin. "
+        "Berilgan son va ko‘rinish nomlarini boshqacha talqin qilmang. "
+        "Yangi o‘lchov va kasallik nomi qo‘shmang. "
+        "O‘zbek yoki ingliz. Yakuniy qaror shifokorga tegishli."
     )
     qwen_tizim = (
-        "Siz Qwen2.5-VL — echo video/cine ketma-ketligi eksperti. "
+        "Siz echo video va kadr ketma-ketligi bo‘yicha yordamchisiz. "
         "Kadrlar ketma-ketligini harakat sifatida ko‘ring; still bo‘lsa shunday yozing. "
-        "Har raundda I va Z ni qayta o‘qing. Yo‘q dalilni o‘ylab topmang. "
-        "Tashxis qo‘ymang. 5–8 jumla, o‘zbek yoki ingliz."
+        "Faqat berilgan faktlar asosida 5–8 jumlalik ehtiyotkor klinik izoh yozing. "
+        "Kirish matnini qayta ko‘chirmang. Ichki reja yozmang. "
+        "Yo‘q dalilni o‘ylab topmang. Yangi o‘lchov va kasallik nomi qo‘shmang. "
+        "O‘zbek yoki ingliz. Yakuniy qaror shifokorga tegishli."
     )
 
     raundlar: List[Dict[str, Any]] = []
@@ -491,93 +758,82 @@ def mdt_munozara(
     qwen = ""
     med_manba = "shablon"
     qwen_manba = "shablon"
+    d_matn = ""
+    d_manba = "shablon"
     konsensus = False
     konsensus_sabab = ""
     chegara = max(1, max_raund)
 
-    for raund in range(1, chegara + 1):
-        med, med_manba = _rol_javobi(
-            "medgemma",
-            med_tizim,
-            med_i,
-            med_z,
-            qwen,
-            med_rasmlar,
-            yoq,
-            video=False,
+    for t in range(1, chegara + 1):
+        kirish = raund_kirish_turi(t)
+        bemor_qisqa, oraliq, oldingi_d = _raund_qismlari(
+            kirish, xom_i, z_qosh, med_i, med_z, matritsa, d_matn
         )
+        # Q va P bir-birini ko‘rmaydi: ikkalasi ham shu raundning D/I/Z ini oladi
         qwen, qwen_manba = _rol_javobi(
             "qwen_vl",
             qwen_tizim,
-            xom_i,
-            z_qosh,
-            med,
-            viz.get("video") or [],
+            bemor_qisqa,
+            oraliq,
+            oldingi_d,
+            _raund_rasmlari("qwen_vl", kirish, matritsa, viz),
             yoq,
             video=True,
         )
-        if med_manba == "shablon" and qwen_manba == "shablon":
-            konsensus = _konsensus_qoida(med, qwen)
-            konsensus_sabab = (
-                "VLM/API yo‘q: I va Z qayta kiritildi, qoida bilan ehtiyotkor to‘xtash."
-            )
-        else:
-            konsensus, konsensus_sabab = _konsensus_bormi(xom_i, z_qosh, med, qwen)
+        med, med_manba = _rol_javobi(
+            "medgemma",
+            med_tizim,
+            bemor_qisqa,
+            oraliq,
+            oldingi_d,
+            _raund_rasmlari("medgemma", kirish, matritsa, viz),
+            yoq,
+            video=False,
+        )
+        qwen_agree, med_agree, kelish_sabab = (False, False, "")
+        if t >= 3 and oldingi_d:
+            qwen_agree, med_agree, kelish_sabab = _oldingi_d_bilan_kelishuv(qwen, med, oldingi_d)
+        d_matn, d_manba = _deepseek_d(qwen, med)
+        kelishdi = bool(qwen_agree and med_agree)
+        if kelishdi:
+            konsensus = True
+            konsensus_sabab = kelish_sabab or "Qwen va MedGemma oldingi D bilan kelishdi."
+        elif t >= chegara:
+            konsensus = False
+            konsensus_sabab = kelish_sabab or f"t=T ({chegara}), to‘liq kelishuv yo‘q."
         raundlar.append(
             {
-                "raund": str(raund),
+                "raund": str(t),
+                "kirish": kirish,
                 "medgemma": med,
                 "qwen": qwen,
+                "deepseek": d_matn,
                 "medgemma_manba": med_manba,
                 "qwen_manba": qwen_manba,
-                "konsensus": konsensus,
-                "konsensus_sabab": konsensus_sabab,
+                "deepseek_manba": d_manba,
+                "qwen_agree": qwen_agree,
+                "medgemma_agree": med_agree,
+                "konsensus": kelishdi,
+                "konsensus_sabab": kelish_sabab,
             }
         )
-        if konsensus:
-            break
-        if med_manba == "shablon" and qwen_manba == "shablon":
+        if toxtash_sharti(t, chegara, qwen_agree, med_agree):
             break
 
-    umumiy = None
-    if not (med_manba == "shablon" and qwen_manba == "shablon"):
-        umumiy = llm_chat(
-            [
-                {
-                    "role": "system",
-                    "content": (
-                        "Bosh kardiolog MDT ni qisqa umumlashtiradi. Tashxis qo‘ymang. "
-                        "I va Z ni qayta inobatga oling. Ikkala rol fikrini yonma-yon solishtiring."
-                    ),
-                },
-                {
-                    "role": "user",
-                    "content": (
-                        f"I (qayta):\n{xom_i}\nZ (qayta):\n{z_qosh}\n"
-                        f"Konsensus={konsensus} ({konsensus_sabab})\nRaundlar:\n{raundlar}"
-                    ),
-                },
-            ]
-        )
-    if not umumiy:
-        umumiy = (
-            f"MDT: MedGemma manba={med_manba}, Qwen2.5-VL manba={qwen_manba}. "
-            f"I qayta kiritildi. Z qayta kiritildi. "
-            f"Konsensus={konsensus} ({konsensus_sabab}). "
-            "Qo‘shimcha klinik tasdiq kerak. Tashxis emas."
-        )
     model = model_qisqacha()
     return {
         "ok": True,
         "raundlar": raundlar,
-        "umumlashtirish": umumiy.strip(),
+        "umumlashtirish": (d_matn or "").strip(),
         "raund_soni": len(raundlar),
         "konsensus": konsensus,
         "konsensus_sabab": konsensus_sabab,
         "medgemma_manba": med_manba,
         "qwen_manba": qwen_manba,
+        "deepseek_manba": d_manba,
         "medgemma_model": model.get("medgemma") if med_manba != "shablon" else "shablon",
         "qwen_model": model.get("qwen_vl") if qwen_manba != "shablon" else "shablon",
+        "deepseek_model": model.get("chat") if d_manba != "shablon" else "shablon",
         "still_id": viz.get("still_id") or [],
         "video_id": viz.get("video_id") or [],
         "yoq_dalillar": yoq,

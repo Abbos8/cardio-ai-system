@@ -17,8 +17,15 @@ if str(_SRC) not in sys.path:
     sys.path.insert(0, str(_SRC))
 
 from agents.chief_agent import ChiefCardiologist
-from agents.mdt import medgemma_matnlari, mdt_munozara
-from llm.client import llm_chat, llm_mavjud
+from agents.mdt import (
+    _foydalanuvchi_matn,
+    _mulohazani_ajrat,
+    medgemma_matnlari,
+    mdt_munozara,
+    raund_kirish_turi,
+    toxtash_sharti,
+)
+from llm.client import llm_chat, llm_mavjud, sorov_tanasi, xabar_matni
 from tools.ecg_tool import namuna_12_tasma_ekg
 from tools.lab_tool import process_lab
 
@@ -237,11 +244,78 @@ class BarqarorlikTest(unittest.TestCase):
         self.assertEqual(qisqa_i, "yosh=50")
         self.assertIn("QRS 90", qisqa_z)
 
+    def test_mulohaza_thought_izidan_ajraladi(self) -> None:
+        """Thought ichidagi I/Z qayta yozuvi emas, yakuniy mulohaza qoladi."""
+        jumla = "58 yoshli bemorda HR 72 qayd etilgan. QRS 90 ms. Tashxis emas."
+        xom = (
+            "thought\n"
+            "1. Deconstruct Note I: yosh=58\n"
+            "2. Deconstruct Note Z: HR 72\n\n"
+            "**Final Output:**\n"
+            + jumla
+            + jumla
+        )
+        nat = _mulohazani_ajrat(xom)
+        self.assertNotIn("thought", nat.lower())
+        self.assertNotIn("Deconstruct", nat)
+        self.assertEqual(nat, jumla)
+        oddiy = "EKG da HR 72 qayd etilgan. Echo video yo‘q. Tashxis emas."
+        self.assertEqual(_mulohazani_ajrat(oddiy), oddiy)
+        iz = _mulohazani_ajrat("thought\nI (xom): yosh=58\nZ (oraliq): HR 72")
+        self.assertNotIn("yosh=58", iz)
+        self.assertIn("izoh", iz.lower())
+        look = (
+            "thought\n1. Deconstruct the notes.\n\n"
+            "**Drafting (Uzbek):**\n" + jumla + "\n\n"
+            "**Review against constraints:**\n* Yes\n\nLooks good." + jumla
+        )
+        self.assertEqual(_mulohazani_ajrat(look), jumla)
+
+    def test_deepseek_sintez_javobi(self) -> None:
+        """Reasoner ga temperature ketmaydi; bo‘sh content da izning oxiri sintez bo‘ladi."""
+        tanasi = sorov_tanasi("deepseek-reasoner", [], 0.2, 4096)
+        self.assertNotIn("temperature", tanasi)
+        self.assertEqual(tanasi["max_tokens"], 4096)
+        oddiy = sorov_tanasi("deepseek-chat", [], 0.2, 200)
+        self.assertEqual(oddiy["temperature"], 0.2)
+        yakun, iz = xabar_matni(
+            {"content": "HR 72 va QRS 90 ms mos. Tashxis emas.", "reasoning_content": "avval solishtirdim"}
+        )
+        self.assertIn("HR 72", yakun)
+        self.assertIn("solishtirdim", iz)
+        yakun_iz, _ = xabar_matni(
+            {"content": "", "reasoning_content": "ichki iz\n\nYakuniy sintez: ikkala izoh HR 72 ni qayd etadi."}
+        )
+        self.assertIn("Yakuniy sintez", yakun_iz)
+
+    def test_mdt_ketma_ketlik(self) -> None:
+        """t=1 faqat I, juft D+Z, toq D+I; to‘xtash t>=3 da."""
+        self.assertEqual(
+            [raund_kirish_turi(t) for t in range(1, 7)],
+            ["I", "DZ", "DI", "DZ", "DI", "DZ"],
+        )
+        self.assertFalse(toxtash_sharti(1, 5, True, True))
+        self.assertFalse(toxtash_sharti(2, 5, True, True))
+        self.assertTrue(toxtash_sharti(3, 5, True, True))
+        self.assertFalse(toxtash_sharti(3, 5, True, False))
+        self.assertTrue(toxtash_sharti(5, 5, False, False))
+        faqat_i = _foydalanuvchi_matn("YOSH58", "", "", [], [], False)
+        self.assertIn("YOSH58", faqat_i)
+        self.assertNotIn("Oraliq natijalar", faqat_i)
+        dz = _foydalanuvchi_matn("", "HR72", "DOLDD", [], [], True)
+        self.assertIn("HR72", dz)
+        self.assertIn("DOLDD", dz)
+        self.assertNotIn("Bemor qisqasi", dz)
+
     def test_mdt_shablon_bosh(self) -> None:
-        """VLM yo‘qida MDT shablon, yo‘q dalil o‘ylab topilmaydi."""
+        """VLM yo‘qida ham ketma-ketlik saqlanadi; yo‘q dalil o‘ylab topilmaydi."""
         nat = mdt_munozara("yosh=40", "(oraliq natija yo‘q)", bemor={})
         self.assertTrue(nat.get("ok"))
         self.assertEqual(nat.get("medgemma_manba"), "shablon")
+        self.assertEqual(nat.get("deepseek_manba"), "shablon")
+        self.assertEqual(nat.get("raund_soni"), 3)
+        self.assertEqual([r.get("kirish") for r in nat.get("raundlar") or []], ["I", "DZ", "DI"])
+        self.assertTrue(nat.get("umumlashtirish"))
         self.assertIn("echo", nat.get("yoq_dalillar") or [])
 
 

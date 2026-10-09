@@ -784,7 +784,7 @@ class ChiefCardiologist:
         }
 
     def _mdt(self, holat: ChiefHolat) -> Dict[str, Any]:
-        """MedGemma va Qwen2.5-VL rollari bilan munozara (I va Z qayta kiritiladi).
+        """MDT: t=1 faqat I, t=2 D+Z, keyin toq/juft; har raundda DeepSeek D.
 
         Args:
             holat: xom_i va oraliq_z.
@@ -805,7 +805,8 @@ class ChiefCardiologist:
         tarix.append(
             f"mdt: {natija.get('raund_soni')} raund "
             f"konsensus={natija.get('konsensus')} "
-            f"med={natija.get('medgemma_manba')} qwen={natija.get('qwen_manba')}"
+            f"med={natija.get('medgemma_manba')} qwen={natija.get('qwen_manba')} "
+            f"D={natija.get('deepseek_manba')}"
         )
         viz = dict(holat.get("vizual") or {})
         viz["mdt_raund"] = natija.get("raund_soni")

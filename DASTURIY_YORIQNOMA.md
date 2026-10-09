@@ -180,9 +180,12 @@ Bu reja vositasi emas. Graf tuguni. Ikki rol: MedGemma (still tasvir) va Qwen2.5
 | Funksiya | Vazifasi |
 |---|---|
 | `mdt_vizual_yig` | EKG PNG, echo still, LV overlay, video kadrlarni yig‘adi |
-| `mdt_munozara` | Raundlar, konsensus, umumlashtirish |
+| `mdt_munozara` | t=1 I, t=2 D+Z, keyin toq/juft; har raund D=DeepSeek(Q,P) |
+| `raund_kirish_turi` | `I`, `DZ` yoki `DI` |
+| `toxtash_sharti` | t≥3 va (ikkala agree yoki t=T) |
 | `_rol_javobi` | `vlm_sozlama(rol)` → rasmli `llm_chat`, bo‘lmasa matn, bo‘lmasa `_shablon` |
-| `_konsensus_bormi` | Avval `llm_json`, bo‘lmasa `_konsensus_qoida` |
+| `_deepseek_d` | Dₜ = DeepSeek-R1(Qₜ, Pₜ) |
+| `_oldingi_d_bilan_kelishuv` | agree(Qₜ, Dₜ₋₁) va agree(Pₜ, Dₜ₋₁) |
 | `_data_url`, `_kadr_png`, `_kadr_tanla` | PNG ni base64 data-URL qiladi |
 
 `manba` qiymatlari: `vlm`, `llm`, `shablon`. MedGemma hosti ochilmasa yoki javob bo‘lmasa shu rol `shablon` bo‘ladi. Bu fellow chaqiruvidan alohida.

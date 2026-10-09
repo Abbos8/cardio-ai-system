@@ -571,9 +571,11 @@ def _mdt_yonma_yon(mdt: Dict[str, Any], agent_holat: Optional[Dict[str, Any]] = 
     """
     holat = agent_holat or {}
     st.caption(
-        f"Raund={mdt.get('raund_soni')} | konsensus={mdt.get('konsensus')} | "
-        f"MedGemma={mdt.get('medgemma_manba')} | Qwen={mdt.get('qwen_manba')}"
+        f"Raund={mdt.get('raund_soni')} | kelishuv={mdt.get('konsensus')} | "
+        f"MedGemma={mdt.get('medgemma_manba')} | Qwen={mdt.get('qwen_manba')} | "
+        f"DeepSeek={mdt.get('deepseek_manba')}"
     )
+    st.markdown("**Oxirgi D (DeepSeek-R1)**")
     st.write(mdt.get("umumlashtirish"))
     if mdt.get("konsensus_sabab"):
         st.caption("Konsensus: " + str(mdt.get("konsensus_sabab")))
@@ -583,17 +585,26 @@ def _mdt_yonma_yon(mdt: Dict[str, Any], agent_holat: Optional[Dict[str, Any]] = 
         st.markdown("**Z (oraliq)**")
         st.write(mdt.get("oraliq_z") or holat.get("oraliq_z") or "")
     for r in mdt.get("raundlar") or []:
-        st.markdown(f"**Raund {r.get('raund')}**")
+        st.markdown(f"**Raund {r.get('raund')} — kirish {r.get('kirish') or '—'}**")
         chap, ong = st.columns(2)
         with chap:
-            st.markdown("MedGemma (tasvir)")
+            st.markdown("MedGemma — mulohaza")
             st.caption("manba=" + str(r.get("medgemma_manba") or mdt.get("medgemma_manba")))
-            st.write(str(r.get("medgemma") or "")[:1200])
+            st.write(str(r.get("medgemma") or ""))
         with ong:
-            st.markdown("Qwen2.5-VL (video)")
+            st.markdown("Qwen2.5-VL — mulohaza")
             st.caption("manba=" + str(r.get("qwen_manba") or mdt.get("qwen_manba")))
-            st.write(str(r.get("qwen") or "")[:1200])
-        st.caption("Raund konsensus: " + str(r.get("konsensus")))
+            st.write(str(r.get("qwen") or ""))
+        st.markdown("DeepSeek D")
+        st.caption("manba=" + str(r.get("deepseek_manba") or mdt.get("deepseek_manba")))
+        st.write(str(r.get("deepseek") or ""))
+        if int(r.get("raund") or 0) >= 3:
+            st.caption(
+                "agree(Q, D_oldingi)="
+                + str(r.get("qwen_agree"))
+                + " | agree(P, D_oldingi)="
+                + str(r.get("medgemma_agree"))
+            )
 
 
 def laboratoriya_matn(lab: Dict[str, float]) -> str:

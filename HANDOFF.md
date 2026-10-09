@@ -10,7 +10,7 @@ Tizim shifokor o‘rnini bosmaydi. Yakuniy qaror shifokorga tegishli.
 
 | Maydon | Qiymat |
 |---|---|
-| Keyingi ish | **2-bosqich** — DeepSeek chaqiruvini tasdiqlash. MedGemma: `.env` da `MEDGEMMA_BASE_URL` oxirida `/v1` bo‘lmasin (klient o‘zi `/v1/chat/completions` qo‘shadi). Yangilash: `git pull`, keyin `./ishga_tushir.sh`. |
+| Keyingi ish | **2-bosqich** — DeepSeek hisobini to‘ldirish, keyin jonli D sintezini tasdiqlash. Hozir API `402` (balans yetarli emas), MDT D shablon. MedGemma: `.env` da `MEDGEMMA_BASE_URL` oxirida `/v1` bo‘lmasin. Yangilash: `git pull`, keyin `./ishga_tushir.sh`. |
 | Oxirgi yopilgan | **14-bosqich** — xavfsizlik / klinik tayyorgarlik (demo) |
 | GitHub | https://github.com/Abbos8/cardio-ai-system (private, `main`) |
 | UI | `./ishga_tushir.sh` → http://127.0.0.1:8501 |
@@ -193,11 +193,11 @@ Har bosqich: **nima**, **qayerda**, **tayyor deb hisoblash**, **status**.
 
 ### 10. MDT: MedGemma + Qwen2.5-VL — qilindi
 
-**Nima:** MedGemma still tasvir (EKG grafik, echo kadr, LV overlay); Qwen2.5-VL echo cine/video kadrlar. Har raundda `I` va `Z` qayta kiritiladi. Konsensus yoki max 3 raund; VLM yo‘qida 1 raund shablon.
+**Nima:** MedGemma still (I raundida), Qwen2.5-VL cine (I raundida). Matn ketma-ketligi: t=1 ikkalasi faqat I, D₁=DeepSeek(Q₁,P₁); t=2 ikkalasi (D₁, Z); t toq (D, I), t juft (D, Z). To‘xtash t≥3: ikkalasi oldingi D bilan kelishsa yoki t=T (T=3). Yakun — oxirgi D. VLM yo‘qida ham shu tartib, matn shablon.
 
 **Qayerda:** `src/agents/mdt.py`; `vlm_sozlama` `src/llm/client.py`; graf `chief_agent._mdt`; UI expander yonma-yon. `.env.example`: `MEDGEMMA_*`, `QWEN_VL_*`.
 
-**Manba:** `vlm` (maxsus URL/model) → `llm` (vision nom, reasoner emas) → `shablon`. DeepSeek-reasoner tasvirga yuborilmaydi.
+**Manba:** `vlm` (maxsus URL/model) → `llm` (vision nom, reasoner emas) → `shablon`. DeepSeek-reasoner tasvirga yuborilmaydi. Ekrandagi matn klinik mulohaza: I/Z kontekst sifatida beriladi, javob ularning nusxasi emas. `thought` izi chiqsa `Final Output` dan keyingi matn olinadi.
 
 **MDT qachon:** STOP va (EKG/echo bor yoki murakkab yoki noaniq).
 
@@ -367,3 +367,6 @@ Fayllar: `src/agents/chief_agent.py`, `src/agents/mdt.py`, `src/rag/medical_rag.
 
 - MedGemma so‘rovida uzun EKG/echo raqam matritsasi bo‘lsa, faqat sub-agent `xabar`/`rag_satr` ketadi (`medgemma_matnlari`). To‘lqin indekslari Z ga yozilmaydi. Shu holda still kadr ham ketmaydi.
 - MedGemma serveri ishlaydi. `.env` gitda yo‘q: `MEDGEMMA_BASE_URL` = `https://stt-pipeline.rifqat.uz/llm` (`/v1` siz). Boshqa mashinada shu qatorni qo‘lda yozing, keyin UI ni qayta ishga tushiring.
+- MDT javobi `thought` izida I va Z ni qayta yozardi; `_mulohazani_ajrat` yakuniy izohni oladi.
+- MDT endi formuladagi tartibda: t=1 faqat I, t=2 D+Z, t=3 D+I; har raundda D=DeepSeek(Q,P). To‘xtash t≥3. Qayta: `./ishga_tushir.sh`.
+- DeepSeek-R1 sintez (D) hozir chiqmaydi: API `402` balans yetarli emas. Kod xatoni yutmaydi; reasoner ga temperature yuborilmaydi, content bo‘sh bo‘lsa izning oxiri olinadi. Hisob to‘ldirilgach UI ni qayta ishga tushiring.
