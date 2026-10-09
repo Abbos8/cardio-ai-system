@@ -327,6 +327,27 @@ def _oddiy_reja(bemor: Dict[str, Any]) -> List[Dict[str, Any]]:
     return qadamlar
 
 
+def _raqam_massivi(qiymat: Any) -> bool:
+    """EKG namunasi yoki to‘lqin indekslari kabi uzun raqam massivini ajratadi.
+
+    Args:
+        qiymat: Lug‘at maydoni.
+
+    Returns:
+        True — MedGemma/Z matniga yozilmasin. Qisqa o‘lchov (HR, QRS) False.
+    """
+    if isinstance(qiymat, (list, tuple)):
+        if len(qiymat) > 16 and all(isinstance(x, (int, float)) for x in list(qiymat)[:8]):
+            return True
+        return False
+    if type(qiymat).__name__ == "ndarray":
+        try:
+            return int(qiymat.size) > 16
+        except (TypeError, ValueError):
+            return True
+    return False
+
+
 def _lugat_z_qisqa(obyekt: Any, max_len: int = 700) -> str:
     """Z matnida bayt/maska maydonlarini qisqartiradi (MDT gallyutsinatsiya cheklovi).
 
@@ -339,10 +360,20 @@ def _lugat_z_qisqa(obyekt: Any, max_len: int = 700) -> str:
     """
     if not isinstance(obyekt, dict):
         return str(obyekt)[:max_len]
-    otkaz = {"overlay_png", "maska", "kadrlar", "preview", "signal"}
+    otkaz = {
+        "overlay_png",
+        "maska",
+        "kadrlar",
+        "preview",
+        "preview_kadrlar",
+        "signal",
+        "ecg_signal",
+        "tozalangan_signallar",
+        "tolqinlar",
+    }
     qism: List[str] = []
     for kalit, qiymat in obyekt.items():
-        if kalit in otkaz or isinstance(qiymat, (bytes, bytearray)):
+        if kalit in otkaz or isinstance(qiymat, (bytes, bytearray)) or _raqam_massivi(qiymat):
             continue
         if isinstance(qiymat, dict):
             qism.append(f"{kalit}={_lugat_z_qisqa(qiymat, 240)}")

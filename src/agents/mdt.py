@@ -7,6 +7,7 @@ VLM/API yo‘qida shablon. Konsensus yoki max_raund da to‘xtaydi. Tashxis emas
 from __future__ import annotations
 
 import base64
+import re
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 from llm.client import llm_chat, llm_json, model_qisqacha, vlm_sozlama
@@ -15,6 +16,13 @@ from tools.ecg_tool import ekg_qisqa_png
 MAX_RAUND = 3
 MAX_VIDEO_KADR = 6
 VLM_TIMEOUT = 180.0
+# Shuncha ketma-ket sondan keyin matn EKG/echo namunasi hisoblanadi, xulosa emas
+_MATRITSA_SONI = 24
+_RAQAM_MATRITSA = re.compile(
+    r"(?:[-+]?(?:\d+\.\d+|\d+)(?:[eE][-+]?\d+)?[\s,;\[\]\(\)]+){"
+    + str(_MATRITSA_SONI)
+    + r",}"
+)
 
 
 def _data_url(png: bytes) -> str:
@@ -203,6 +211,80 @@ def _multimodal_qism(matn: str, rasmlar: Sequence[Dict[str, Any]]) -> List[Dict[
     return qismlar
 
 
+def raqam_matritsasi_bormi(matn: str) -> bool:
+    """Matnda EKG/echo namunasi kabi uzun raqam ketma-ketligi borligini tekshiradi.
+
+    Args:
+        matn: I yoki Z.
+
+    Returns:
+        True — MedGemma ga matritsa emas, sub-agent xulosasi ketadi.
+    """
+    if not matn:
+        return False
+    return _RAQAM_MATRITSA.search(matn) is not None
+
+
+def _xulosa_satri(sarlavha: str, obyekt: Any) -> str:
+    """Vosita javobidan faqat tayyor matn xulosasini oladi.
+
+    Args:
+        sarlavha: LAB, EKG, ECHO, LV.
+        obyekt: Sub-agent lug‘ati.
+
+    Returns:
+        «SARLAVHA: xabar» yoki bo‘sh. Raqam matritsasi kirmaydi.
+    """
+    if not isinstance(obyekt, dict):
+        return ""
+    for kalit in ("xabar", "rag_satr", "matn"):
+        matn = obyekt.get(kalit)
+        if isinstance(matn, str) and matn.strip() and not raqam_matritsasi_bormi(matn):
+            return f"{sarlavha}: {matn.strip()}"
+    return ""
+
+
+def medgemma_matnlari(
+    xom_i: str,
+    oraliq_z: str,
+    lab: Optional[Dict[str, Any]] = None,
+    ecg: Optional[Dict[str, Any]] = None,
+    echo: Optional[Dict[str, Any]] = None,
+    segment: Optional[Dict[str, Any]] = None,
+) -> Tuple[str, str]:
+    """Uzun EKG/echo matritsasi bo‘lsa MedGemma ga faqat matn xulosalarini beradi.
+
+    Args:
+        xom_i: Bemor qisqasi.
+        oraliq_z: Vositalar matni (ichida signal bo‘lishi mumkin).
+        lab, ecg, echo, segment: Sub-agent javoblari.
+
+    Returns:
+        (I, Z). Matritsa yo‘q bo‘lsa kirish o‘zgarmaydi. Tashxis emas.
+    """
+    if not (raqam_matritsasi_bormi(xom_i) or raqam_matritsasi_bormi(oraliq_z)):
+        return xom_i, oraliq_z
+    i_qator = [q for q in (xom_i or "").splitlines() if not raqam_matritsasi_bormi(q)]
+    i_toza = "\n".join(i_qator).strip()
+    if not i_toza or raqam_matritsasi_bormi(i_toza):
+        i_toza = "Bemor qisqasi: EKG/echo raqam matritsasi yuborilmadi."
+    xulosalar = [
+        _xulosa_satri("LAB", lab),
+        _xulosa_satri("EKG", ecg),
+        _xulosa_satri("ECG_TECH", (ecg or {}).get("technician") if isinstance(ecg, dict) else None),
+        _xulosa_satri("ECG_EP", (ecg or {}).get("ep") if isinstance(ecg, dict) else None),
+        _xulosa_satri("ECHO", echo),
+        _xulosa_satri("LV", segment),
+    ]
+    for qator in (oraliq_z or "").splitlines():
+        if qator.strip().upper().startswith("FELLOW:") and not raqam_matritsasi_bormi(qator):
+            xulosalar.append(qator.strip())
+    z_toza = "\n".join(q for q in xulosalar if q)
+    if not z_toza:
+        z_toza = "Sub-agent matn xulosasi yo‘q. Raqam matritsasi yuborilmadi."
+    return i_toza, z_toza
+
+
 def _foydalanuvchi_matn(
     xom_i: str,
     oraliq_z: str,
@@ -385,6 +467,11 @@ def mdt_munozara(
             z_qosh += "\nLAB: " + str(lab.get("rag_satr") or lab.get("xabar"))
     if echo and echo.get("xabar") and "ECHO:" not in z_qosh:
         z_qosh += "\nECHO: " + str(echo.get("xabar"))
+    med_i, med_z = medgemma_matnlari(xom_i, z_qosh, lab, ecg, echo, segment)
+    # Matritsa bor edi — MedGemma faqat matn xulosasini oladi, namuna va kadr emas
+    med_rasmlar: Sequence[Dict[str, Any]] = []
+    if med_i == xom_i and med_z == z_qosh:
+        med_rasmlar = viz.get("still") or []
     yoq = list(viz.get("yoq_dalillar") or [])
 
     med_tizim = (
@@ -412,10 +499,10 @@ def mdt_munozara(
         med, med_manba = _rol_javobi(
             "medgemma",
             med_tizim,
-            xom_i,
-            z_qosh,
+            med_i,
+            med_z,
             qwen,
-            viz.get("still") or [],
+            med_rasmlar,
             yoq,
             video=False,
         )

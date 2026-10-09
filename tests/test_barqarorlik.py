@@ -17,7 +17,7 @@ if str(_SRC) not in sys.path:
     sys.path.insert(0, str(_SRC))
 
 from agents.chief_agent import ChiefCardiologist
-from agents.mdt import mdt_munozara
+from agents.mdt import medgemma_matnlari, mdt_munozara
 from llm.client import llm_chat, llm_mavjud
 from tools.ecg_tool import namuna_12_tasma_ekg
 from tools.lab_tool import process_lab
@@ -216,6 +216,26 @@ class BarqarorlikTest(unittest.TestCase):
                 os.environ.pop("RAG_INDEX_DIR", None)
             else:
                 os.environ["RAG_INDEX_DIR"] = eski_dir
+
+    def test_medgemma_matritsa_oriniga_xulosa(self) -> None:
+        """Uzun EKG raqamlari MedGemma matniga kirmaydi; sub-agent xulosasi qoladi."""
+        matritsa = " ".join(str(i) for i in range(80))
+        i_matn, z_matn = medgemma_matnlari(
+            "yosh=50 " + matritsa,
+            "ECG_EP: " + matritsa,
+            lab={"rag_satr": "LAB kaliy=4.1 troponin_i=12"},
+            ecg={"xabar": "Technician: II da 9 R, sifat=yaxshi. Tashxis emas."},
+            echo={"xabar": "Echo technician: ko‘rinishlar=['A4C']."},
+            segment={"xabar": "LV kontur (algoritmik kavak): 709 px."},
+        )
+        self.assertNotIn(matritsa[:40], i_matn)
+        self.assertNotIn(matritsa[:40], z_matn)
+        self.assertIn("Technician", z_matn)
+        self.assertIn("A4C", z_matn)
+        self.assertIn("709", z_matn)
+        qisqa_i, qisqa_z = medgemma_matnlari("yosh=50", "ECG: HR 72 QRS 90 ms", None, None, None, None)
+        self.assertEqual(qisqa_i, "yosh=50")
+        self.assertIn("QRS 90", qisqa_z)
 
     def test_mdt_shablon_bosh(self) -> None:
         """VLM yo‘qida MDT shablon, yo‘q dalil o‘ylab topilmaydi."""

@@ -6,15 +6,15 @@ Tizim shifokor o‘rnini bosmaydi. Yakuniy qaror shifokorga tegishli.
 
 ---
 
-## Hozir qayerdamiz (2026-10-02)
+## Hozir qayerdamiz (2026-10-09)
 
 | Maydon | Qiymat |
 |---|---|
-| Keyingi ish | Fellow vision jonli javobi: OpenRouter `QWEN_VL_API_KEY` muddati o‘tgan (401). Yangi kalit `.env` da. DeepSeek tasdiqlash (2-bosqich) ochiq qoladi. |
+| Keyingi ish | **2-bosqich** — DeepSeek chaqiruvini tasdiqlash. MedGemma: `.env` da `MEDGEMMA_BASE_URL` oxirida `/v1` bo‘lmasin (klient o‘zi `/v1/chat/completions` qo‘shadi). Yangilash: `git pull`, keyin `./ishga_tushir.sh`. |
 | Oxirgi yopilgan | **14-bosqich** — xavfsizlik / klinik tayyorgarlik (demo) |
 | GitHub | https://github.com/Abbos8/cardio-ai-system (private, `main`) |
 | UI | `./ishga_tushir.sh` → http://127.0.0.1:8501 |
-| Yo‘riqnoma | `YORIQNOMA.md` — noldan, butun loyiha |
+| Yo‘riqnoma | `DASTURIY_YORIQNOMA.md` — modullar, klasslar, funksiyalar |
 
 Bosqichni yopganda: pastdagi jadvalda statusni `qilindi` qiling, «Hozir qayerdamiz» ni yangilang, qisqa «Sessiya yozuvi» qo‘shing.
 
@@ -38,7 +38,7 @@ Barqarorlik: `PYTHONPATH=src python -m unittest tests.test_barqarorlik -v`
 
 Kalitlarni faqat loyiha ildizidagi `.env` ga yozing (`venv/` emas); chatga va gitga tushirmang. `src/llm/client.py` shu `.env` ni o‘qiydi.
 
-To‘liq foydalanish yo‘riqnomasi: `YORIQNOMA.md`.
+Dasturiy tuzilma: `DASTURIY_YORIQNOMA.md`.
 
 ---
 
@@ -358,3 +358,12 @@ Fayllar: `src/agents/chief_agent.py`, `src/agents/mdt.py`, `src/rag/medical_rag.
 - Fellow rasmlari `FELLOW_VISION_MODEL` + `FELLOW_VISION_BASE_URL` orqali ketadi; `deepseek-reasoner` ga tasvir yuborilmaydi.
 - Model: `qwen/qwen-2.5-vl-72b-instruct`, host OpenRouter. Alohida kalit bo‘sh — `QWEN_VL_API_KEY`.
 - Jonli tekshiruv: 401, kalit muddati o‘tgan. `.env` gitga kirmaydi. Yangi kalitdan keyin `./ishga_tushir.sh`.
+
+### 2026-10-06
+
+- `DASTURIY_YORIQNOMA.md`: oqim, kutubxonalar, `ChiefHolat`, agent/MDT/LLM/vositalar/RAG/UI/xavfsizlik — funksiya va o‘zgaruvchigacha.
+
+### 2026-10-09
+
+- MedGemma so‘rovida uzun EKG/echo raqam matritsasi bo‘lsa, faqat sub-agent `xabar`/`rag_satr` ketadi (`medgemma_matnlari`). To‘lqin indekslari Z ga yozilmaydi. Shu holda still kadr ham ketmaydi.
+- MedGemma serveri ishlaydi. `.env` gitda yo‘q: `MEDGEMMA_BASE_URL` = `https://stt-pipeline.rifqat.uz/llm` (`/v1` siz). Boshqa mashinada shu qatorni qo‘lda yozing, keyin UI ni qayta ishga tushiring.
