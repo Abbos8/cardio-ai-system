@@ -382,6 +382,41 @@ def _lugat_z_qisqa(obyekt: Any, max_len: int = 700) -> str:
     return "; ".join(qism)[:max_len]
 
 
+def _dalil_noaniq(holat: ChiefHolat) -> bool:
+    """Muhokara kerakmi: vosita yiqilgan yoki EKG sifati yetarli emas.
+
+    Murakkab holat, tasvirning o‘zi yoki fayl umuman yo‘qligi MDT ochmaydi.
+    Noaniqlik — berilgan signal yoki echo yiqilganda, yoki EKG sifati yomon.
+
+    Args:
+        holat: Lab, EKG, echo va LV natijalari.
+
+    Returns:
+        True — STOP dan keyin MDT. Tashxis emas.
+    """
+    bemor = holat.get("bemor") or {}
+    signal_bor = _ekg_signal_bormi(bemor)
+    echo_bor = echo_bormi(bemor)
+    ecg = holat.get("ecg_natija")
+    if signal_bor and isinstance(ecg, dict) and ecg.get("ok") is False:
+        return True
+    echo = holat.get("echo_natija")
+    if echo_bor and isinstance(echo, dict) and echo.get("ok") is False:
+        return True
+    mask = holat.get("echo_mask")
+    if echo_bor and isinstance(mask, dict) and mask.get("ok") is False:
+        return True
+    if not signal_bor:
+        return False
+    sifat = ""
+    if isinstance(ecg, dict):
+        tech = ecg.get("technician") if isinstance(ecg.get("technician"), dict) else {}
+        sifat = str(tech.get("sifat") or ecg.get("sifat") or "")
+    viz = holat.get("vizual") or {}
+    sifat = (sifat or str(viz.get("ekg_sifat") or "")).strip().lower()
+    return sifat in {"qisqa", "shovqinli", "r noaniq", "noma'lum", "noma’lum"}
+
+
 def _oraliq_matn(holat: ChiefHolat) -> str:
     """Z — bajarilgan vositalar qisqasi (MDT va yangilanish uchun).
 
@@ -716,23 +751,11 @@ class ChiefCardiologist:
         z = _oraliq_matn(holat)
         tarix = list(holat.get("qadam_tarixi") or [])
 
-        echo = holat.get("echo_natija") or {}
-        ecg = holat.get("ecg_natija")
-        noaniq = False
-        if ecg is not None and ecg.get("ok") is False:
-            noaniq = True
-        if echo.get("ok") is False and holat.get("murakkablik") == "murakkab":
-            noaniq = True
-        if holat.get("echo_mask") and holat["echo_mask"].get("ok") is False and holat.get("murakkablik") == "murakkab":
-            noaniq = True
-
-        bemor = holat.get("bemor") or {}
-        vizual = _ekg_signal_bormi(bemor) or echo_bormi(bemor)
-        murakkab = holat.get("murakkablik") == "murakkab"
+        noaniq = _dalil_noaniq(holat)
         zaxira = {
             "S": "Vosita natijasi qabul qilindi.",
             "A": "CONTINUE" if indeks < len(reja) else "STOP",
-            "mdt": noaniq or vizual or murakkab,
+            "mdt": noaniq,
             "P_next": None,
         }
         if qadam_n >= self.max_qadam:
@@ -744,6 +767,8 @@ class ChiefCardiologist:
                 "Bosh kardiolog stepwise update. JSON: "
                 '{"S":"qisqa xulosa","A":"CONTINUE"|"STOP","mdt":true|false,'
                 '"P_next":null yoki {"id":"pX","vosita":"...","tavsif":"..."}}. '
+                "mdt true faqat vosita xatosi, yetarli bo‘lmagan signal sifati yoki zid dalil bo‘lsa. "
+                "Murakkablik yoki EKG/echo borligi mdt ni true qilmaydi. "
                 "Tashxis qo‘ymang. Xato tarqalishini to‘xtating."
             ),
             foydalanuvchi=f"I:\n{holat.get('xom_i')}\nZ:\n{z}\nreja_indeks={indeks}/{len(reja)}",
@@ -754,9 +779,9 @@ class ChiefCardiologist:
             amal = "STOP"
         if qadam_n >= self.max_qadam:
             amal = "STOP"
-        mdt_kerak = amal == "STOP" and (
-            bool(natija.get("mdt", zaxira["mdt"])) or vizual or murakkab or noaniq
-        )
+        # Qoida noaniqligi majburiy. Model qo‘shimcha noaniqlik aytsa ham ochiladi.
+        # Tasvir yoki murakkablikning o‘zi yetarli emas.
+        mdt_kerak = amal == "STOP" and (noaniq or bool(natija.get("mdt", zaxira["mdt"])))
         s_matn = str(natija.get("S") or zaxira["S"])
         p_next = natija.get("P_next")
         if amal == "CONTINUE" and isinstance(p_next, dict) and p_next.get("vosita"):

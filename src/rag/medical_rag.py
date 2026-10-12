@@ -156,7 +156,14 @@ def _bert_yukla(model_nomi: str, qurilma: str) -> Tuple[object, object]:
     return tokenizer, model
 
 
-def _manba_imzo(yol: Path, model_nomi: str, bert: bool, raw_katalog: Optional[Path] = None) -> str:
+def _manba_imzo(
+    yol: Path,
+    model_nomi: str,
+    bert: bool,
+    raw_katalog: Optional[Path] = None,
+    chunk_size: Optional[int] = None,
+    overlap: Optional[int] = None,
+) -> str:
     """Seed + data/raw fayllari va embedding rejimidan kesh kalitini hisoblaydi.
 
     Args:
@@ -164,12 +171,16 @@ def _manba_imzo(yol: Path, model_nomi: str, bert: bool, raw_katalog: Optional[Pa
         model_nomi: BERT identifikatori.
         bert: Haqiqiy BERT ishlatilganmi.
         raw_katalog: Yuklab olingan HTML/PDF. None — data/raw.
+        chunk_size: Belgi bo‘lak. None — ingest.CHUNK_BELGI (500).
+        overlap: Ustma-ust belgi. None — 50.
 
     Returns:
-        SHA-256 hex. Korpus o‘zgarsa indeks qayta quriladi.
+        SHA-256 hex. Korpus yoki bo‘lak o‘lchami o‘zgarsa indeks qayta quriladi.
     """
-    from rag.ingest import CHUNK_SOZ, CHUNK_USTMA_UST
+    from rag.ingest import CHUNK_BELGI, CHUNK_USTMA
 
+    hajm = CHUNK_BELGI if chunk_size is None else chunk_size
+    ustma = CHUNK_USTMA if overlap is None else overlap
     h = hashlib.sha256()
     h.update(yol.read_bytes() if yol.exists() else b"")
     raw = Path(raw_katalog) if raw_katalog else ODATIY_RAW_DIR
@@ -183,7 +194,7 @@ def _manba_imzo(yol: Path, model_nomi: str, bert: bool, raw_katalog: Optional[Pa
             h.update(rel)
             h.update(str(fayl.stat().st_size).encode())
             h.update(hashlib.sha256(fayl.read_bytes()).digest())
-    h.update(f"|{model_nomi}|{int(bert)}|{EMBEDDING_OLCHAMI}|{CHUNK_SOZ}|{CHUNK_USTMA_UST}".encode())
+    h.update(f"|{model_nomi}|{int(bert)}|{EMBEDDING_OLCHAMI}|char|{hajm}|{ustma}".encode())
     return h.hexdigest()
 
 
@@ -245,6 +256,8 @@ class MedicalRAG:
         Returns:
             float32 massiv [N, 768], FAISS IndexFlatIP uchun L2-normallangan.
         """
+        if not matnlar:
+            return np.zeros((0, EMBEDDING_OLCHAMI), dtype="float32")
         if self.model is None or self.tokenizer is None:
             massiv = np.zeros((len(matnlar), EMBEDDING_OLCHAMI), dtype="float32")
             for i, matn in enumerate(matnlar):
@@ -252,20 +265,25 @@ class MedicalRAG:
                     massiv[i, hash(soz) % EMBEDDING_OLCHAMI] += 1.0
             faiss.normalize_L2(massiv)
             return massiv
-        kod = self.tokenizer(
-            list(matnlar),
-            padding=True,
-            truncation=True,
-            max_length=MAX_TOKEN,
-            return_tensors="pt",
-        )
-        kod = {kalit: qiymat.to(self.qurilma) for kalit, qiymat in kod.items()}
-        with torch.no_grad():
-            chiqish = self.model(**kod)
-        vektorlar = self._ortacha_pul(chiqish.last_hidden_state, kod["attention_mask"])
-        massiv = vektorlar.cpu().numpy().astype("float32")
-        faiss.normalize_L2(massiv)
-        return massiv
+        # Katta korpusni bir yo‘la GPU/CPU ga bermaslik uchun kichik partiyalar
+        partiyalar = []
+        for boshi in range(0, len(matnlar), 16):
+            qism = list(matnlar[boshi : boshi + 16])
+            kod = self.tokenizer(
+                qism,
+                padding=True,
+                truncation=True,
+                max_length=MAX_TOKEN,
+                return_tensors="pt",
+            )
+            kod = {kalit: qiymat.to(self.qurilma) for kalit, qiymat in kod.items()}
+            with torch.no_grad():
+                chiqish = self.model(**kod)
+            vektorlar = self._ortacha_pul(chiqish.last_hidden_state, kod["attention_mask"])
+            massiv = vektorlar.cpu().numpy().astype("float32")
+            faiss.normalize_L2(massiv)
+            partiyalar.append(massiv)
+        return np.vstack(partiyalar)
 
     def index_documents(self, bolaklar: Sequence[str]) -> int:
         """Tibbiy matn bo‘laklarini BioClinicalBERT + FAISS indeksiga yozadi.
@@ -285,12 +303,20 @@ class MedicalRAG:
         self._tf_idf_tayyor = False
         return len(toza)
 
-    def indeksni_saqla(self, katalog: Optional[Path] = None, manba: Optional[Path] = None) -> Path:
+    def indeksni_saqla(
+        self,
+        katalog: Optional[Path] = None,
+        manba: Optional[Path] = None,
+        chunk_size: Optional[int] = None,
+        overlap: Optional[int] = None,
+    ) -> Path:
         """FAISS indeksini va bo‘laklarni diskka yozadi.
 
         Args:
             katalog: Saqlash jildi. None — data/processed/rag_index.
             manba: Seed .txt (kesh kaliti uchun).
+            chunk_size: Kesh kalitidagi belgi bo‘lak.
+            overlap: Kesh kalitidagi ustma-ust.
 
         Returns:
             Yozilgan katalog yo‘li. Keyingi UI ochilishida qayta hisoblanmaydi.
@@ -302,24 +328,38 @@ class MedicalRAG:
             json.dumps(self.bolaklar, ensure_ascii=False, indent=0),
             encoding="utf-8",
         )
-        imzo = _manba_imzo(manba, self.model_nomi, self.bert_ishlatildi) if manba else ""
+        imzo = (
+            _manba_imzo(manba, self.model_nomi, self.bert_ishlatildi, chunk_size=chunk_size, overlap=overlap)
+            if manba
+            else ""
+        )
         meta = {
             "model_nomi": self.model_nomi,
             "embedding_olchami": EMBEDDING_OLCHAMI,
             "bert_ishlatildi": self.bert_ishlatildi,
             "chunk_soni": len(self.bolaklar),
+            "chunk_size": chunk_size,
+            "overlap": overlap,
             "manba_imzo": imzo,
         }
         (katalog / META_FAYL).write_text(json.dumps(meta, ensure_ascii=False, indent=2), encoding="utf-8")
         _LOG.info("FAISS indeks saqlandi: %s (%s bo‘lak)", katalog, len(self.bolaklar))
         return katalog
 
-    def indeksni_yukla(self, katalog: Optional[Path] = None, manba: Optional[Path] = None) -> bool:
+    def indeksni_yukla(
+        self,
+        katalog: Optional[Path] = None,
+        manba: Optional[Path] = None,
+        chunk_size: Optional[int] = None,
+        overlap: Optional[int] = None,
+    ) -> bool:
         """Diskdagi FAISS indeksini o‘qiydi, agar kesh kaliti mos kelsa.
 
         Args:
             katalog: Kesh jildi.
             manba: Seed .txt; o‘zgargan bo‘lsa False (qayta qurish kerak).
+            chunk_size: Kutilgan belgi bo‘lak.
+            overlap: Kutilgan ustma-ust.
 
         Returns:
             True — indeks tayyor; False — qayta embedding kerak.
@@ -341,7 +381,13 @@ class MedicalRAG:
         if str(meta.get("model_nomi") or "") != self.model_nomi:
             return False
         if manba is not None:
-            kutilgan = _manba_imzo(manba, self.model_nomi, self.bert_ishlatildi)
+            kutilgan = _manba_imzo(
+                manba,
+                self.model_nomi,
+                self.bert_ishlatildi,
+                chunk_size=chunk_size,
+                overlap=overlap,
+            )
             if str(meta.get("manba_imzo") or "") != kutilgan:
                 return False
         try:
@@ -511,18 +557,28 @@ class MedicalRAG:
         )
         return tartiblangan[:bosqich2]
 
-    def urug_indeks(self, yol: Optional[Path] = None, qayta_qur: bool = False) -> int:
+    def urug_indeks(
+        self,
+        yol: Optional[Path] = None,
+        qayta_qur: bool = False,
+        chunk_size: Optional[int] = None,
+        overlap: Optional[int] = None,
+    ) -> int:
         """Seed + data/raw korpusini indekslaydi; kesh mos bo‘lsa diskdan.
 
         Args:
             yol: Ixtiyoriy seed .txt; None — knowledge/cardiology_seed.txt.
             qayta_qur: True — keshni e’tiborsiz qoldirib qayta hisoblash.
+            chunk_size: Belgi bo‘lak. None — 500.
+            overlap: Ustma-ust belgi. None — 50.
 
         Returns:
-            Indeksdagi bo‘laklar soni.
+            Indeksdagi bo‘laklar soni. Tashxis emas.
         """
-        from rag.ingest import korpus_bolaklari
+        from rag.ingest import CHUNK_BELGI, CHUNK_USTMA, korpus_bolaklari
 
+        hajm = CHUNK_BELGI if chunk_size is None else chunk_size
+        ustma = CHUNK_USTMA if overlap is None else overlap
         if yol is None:
             yol = Path(__file__).resolve().parent / "knowledge" / "cardiology_seed.txt"
         if qayta_qur:
@@ -531,12 +587,12 @@ class MedicalRAG:
             self._tf_idf_tayyor = False
         elif self.indeks.ntotal > 0 and self.bolaklar:
             return len(self.bolaklar)
-        if not qayta_qur and self.indeksni_yukla(manba=yol):
+        if not qayta_qur and self.indeksni_yukla(manba=yol, chunk_size=hajm, overlap=ustma):
             return len(self.bolaklar)
-        bolaklar = korpus_bolaklari(yol, ODATIY_RAW_DIR)
+        bolaklar = korpus_bolaklari(yol, ODATIY_RAW_DIR, chunk_size=hajm, overlap=ustma)
         soni = self.index_documents(bolaklar)
         if soni:
-            self.indeksni_saqla(manba=yol)
+            self.indeksni_saqla(manba=yol, chunk_size=hajm, overlap=ustma)
         return soni
 
     def reja_tuz(self, sorov: str, kontekst: Optional[Sequence[str]] = None) -> List[dict]:

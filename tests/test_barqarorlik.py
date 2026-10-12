@@ -16,7 +16,7 @@ _SRC = _ILDIG / "src"
 if str(_SRC) not in sys.path:
     sys.path.insert(0, str(_SRC))
 
-from agents.chief_agent import ChiefCardiologist
+from agents.chief_agent import ChiefCardiologist, _dalil_noaniq
 from agents.mdt import (
     _foydalanuvchi_matn,
     _mulohazani_ajrat,
@@ -151,6 +151,8 @@ class BarqarorlikTest(unittest.TestCase):
         _ehtiyot_stop(holat)
         self.assertTrue(_ecg_ok(holat) or (holat.get("ecg_technician_natija") or {}).get("ok"))
         self.assertFalse((holat.get("echo_natija") or {}).get("ok"))
+        self.assertIsNone(holat.get("mdt_natija"))
+        self.assertFalse(holat.get("mdt_kerak"))
 
     def test_echo_only(self) -> None:
         """Faqat echo DICOM."""
@@ -182,8 +184,31 @@ class BarqarorlikTest(unittest.TestCase):
         self.assertTrue("lab" in dalil)
         self.assertNotIn("echo", fellow.get("yoq_dalillar") or [])
         self.assertEqual(fellow.get("manba"), "shablon")
-        mdt = holat.get("mdt_natija")
-        self.assertTrue(mdt is None or mdt.get("ok"))
+        self.assertIsNone(holat.get("mdt_natija"))
+        self.assertFalse(_dalil_noaniq(holat))
+
+    def test_ekg_xatosida_mdt(self) -> None:
+        """Qisqa signal vositani yiqitadi — muhokara shunda ochiladi."""
+        holat = _agent().run(
+            {
+                "yosh": 58,
+                "ecg_signal": namuna_12_tasma_ekg(sampling_rate=500.0, davomiylik=0.4),
+                "sampling_rate": 500.0,
+            }
+        )
+        _ehtiyot_stop(holat)
+        self.assertTrue(_dalil_noaniq(holat))
+        self.assertFalse(
+            _dalil_noaniq(
+                {
+                    "bemor": {"yosh": 50},
+                    "echo_mask": {"ok": False, "xabar": "LV segmentatsiya uchun kadrlar yo‘q."},
+                }
+            )
+        )
+        mdt = holat.get("mdt_natija") or {}
+        self.assertTrue(mdt.get("ok"))
+        self.assertGreaterEqual(int(mdt.get("raund_soni") or 0), 3)
 
     def test_langgraph_limiti(self) -> None:
         """Qadam limiti — STOP, xulosa ehtiyotkor."""
@@ -313,8 +338,9 @@ class BarqarorlikTest(unittest.TestCase):
         self.assertTrue(nat.get("ok"))
         self.assertEqual(nat.get("medgemma_manba"), "shablon")
         self.assertEqual(nat.get("deepseek_manba"), "shablon")
-        self.assertEqual(nat.get("raund_soni"), 3)
-        self.assertEqual([r.get("kirish") for r in nat.get("raundlar") or []], ["I", "DZ", "DI"])
+        self.assertEqual(nat.get("raund_soni"), 4)
+        self.assertEqual([r.get("kirish") for r in nat.get("raundlar") or []], ["I", "DZ", "DI", "DZ"])
+        self.assertFalse(nat.get("konsensus"))
         self.assertTrue(nat.get("umumlashtirish"))
         self.assertIn("echo", nat.get("yoq_dalillar") or [])
 

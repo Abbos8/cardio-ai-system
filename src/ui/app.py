@@ -1,7 +1,7 @@
 """Kardiologik AI agent uchun 3 ustunli Streamlit interfeysi.
 
 1-ustun: bemor va laboratoriya. 2-ustun: 12 tasmali EKG grafigi.
-3-ustun: ChiefCardiologist xulosasi. Pastda vizual tekshirish paneli.
+3-ustun: ChiefCardiologist xulosasi. Vizual panel shifokor so‘raganda ochiladi.
 Tashxis o‘rnini bosmaydi.
 """
 
@@ -789,11 +789,11 @@ def _ustun2_ekg(
     holat = agent_holat or {}
     echo_n = holat.get("echo_natija") or {}
     if echo_n.get("korinishlar"):
-        st.caption("Echo: " + ", ".join(echo_n.get("korinishlar") or []) + " — 11 ko‘rinish pastdagi panelda.")
+        st.caption("Echo: " + ", ".join(echo_n.get("korinishlar") or []) + " — 11 ko‘rinish vizual tekshiruvda.")
     if (holat.get("echo_mask") or {}).get("ok"):
-        st.caption("LV overlay pastdagi vizual panelda.")
+        st.caption("LV overlay vizual tekshiruvda.")
     if holat.get("mdt_natija"):
-        st.caption("MDT raundlari pastdagi panelda yonma-yon.")
+        st.caption("MDT raundlari vizual tekshiruvda yonma-yon.")
 
 
 def _vizual_tekshirish_paneli(
@@ -817,7 +817,8 @@ def _vizual_tekshirish_paneli(
     st.divider()
     st.subheader("Vizual tekshirish paneli")
     st.caption(
-        "Oraliq natijalar (tozalangan EKG, 11 echo ko‘rinish, LV overlay, MDT). "
+        "Shifokor so‘rovi bilan ochilgan oraliq natijalar "
+        "(tozalangan EKG, 11 echo ko‘rinish, LV overlay, MDT). "
         "Tashxis emas; yakuniy qaror shifokorga tegishli."
     )
     viz = holat.get("vizual") or {}
@@ -1005,7 +1006,7 @@ def _ustun3_xulosa(agent_holat: Optional[Dict[str, Any]], bemor: Optional[Dict[s
                     f"ko‘rinish={mask_n.get('korinish')} | {mask_n.get('maydon_px')} px | "
                     f"ulush={mask_n.get('ulush')} | model={mask_n.get('model')}"
                 )
-            st.caption("Algoritmik kavak; klinik EF emas. To‘liq rasm pastdagi vizual panelda.")
+            st.caption("Algoritmik kavak; klinik EF emas. To‘liq rasm vizual tekshiruvda.")
     fellow_n = agent_holat.get("fellow_natija") or {}
     if fellow_n:
         with st.expander("Cardiology fellow (multimodal)"):
@@ -1018,7 +1019,7 @@ def _ustun3_xulosa(agent_holat: Optional[Dict[str, Any]], bemor: Optional[Dict[s
                 st.warning("Fellow/MDT **shablon rejimida** (LLM yoki VLM javobi yo‘q).")
     viz = agent_holat.get("vizual") or {}
     st.caption(
-        "Vizual panel pastda: tozalangan 12 tasma, echo 11 ko‘rinish, LV overlay, MDT. "
+        "Vizual tekshiruv shifokor so‘raganda ochiladi: tozalangan 12 tasma, echo, LV, MDT. "
         f"sifat={viz.get('ekg_sifat')} echo={viz.get('echo_korinishlar')} "
         f"lv={viz.get('lv_maska')} mdt_raund={viz.get('mdt_raund')}."
     )
@@ -1056,6 +1057,7 @@ def asosiy() -> None:
         st.session_state.sampling_rate = ODATIY_HZ
         st.session_state.agent_holat = None
         st.session_state.bemor_tahlil = None
+        st.session_state.vizual_ochiq = False
 
     bosqich_joy = st.empty()
     with bosqich_joy.container():
@@ -1096,6 +1098,7 @@ def asosiy() -> None:
             paket["klinik_savol"] = lab_oldindan["rag_satr"]
         if lab_oldindan.get("dorilar"):
             paket["dorilar_tuzilgan"] = lab_oldindan["dorilar"]
+        st.session_state.vizual_ochiq = False
         oxirgi: Optional[Dict[str, Any]] = None
         try:
             agent = _agent_ol()
@@ -1140,12 +1143,17 @@ def asosiy() -> None:
         _ustun3_xulosa(st.session_state.agent_holat, st.session_state.bemor_tahlil)
         _audit_paneli(st.session_state.agent_holat)
 
-    _vizual_tekshirish_paneli(
-        st.session_state.agent_holat,
-        st.session_state.bemor_tahlil,
-        st.session_state.ekg_signal,
-        float(st.session_state.sampling_rate),
-    )
+    if st.session_state.agent_holat:
+        yozuv = "Vizual panelni yopish" if st.session_state.get("vizual_ochiq") else "Vizual tekshiruvni ochish"
+        if st.button(yozuv):
+            st.session_state.vizual_ochiq = not bool(st.session_state.get("vizual_ochiq"))
+    if st.session_state.get("vizual_ochiq") and st.session_state.agent_holat:
+        _vizual_tekshirish_paneli(
+            st.session_state.agent_holat,
+            st.session_state.bemor_tahlil,
+            st.session_state.ekg_signal,
+            float(st.session_state.sampling_rate),
+        )
     st.caption(KLINIK_OGOHLANTIRISH)
 
 

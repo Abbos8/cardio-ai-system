@@ -1,372 +1,69 @@
 # HANDOFF — cardio-ai-system
 
-**Qoida:** yangi sessiyada butun loyihani qidirmang. Shu faylni o‘qing, «Hozir qayerdamiz» va 14 bosqich statusini qarang, keyingi **ochiq** bosqichni bajaring, oxirida shu fayldagi statusni yangilang, commit/push.
+**Qoida:** yangi sessiyada butun loyihani va bu faylning eski tarixini qidirmang. Shu bo‘lim va «Maqola kamchiliklari» jadvalini o‘qing. Sessiya kundaligini qo‘shmang — faqat «Hozir qayerdamiz» va ochiq qatorni yangilang. Modul tafsiloti: `DASTURIY_YORIQNOMA.md`.
 
-Tizim shifokor o‘rnini bosmaydi. Yakuniy qaror shifokorga tegishli.
+Tizim shifokor o‘rnini bosmaydi. Yakuniy qaror shifokorga tegishli. **Klinik production emas.**
 
 ---
 
-## Hozir qayerdamiz (2026-10-09)
+## Hozir qayerdamiz (2026-10-12)
 
 | Maydon | Qiymat |
 |---|---|
-| Keyingi ish | **2-bosqich** — DeepSeek hisobini to‘ldirish, keyin jonli D sintezini tasdiqlash. Hozir API `402` (balans yetarli emas), MDT D shablon. MedGemma: `.env` da `MEDGEMMA_BASE_URL` oxirida `/v1` bo‘lmasin. Yangilash: `git pull`, keyin `./ishga_tushir.sh`. |
-| Oxirgi yopilgan | **14-bosqich** — xavfsizlik / klinik tayyorgarlik (demo) |
+| Keyingi ish | **K2** — MedGemma ni foydalanuvchi qayta ishga tushiradi (kod emas). Keyingi kod qatori **K5** (EchoPrime og‘irligi yo‘q). K3/K4 ni qayta so‘ramang |
+| Oxirgi kod | CardiacRAG: StatPearls 20 md + ESC slayd PDF 2; indeks **900** bo‘lak, BERT=True |
 | GitHub | https://github.com/Abbos8/cardio-ai-system (private, `main`) |
 | UI | `./ishga_tushir.sh` → http://127.0.0.1:8501 |
-| Yo‘riqnoma | `DASTURIY_YORIQNOMA.md` — modullar, klasslar, funksiyalar |
+| Oqim | murakkablik → CardiacRAG reja → vosita → CONTINUE/STOP → MDT (T=4, faqat noaniq dalil) → xulosa. Vizual panel tugma bilan |
 
-Bosqichni yopganda: pastdagi jadvalda statusni `qilindi` qiling, «Hozir qayerdamiz» ni yangilang, qisqa «Sessiya yozuvi» qo‘shing.
+Maqola (`arXiv:2508.13256`) kamchiliklarini koddan qayta qidirmang. Jadval manba. Yopilganda status `qilindi`, keyingi ochiq qatorga o‘ting.
 
 ---
 
-## Git / ishga tushirish
+## Maqola kamchiliklari
 
-- Remote: https://github.com/Abbos8/cardio-ai-system
-- Uyda: `git clone` / `git pull`. Ishda: o‘zgarish → shu fayl → commit → `git push`.
+Aniqliq raqamlari (MIMIC-IV 0.87, PTB-XL 0.96, PTB 0.77) bu loyihada o‘lchanmagan.
+
+| # | Kamchilik | Holat | Qayerda | Yopish uchun |
+|---|---|---|---|---|
+| K1 | Muhokara 2 raund (T=4) | **qilindi** (2026-10-12) | `src/agents/mdt.py` | — |
+| K2 | MedGemma jonli javob bermayapti (CUDA) | ochiq — foydalanuvchi | `.env` `MEDGEMMA_*`; `https://stt-pipeline.rifqat.uz/llm` (`/v1` siz) | Serverni qayta ishga tushirish. Kod o‘zgarmaydi |
+| K3 | Mayo Clinic sahifalari | to‘xtatilgan — fayl yo‘q | `data/raw/mayo/` bo‘sh | HTML paydo bo‘lsa shu yerga qo‘yib `indeks_qur.py --rebuild` |
+| K4 | To‘liq yo‘riqnoma PDF + Docling | to‘xtatilgan | `data/raw/guidelines/` — 2 ESC slayd PDF; `pypdf` o‘qiydi | Jurnal PDF yo‘q (AHA/ACC 403). Docling zaxira |
+| K5 | Echo 11 ko‘rinish EchoPrime emas | ochiq | `src/tools/echo_view_model.py` | Klinik tasnif og‘irligi. Hozir DICOM teg + geometrik model. A5C va Doppler yo‘q |
+| K6 | LV segment Zhang 2024 emas | ochiq | `src/tools/echo_segmenter.py` | Og‘irlik yo‘q. Hozir OpenCV kavak. EF yo‘q |
+| K7 | Fellow o‘qitilgan multimodal model emas | ochiq | `src/tools/fellow_tool.py` | TGMM og‘irligi yo‘q. Hozir Qwen/DeepSeek prompt |
+| K8 | Muhokara faqat noaniq holatda | **qilindi** (2026-10-12) | `chief_agent._dalil_noaniq` | Signal yoki echo yiqilsa, yoki EKG sifati yomon |
+| K9 | Vizual panel so‘ralganda | **qilindi** (2026-10-12) | `src/ui/app.py` | «Vizual tekshiruvni ochish». Yangi tahlil panelni yopadi |
+| K10 | MIMIC-IV / PTB-XL baholash | ochiq | yo‘q | PhysioNet to‘plami. E’lon qilingan ACC/AUC bu tizimniki emas |
+
+---
+
+## Bilim bazasi
+
+MedlinePlus 11 HTML, NHS 5, ESC 3 HTML, StatPearls 20 `.md`, ESC slayd PDF 2 (HF 2026, valvular). Mayo bo‘sh. Indeks `data/processed/rag_index/` — **900** bo‘lak (StatPearls 128, slayd 382), BioClinicalBERT, bo‘lak 500 belgi / 50 ustma.
+
+```bash
+PYTHONPATH=src python src/rag/indeks_qur.py --rebuild
+```
+
+Cheklov: Bookshelf HTML captcha — StatPearls da E-utilities xulosasi. Aortic regurgitation faqat Archived. Slayd PDF ko‘p bo‘lak beradi, ba’zi so‘rovda StatPearls dan oldin chiqadi. Xom matn gitda yo‘q.
+
+---
+
+## Ishga tushirish
+
+Uyda `git pull`, ishda o‘zgarish → shu fayl → commit → `git push`. Kalit faqat loyiha `.env` da; chatga va gitga yozilmaydi. Kalitni qayta so‘ramang.
 
 ```bash
 cd cardio-ai-system
 ./ishga_tushir.sh
-# yoki: conda deactivate && source venv/bin/activate && python -m streamlit run src/ui/app.py
 ```
 
-**Ishlatmang:** conda `(base)` ochiqcha `streamlit run ...` — miniconda Streamlit/FAISS + NumPy 2.2.6 aralashadi (`numpy.core.multiarray failed to import`). To‘xtating (Ctrl+C) va `./ishga_tushir.sh`.
+Conda `(base)` bilan `streamlit` ishlatmang (NumPy/FAISS aralashadi).
 
-Smoke-test: `PYTHONPATH=src python3 -c "from agents.chief_agent import ChiefCardiologist"`
-Barqarorlik: `PYTHONPATH=src python -m unittest tests.test_barqarorlik -v`
+- Smoke: `PYTHONPATH=src python3 -c "from agents.chief_agent import ChiefCardiologist"`
+- Test: `PYTHONPATH=src python -m unittest tests.test_barqarorlik tests.test_xavfsizlik tests.test_rag_korpus -v`
+- 2026-10-12: DeepSeek-R1 va Qwen2.5-VL javob berdi. Fellow rasmi `FELLOW_VISION_*` yoki `QWEN_VL_*` (`qwen/qwen-2.5-vl-72b-instruct`). Reasoner ga rasm ketmaydi.
 
-Kalitlarni faqat loyiha ildizidagi `.env` ga yozing (`venv/` emas); chatga va gitga tushirmang. `src/llm/client.py` shu `.env` ni o‘qiydi.
-
-Dasturiy tuzilma: `DASTURIY_YORIQNOMA.md`.
-
----
-
-## 14 bosqich — ketma-ket reja
-
-Har bosqich: **nima**, **qayerda**, **tayyor deb hisoblash**, **status**.
-
-| # | Bosqich | Status |
-|---|---|---|
-| 1 | Ishga tushirish muhiti | **qilindi** (ish kompyuter) |
-| 2 | DeepSeek-R1 ulash | ochiq — `.env` da kalit bor; jonli `manba=llm` hali tasdiqlanmagan |
-| 3 | BioClinicalBERT + FAISS | **qilindi** |
-| 4 | Bilimlar bazasi (Mayo/NHS/MedlinePlus/ESC) | **qilindi** (Mayo 403 — qo‘lda) |
-| 5 | Laboratoriya vositasini chuqurlashtirish | **qilindi** |
-| 6 | EKG texnik + EP sifati | **qilindi** |
-| 7 | Echo technician (11 ko‘rinish, DICOM) | **qilindi** |
-| 8 | Echo segmenter (LV maska) | **qilindi** |
-| 9 | Cardiology fellow (multimodal) | **qilindi** |
-| 10 | MDT: MedGemma + Qwen2.5-VL | **qilindi** |
-| 11 | Vizual tekshirish paneli | **qilindi** |
-| 12 | UI ni to‘liq oqimga bog‘lash | **qilindi** |
-| 13 | Test va barqarorlik | **qilindi** |
-| 14 | Xavfsizlik / klinik tayyorgarlik | **qilindi** (demo; production emas) |
-
----
-
-### 1. Ishga tushirish muhiti — qilindi
-
-**Nima:** venv, paketlar, `.env`, UI ochilishi.
-
-**Qayerda:** `requirements.txt`, `.env.example`, `venv/`, `ishga_tushir.sh`.
-
-**Tayyor:** `pip install` o‘tgan; NeuroKit2/FAISS/Streamlit/torch import; streamlit 8501.
-
-**Qayd:** ish PC — torch CPU, CUDA yo‘q. UI faqat `./ishga_tushir.sh` (conda `streamlit` ni ishlatmang). Uyda venv + conda aralashmasin.
-
----
-
-### 2. DeepSeek-R1 ni ulash — ochiq
-
-**Nima:** bosh kardiolog murakkablik, reja `P`, stepwise `S/A`, fellow/xulosa uchun R1 (yoki Distill-Qwen-32B). Kalitsiz — qoida/shablon.
-
-**Qayerda:** loyiha `.env` (`DEEPSEEK_API_KEY`, `DEEPSEEK_BASE_URL`, `DEEPSEEK_MODEL`); `src/llm/client.py` (`load_dotenv`). Kalit **`venv/` da emas**.
-
-**Qilish:** kalitni qayta so‘ramaslik — `.env` to‘ldirilgan (2026-09-14). Bitta tahlil: `llm_mavjud()==True`, javob bor, murakkablik JSON / fellow `manba=llm`. Kalitni chatga yozmang.
-
-**Tayyor:** API/lokal javob bor; kalitsiz ham agent to‘xtamaydi (zaxira saqlansin).
-
-**Deploy (reja, hali kod yo‘q):** demo — `./ishga_tushir.sh`; bo‘lim — LAN + VPN/HTTPS; barqaror — Docker; tashqi ochish — VM + login (auth hali yo‘q). Streamlit Cloud / Spaces — haqiqiy bemor uchun yo‘q. VLM — alohida GPU/vLLM. **Klinik production emas.**
-
----
-
-### 3. BioClinicalBERT + FAISS indeksi — qilindi
-
-**Nima:** vektor qidiruv; indeksni diskka saqlash.
-
-**Qayerda:** `.env` `USE_BIOCLINICAL_BERT=1`; `src/rag/medical_rag.py`; indeks `data/processed/rag_index/` (`index.faiss`, `chunks.json`, `meta.json`). Model: `emilyalsentzer/Bio_ClinicalBERT` (`_BERT_KESH`, HF `~/.cache/huggingface`).
-
-**Tayyor:** birinchi yuklash ~400 MB internet; keyin disk. Seed SHA o‘zgarmasa UI qayta embedding qilmaydi. BERT yo‘q bo‘lsa hashing zaxira.
-
----
-
-### 4. Bilimlar bazasini to‘ldirish — qilindi
-
-**Nima:** CardiacRAG manbalari. Seed + rasmiy sahifalar.
-
-**Qayerda:**
-- URL ro‘yxati: `src/rag/manbalar.json` (gitda; xom HTML yo‘q)
-- Yuklash: `src/rag/yuklab_ol.py` → `data/raw/{medlineplus,nhs,esc,mayo}/` (gitignore)
-- Ingest: `src/rag/ingest.py` — overlapping chunk, manba prefiksi `[jild/fayl]`
-- Qurish: `PYTHONPATH=src python src/rag/indeks_qur.py --qayta`
-- Indeks: `data/processed/rag_index/` ; kesh kaliti seed **va** `data/raw` o‘lcham/hash
-
-**Natija (ish PC):** 19 HTML (MedlinePlus 11, NHS 5, ESC 3). **166 chunk**, BERT=True. Retrieve: AF so‘rovi MedlinePlus AFib; ACS da seed + EKG encyclopedia.
-
-**Cheklov:**
-- Mayo Clinic avto-yuklash **403**. HTML ni brauzerdan saqlab `data/raw/mayo/` ga qo‘ying, so‘ng `indeks_qur.py --qayta`.
-- ESC sahifalarida ko‘p huquqiy/nav matn; to‘liq PDF ko‘rsatma yo‘q (mualliflik).
-- Docling qo‘shilmadi — PDF hali yo‘q.
-
-**Qayta qurish:** `conda deactivate && source venv/bin/activate && PYTHONPATH=src python src/rag/indeks_qur.py --qayta`
-
----
-
-### 5. Laboratoriya vositasini chuqurlashtirish — qilindi
-
-**Nima:** CSV/PDF/forma + tuzilgan dori tarixi → barqaror `rag_satr` / tokenlar.
-
-**Qayerda:** `src/tools/lab_tool.py`; namuna `src/tools/namuna_lab.csv`; UI lab yuklovchi; `pypdf` (`requirements.txt`).
-
-**Format:** `LAB kaliy=3.2 troponin_i=88.0 | MEDS aspirin|75 mg|once daily`. Fayl forma qiymatini ustiga yozadi. Dorilar: `nom | doza | chastota`.
-
-**Tekshiruv:** namuna CSV → 8 analit (sinonims: Troponin I, Potassium); CSV 88 ustun forma 8; tokenlarda aspirin.
-
-**Cheklov:** skan-PDF OCR yo‘q; tashxis qo‘yilmaydi.
-
----
-
-### 6. EKG ni texnik + EP darajasiga yetkazish — qilindi
-
-**Nima:** technician tozalash/sifat; EP da P/QRS/T, PR/QRS/QT/QTc, HRV. CSV va WFDB (.hea+.dat format 16/212).
-
-**Qayerda:** `src/tools/ecg_tool.py`, `src/tools/ekg_yuklash.py`; namuna `src/tools/namuna_ekg.csv` (+ `.hea`/`.dat`); UI 2-ustun va expanderlar.
-
-**Format:** CSV `# sampling_rate=500`, `time` + I..V6 (yoki 12 ustun). WFDB: ikkala faylni birga yuklash.
-
-**Tekshiruv:** namuna 8 s / 500 Hz → technician 12 tasma, 9 R, HR 72; EP P/T=9, PR/QRS/QT/QTc, UI da technician vs EP.
-
-**Cheklov:** sintetik yozuvda QRS/QT DWT noaniq bo‘lishi mumkin (zaxira Q–S); tashxis qo‘yilmaydi.
-
----
-
-### 7. Echo technician (11 ko‘rinish, DICOM) — qilindi
-
-**Nima:** DICOM/video/rasm kadr + 11 yorliq (A2C, A4C, A3C, PLAX, PSAX-*, subcostal, SSN). Fayl-nomi heuristic asosiy emas.
-
-**Qayerda:** `src/tools/echo_tool.py`, `echo_yuklash.py`, `echo_view_model.py`; UI yuklovchi; namuna `src/tools/namuna_echo_a4c.dcm`, `namuna_echo_plax.dcm`. Paketlar: `pydicom`, `opencv-python-headless`, `scikit-learn`.
-
-**Tasnif:** avval DICOM SeriesDescription/Protocol; bo‘lmasa geometrik model (sintetik shablonlarda o‘qitilgan). `manba=dicom_teg|geometrik_model`.
-
-**Tekshiruv:** namuna A4C DICOM → A4C (`dicom_teg+geometrik_model`); A4C+PLAX → ikkala yorliq; agent rejasida `echo_technician`.
-
-**Cheklov:** geometrik model demo (klinik tarmoq emas); video tegsizda xato yorliq bo‘lishi mumkin. Tashxis emas.
-
----
-
-### 8. Echo segmenter (LV maska) — qilindi
-
-**Nima:** kadr bor bo‘lsa OpenCV bilan qorong‘i kavak (taxminiy LV) + cyan overlay; yo‘q bo‘lsa aniq rad.
-
-**Qayerda:** `src/tools/echo_segmenter.py`; agent `echo_segmenter`; UI overlay (2-ustun + expander).
-
-**Tekshiruv:** namuna A4C DICOM → `ok=True`, ~709 px, overlay PNG; kadr yo‘q → `ok=False` «kadrlar yo‘q». Yolg‘on maska yo‘q.
-
-**Cheklov:** U-Net/klinik og‘irlik emas; EF hisoblanmaydi; tashxis emas.
-
----
-
-### 9. Cardiology fellow ni multimodal qilish — qilindi
-
-**Nima:** bitta fellow chaqirig‘ida lab token + EKG grafik PNG + echo kadr/LV overlay. Yo‘q modalitet o‘ylab topilmaydi.
-
-**Qayerda:** `src/tools/fellow_tool.py`; `fellow_vision_sozlama` `src/llm/client.py`; `.env.example`: `FELLOW_VISION_MODEL`, `FELLOW_VISION_BASE_URL`, `FELLOW_VISION_API_KEY`.
-
-**Manba:** `llm_multimodal` (vision endpoint) → `llm` (faqat matn, DeepSeek) → `shablon`. Reasoner ga rasm yuborilmaydi. Vision URL/kalit bo‘sh bo‘lsa Qwen VL (`QWEN_VL_*`) dan olinadi.
-
-**Tekshiruv:** lab+EKG+A4C+LV → dalillar `lab,ecg,echo,lv_maska,ecg_grafik,lv_overlay`, rasmlar 2 ta; hech narsa yo‘qda echo/ecg `yoq_dalillar` da. 2026-09-29 jonli chaqiruv: model va host to‘g‘ri, OpenRouter **401 kalit muddati o‘tgan**.
-
-**Cheklov:** yangi `QWEN_VL_API_KEY` yoki `FELLOW_VISION_API_KEY` bo‘lmaguncha fellow rasmi shablon/matnga tushadi. Tashxis emas.
-
----
-
-### 10. MDT: MedGemma + Qwen2.5-VL — qilindi
-
-**Nima:** MedGemma still (I raundida), Qwen2.5-VL cine (I raundida). Matn ketma-ketligi: t=1 ikkalasi faqat I, D₁=DeepSeek(Q₁,P₁); t=2 ikkalasi (D₁, Z); t toq (D, I), t juft (D, Z). To‘xtash t≥3: ikkalasi oldingi D bilan kelishsa yoki t=T (T=3). Yakun — oxirgi D. VLM yo‘qida ham shu tartib, matn shablon.
-
-**Qayerda:** `src/agents/mdt.py`; `vlm_sozlama` `src/llm/client.py`; graf `chief_agent._mdt`; UI expander yonma-yon. `.env.example`: `MEDGEMMA_*`, `QWEN_VL_*`.
-
-**Manba:** `vlm` (maxsus URL/model) → `llm` (vision nom, reasoner emas) → `shablon`. DeepSeek-reasoner tasvirga yuborilmaydi. Ekrandagi matn klinik mulohaza: I/Z kontekst sifatida beriladi, javob ularning nusxasi emas. `thought` izi chiqsa `Final Output` dan keyingi matn olinadi.
-
-**MDT qachon:** STOP va (EKG/echo bor yoki murakkab yoki noaniq).
-
-**Tekshiruv:** namuna EKG + A4C DICOM + 4 kadrli mp4 → still `ecg_grafik,lv_overlay,echo_still_*`, video 4 kadr; I/Z shablonda; bo‘sh bemorda echo/ecg `yoq_dalillar`. Kalitsiz/VLM yo‘q — shablon.
-
-**Cheklov:** GPU da MedGemma/Qwen vLLM yoki mos VLM API kerak; hozir ish PC da shablon. Tashxis emas.
-
----
-
-### 11. Vizual tekshirish paneli — qilindi
-
-**Nima:** sahifa pastida to‘liq kenglikdagi panel: tozalangan 12 tasma, 11 echo slot, LV overlay, MDT yonma-yon.
-
-**Qayerda:** `src/ui/app.py` (`_vizual_tekshirish_paneli`); `vizual` maydonlari `chief_agent` (echo_yetishmagan, mdt_raund).
-
-**Tekshiruv:** namuna EKG → tozalangan (n,12); A4C+PLAX → 11 gridda ikkalasi, 9 ta «yo‘q»; tahlilsiz MDT/LV bo‘sh izoh.
-
-**Cheklov:** tahlildan oldin echo/LV/MDT bo‘sh; overlay agent `echo_mask` dan. Tashxis emas.
-
----
-
-### 12. UI ni to‘liq oqimga bog‘lash — qilindi
-
-**Nima:** 6 bosqich UI da ko‘rinadi; tahlil paytida reja P jonli; RAG xato; echo drag-and-drop; API yo‘qida shablon yozuvi.
-
-**Qayerda:** `src/ui/app.py`; `ChiefCardiologist.run_oqim` (`graf.stream`).
-
-**Tekshiruv:** sahifa ochilganda 6 bosqich + RAG banner; echo «shu yerga tashlang»; `run_oqim` ≥5 tugun, xulosa STOP. Kalitsiz — sariq «Shablon rejimida».
-
-**Cheklov:** jonli yangilanish tahlil davomida yuqoridagi qator/status; to‘liq xulosa tugagach 3-ustunda. Tashxis emas.
-
----
-
-### 13. Test va barqarorlik — qilindi
-
-**Nima:** lab-only, EKG-only, echo-only, hammasi, bo‘sh; LangGraph `max_qadam`; kalitsiz shablon; hashing RAG (vaqtinchalik katalog).
-
-**Qayerda:** `tests/test_barqarorlik.py`. Ishlatish: `PYTHONPATH=src python -m unittest tests.test_barqarorlik -v`
-
-**Tekshiruv:** 10 test, STOP + ehtiyotkor xulosa; LLM kalitsiz `None`; hashing indeksi asosiy BERT indeksiga tegmaydi.
-
-**Cheklov:** API/GPU yo‘li alohida (2-bosqich). Tashxis emas.
-
----
-
-### 14. Xavfsizlik va klinik foydalanishga tayyorlash — qilindi
-
-**Nima:** PII/sir gitda yo‘q; har tahlilda audit (qaysi model, qaysi CardiacRAG C); ogohlantirish har ekranda.
-
-**Qayerda:**
-- `src/xavfsizlik/audit.py`, `himoya.py`; UI `_klinik_ogohlantirish`, `_audit_paneli`
-- `.gitignore`: `data/audit/`, `data/uploads/`, `logs/`
-- `.env.example`: `AUDIT_YOZ`, `AUDIT_DIR` (kalit yozilmaydi)
-- Test: `tests/test_xavfsizlik.py`
-
-**Format:** audit JSON — model nomlari, C manba id (`medlineplus/...` yoki `seed/cardiology`), fellow/MDT `manba`. EKG signal, overlay bayt, API kalit, bemor ismi yo‘q.
-
-**Tekshiruv:** 7 xavfsizlik + 10 barqarorlik test OK. Git track da `.env`/`data/raw` yo‘q. Kalitsiz `chat=shablon`. UI yuqori sticky + pastki caption + xulosa/tavsiya.
-
-**Cheklov:** **klinik production emas.** Auth, markaziy log, klinik validatsiya keyingi ish (alohida). Tashxis emas.
-
----
-
-## Kodda allaqachon ishlaydigan 6 bosqichli oqim
-
-Graf: qabul → murakkablik → CardiacRAG reja P → vosita → stepwise CONTINUE/STOP → MDT → xulosa.
-
-Fayllar: `src/agents/chief_agent.py`, `src/agents/mdt.py`, `src/rag/medical_rag.py`, `src/rag/ingest.py`, `src/tools/*`, `src/llm/client.py`, `src/ui/app.py`.
-
----
-
-## Sessiya yozuvlari
-
-### 2026-09-14 (ish)
-
-- GitHub, LangGraph workflow, HANDOFF.
-- 1: venv, paketlar, `.env` nusxa, UI 8501, torch CPU.
-- 3: `USE_BIOCLINICAL_BERT=1`, indeks `data/processed/rag_index/`.
-- 14-bosqichli reja shu faylga to‘liq kiritildi. Keyingi sessiya: **4**.
-
-### 2026-09-14 (kech, 4-bosqich)
-
-- `manbalar.json` + `yuklab_ol.py` + `indeks_qur.py`.
-- Yuklandi: MedlinePlus, NHS, ESC HTML → `data/raw/` (git emas). Mayo 403.
-- 166 chunk FAISS (BERT). `urug_indeks` endi seed+raw.
-- Keyingi: **5** (lab) yoki **2** (DeepSeek).
-
-### 2026-09-14 (5-bosqich)
-
-- Lab CSV/PDF parser, sinonimlar, fayl forma ustidan.
-- Dorilar `nom|doza|chastota`; `rag_satr` RAG va fellow ga.
-- UI: lab yuklovchi, dori text_area, expander.
-- Namuna: `src/tools/namuna_lab.csv`. Keyingi: **6**.
-
-### 2026-09-16 (6-bosqich)
-
-- Technician vs EP: tozalash/sifat va P/QRS/T + PR/QRS/QT/QTc/HRV alohida.
-- CSV (sarlavha, Hz izohi, time) va WFDB 16/212 o‘qish.
-- UI: tozalangan 12 tasma, P/R/T belgilar, ikki expander.
-
-### 2026-09-16 (7-bosqich)
-
-- Echo DICOM/video/rasm o‘qish; 11 ko‘rinish (teg + geometrik model).
-- UI: fayl yuklash, kadr + yorliq, expander.
-- Namuna: `namuna_echo_a4c.dcm`, `namuna_echo_plax.dcm`. Keyingi: **8** (LV segmenter) yoki **2** (DeepSeek).
-
-### 2026-09-16 (8-bosqich)
-
-- LV kavak maska (OpenCV) + cyan overlay PNG; kadr yo‘qda rad.
-- Namuna A4C: ok, ~4.3% kadr. EF yo‘q. Keyingi: **9** (fellow multimodal) yoki **2** (DeepSeek).
-
-### 2026-09-16 (9-bosqich)
-
-- Fellow: lab token + EKG PNG + echo/LV overlay bitta chaqiriq; `manba` llm_multimodal|llm|shablon.
-- Yo‘q dalil o‘ylab topilmaydi. Keyingi: **10** (MDT) yoki **2** (DeepSeek).
-
-### 2026-09-16 (10-bosqich)
-
-- MDT: MedGemma still (EKG/echo/LV), Qwen2.5-VL cine/video; har raund I/Z qayta.
-- `MEDGEMMA_*` / `QWEN_VL_*`; reasoner ga rasm yuborilmaydi; VLM yo‘qida shablon.
-- STOP da vizual/murakkab holatda MDT; UI da ikki ustun + I/Z.
-- Keyingi: **11** (vizual panel) yoki **2** (DeepSeek).
-
-### 2026-09-16 (11-bosqich)
-
-- Vizual panel: 12 tasma (tozalangan), echo 11 slot, LV overlay, MDT yonma-yon.
-- 2-ustun qisqa EKG; to‘liq ko‘rinish pastda. Keyingi: **12** (UI oqim) yoki **2** (DeepSeek).
-
-### 2026-09-16 (12-bosqich)
-
-- UI: 6 bosqich qatori, `run_oqim` bilan jonli reja P, RAG xato/banner, echo drag-and-drop.
-- API yo‘qida «Shablon rejimida» ogohlantirish. Keyingi: **13** (test) yoki **2** (DeepSeek).
-
-### 2026-09-16 (13-bosqich)
-
-- `tests/test_barqarorlik.py`: lab/EKG/echo/bo‘sh/hammasi, LangGraph limiti, hashing RAG, shablon MDT.
-- 10 testdan o‘tdi, STOP + ehtiyotkor xulosa. Keyingi: **14** (xavfsizlik) yoki **2** (DeepSeek).
-
-### 2026-09-17 (14-bosqich, ish)
-
-- Git: `.env`, `data/raw|processed|audit|uploads` track qilinmasin; kalit naqshi testi.
-- Audit: model nomlari + C manba id; `data/audit/*.json` (git emas).
-- UI: sticky ogohlantirish, audit paneli, xulosada model/C.
-- 17 test OK. **Klinik production emas.** Keyingi: **2** (DeepSeek).
-
-### 2026-09-17 (kech, 2-bosqich qisman)
-
-- Kalit loyiha `.env` da; `venv` faqat paketlar. Client endi `.env` ni o‘zi yuklaydi.
-- Jonli DeepSeek chaqiruvi (`manba=llm`) hali yopilmagan. Kalitni qayta so‘ramang.
-- Deploy: LAN/Docker/VM muhokama; kod/Dockerfile yo‘q. Keyingi: **2** tasdiqlash.
-
-### 2026-09-18
-
-- `YORIQNOMA.md`: noldan to‘liq yo‘riqnoma (UI, 6 bosqich, vositalar, RAG, VLM, `.env`, test, deploy).
-
-### 2026-10-02
-
-- Fellow rasmlari `FELLOW_VISION_MODEL` + `FELLOW_VISION_BASE_URL` orqali ketadi; `deepseek-reasoner` ga tasvir yuborilmaydi.
-- Model: `qwen/qwen-2.5-vl-72b-instruct`, host OpenRouter. Alohida kalit bo‘sh — `QWEN_VL_API_KEY`.
-- Jonli tekshiruv: 401, kalit muddati o‘tgan. `.env` gitga kirmaydi. Yangi kalitdan keyin `./ishga_tushir.sh`.
-
-### 2026-10-06
-
-- `DASTURIY_YORIQNOMA.md`: oqim, kutubxonalar, `ChiefHolat`, agent/MDT/LLM/vositalar/RAG/UI/xavfsizlik — funksiya va o‘zgaruvchigacha.
-
-### 2026-10-09
-
-- MedGemma so‘rovida uzun EKG/echo raqam matritsasi bo‘lsa, faqat sub-agent `xabar`/`rag_satr` ketadi (`medgemma_matnlari`). To‘lqin indekslari Z ga yozilmaydi. Shu holda still kadr ham ketmaydi.
-- MedGemma serveri ishlaydi. `.env` gitda yo‘q: `MEDGEMMA_BASE_URL` = `https://stt-pipeline.rifqat.uz/llm` (`/v1` siz). Boshqa mashinada shu qatorni qo‘lda yozing, keyin UI ni qayta ishga tushiring.
-- MDT javobi `thought` izida I va Z ni qayta yozardi; `_mulohazani_ajrat` yakuniy izohni oladi.
-- MDT endi formuladagi tartibda: t=1 faqat I, t=2 D+Z, t=3 D+I; har raundda D=DeepSeek(Q,P). To‘xtash t≥3. Qayta: `./ishga_tushir.sh`.
-- DeepSeek-R1 sintez (D) hozir chiqmaydi: API `402` balans yetarli emas. Kod xatoni yutmaydi; reasoner ga temperature yuborilmaydi, content bo‘sh bo‘lsa izning oxiri olinadi. Hisob to‘ldirilgach UI ni qayta ishga tushiring.
+14 bosqich (1–14) **qilindi**. Kod xaritasi `DASTURIY_YORIQNOMA.md`.

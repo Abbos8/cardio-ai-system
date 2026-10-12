@@ -7,7 +7,8 @@ alwaysApply: true
 
 Bu loyiha ikki kompyuterda (ish va uy) yuritiladi.
 
-- Muhim o‘zgarish, yangi vosita yoki workflow bosqichi tugagach `HANDOFF.md` ni yangilang: nima qilindi, nima qolgan, qanday ishga tushirish.
+- Muhim o‘zgarishdan keyin `HANDOFF.md` ni qisqa yangilang: «Hozir qayerdamiz» va ochiq qator. Sessiya kundaligi qo‘shmang — fayl kontekstni to‘ldirmasin. Tafsilot `DASTURIY_YORIQNOMA.md` da.
 - Tibbiy xulosa ehtiyotkor bo‘lsin; tizim shifokor o‘rnini bosmaydi.
 - GitHub: `Abbos8/cardio-ai-system`, tarmoq `main`. Commitdan oldin `HANDOFF.md` ni tekshiring.
 - 6 bosqich: murakkablik → CardiacRAG reja → ekspert vositalar → stepwise CONTINUE/STOP → MDT → xulosa/vizual panel. Yangi kod shu oqimni buzmasin.
+- CardAIc-Agents kamchiliklari `HANDOFF.md` dagi «Maqola kamchiliklari» jadvalida. Butun kodni qayta tahlil qilib yangi kamchilik qidirmang. Bittasi yopilganda shu qatorni `qilindi` qiling va jadvalni yangilang.

@@ -5,6 +5,7 @@ t=1: Qwen(I), MedGemma(I), D1=DeepSeek(Q1,P1);
 t=2: ikkalasi (D1, Z), D2=DeepSeek(Q2,P2);
 t>=3 toq: (D, I), juft: (D, Z); D_t=DeepSeek(Q_t,P_t).
 To‘xtash (t>=3): agree(Q_t, D_{t-1}) va agree(P_t, D_{t-1}), yoki t=T.
+Maqolada muhokara T/2 raund; eng yaxshi giperparametr 2 raund, shuning uchun T=4.
 Tasvirlar rolga yopishgan: I raundida MedGemma still, Qwen video. Tashxis emas.
 """
 
@@ -17,7 +18,8 @@ from typing import Any, Dict, List, Optional, Sequence, Tuple
 from llm.client import llm_chat, llm_chat_natija, llm_json, model_qisqacha, vlm_sozlama
 from tools.ecg_tool import ekg_qisqa_png
 
-MAX_RAUND = 3
+# CardAIc-Agents: muhokara T/2 raund. 2 raund eng yaxshi chiqqan, demak qadam chegarasi T=4.
+MAX_RAUND = 4
 MAX_VIDEO_KADR = 6
 VLM_TIMEOUT = 180.0
 # Shuncha ketma-ket sondan keyin matn EKG/echo namunasi hisoblanadi, xulosa emas
@@ -716,7 +718,7 @@ def mdt_munozara(
     Args:
         xom_i: Bemor va xom signallar qisqasi (I).
         oraliq_z: Lab, EKG, echo, fellow (Z).
-        max_raund: T, maksimal raund.
+        max_raund: T, qadam chegarasi. 2 muhokara raundi uchun 4.
         bemor: Vizual fayllar (EKG/echo).
         lab, ecg, echo, segment: Oraliq vosita chiqishlari (Z ga qo‘shimcha).
 
@@ -793,6 +795,13 @@ def mdt_munozara(
         qwen_agree, med_agree, kelish_sabab = (False, False, "")
         if t >= 3 and oldingi_d:
             qwen_agree, med_agree, kelish_sabab = _oldingi_d_bilan_kelishuv(qwen, med, oldingi_d)
+            # Shablon — model javobi emas. O‘xshash zaxira matn klinik kelishuv bo‘lmaydi.
+            if qwen_manba == "shablon":
+                qwen_agree = False
+            if med_manba == "shablon":
+                med_agree = False
+            if qwen_manba == "shablon" or med_manba == "shablon":
+                kelish_sabab = "Model javobi yo‘q — shablon kelishuv hisoblanmaydi."
         d_matn, d_manba = _deepseek_d(qwen, med)
         kelishdi = bool(qwen_agree and med_agree)
         if kelishdi:
