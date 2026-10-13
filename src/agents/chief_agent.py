@@ -327,6 +327,44 @@ def _oddiy_reja(bemor: Dict[str, Any]) -> List[Dict[str, Any]]:
     return qadamlar
 
 
+def _reja_modalitet_toldir(
+    bemor: Dict[str, Any], reja: Optional[List[Dict[str, Any]]]
+) -> List[Dict[str, Any]]:
+    """Yuklangan lab, EKG va echo vositalarini rejaga qaytaradi.
+
+    Maqolada reja holatga qarab o‘zgaradi, lekin berilgan modalitet
+    tekshirilmasdan xulosa chiqarilmaydi. Model bitta vosita qaytarsa ham
+    klinik tartib saqlanadi: lab → EKG → EP → echo → LV → fellow.
+
+    Args:
+        bemor: Qaysi signal va echo yuklangan.
+        reja: CardiacRAG qadamlari. Qisqa yoki bo‘sh bo‘lishi mumkin.
+
+    Returns:
+        To‘ldirilgan pending reja. Model tavsifi saqlanadi. Tashxis emas.
+    """
+    asos = _oddiy_reja(bemor)
+    tavsif: Dict[str, str] = {}
+    for qadam in reja or []:
+        if not isinstance(qadam, dict):
+            continue
+        vosita = str(qadam.get("vosita") or "")
+        if vosita:
+            tavsif[vosita] = str(qadam.get("tavsif") or vosita)
+    toldirilgan: List[Dict[str, Any]] = []
+    for qadam in asos:
+        vosita = str(qadam["vosita"])
+        toldirilgan.append(
+            {
+                "id": qadam["id"],
+                "vosita": vosita,
+                "tavsif": tavsif.get(vosita) or qadam["tavsif"],
+                "holat": "pending",
+            }
+        )
+    return toldirilgan
+
+
 def _raqam_massivi(qiymat: Any) -> bool:
     """EKG namunasi yoki to‘lqin indekslari kabi uzun raqam massivini ajratadi.
 
@@ -383,16 +421,16 @@ def _lugat_z_qisqa(obyekt: Any, max_len: int = 700) -> str:
 
 
 def _dalil_noaniq(holat: ChiefHolat) -> bool:
-    """Muhokara kerakmi: vosita yiqilgan yoki EKG sifati yetarli emas.
+    """Vosita yiqilgan yoki EKG sifati yomon bo‘lsa muhokama uchun belgi.
 
-    Murakkab holat, tasvirning o‘zi yoki fayl umuman yo‘qligi MDT ochmaydi.
-    Noaniqlik — berilgan signal yoki echo yiqilganda, yoki EKG sifati yomon.
+    Murakkab holat shu funksiyada emas: MDT ni stepwise yangilash ochadi.
+    Fayl umuman berilmagan bo‘lsa False.
 
     Args:
         holat: Lab, EKG, echo va LV natijalari.
 
     Returns:
-        True — STOP dan keyin MDT. Tashxis emas.
+        True — noaniq dalil. Tashxis emas.
     """
     bemor = holat.get("bemor") or {}
     signal_bor = _ekg_signal_bormi(bemor)
@@ -587,7 +625,7 @@ class ChiefCardiologist:
         sorov = _rag_sorov_tuz(bemor)
         try:
             dalillar = self.rag.retrieve(sorov, n=3)
-            reja = self.rag.reja_tuz(sorov, dalillar)
+            reja = _reja_modalitet_toldir(bemor, self.rag.reja_tuz(sorov, dalillar))
         except Exception as exc:
             dalillar = []
             reja = _oddiy_reja(bemor)
@@ -767,24 +805,32 @@ class ChiefCardiologist:
                 "Bosh kardiolog stepwise update. JSON: "
                 '{"S":"qisqa xulosa","A":"CONTINUE"|"STOP","mdt":true|false,'
                 '"P_next":null yoki {"id":"pX","vosita":"...","tavsif":"..."}}. '
-                "mdt true faqat vosita xatosi, yetarli bo‘lmagan signal sifati yoki zid dalil bo‘lsa. "
-                "Murakkablik yoki EKG/echo borligi mdt ni true qilmaydi. "
+                "Rejadagi qadamlar tugamaguncha A=CONTINUE: yuklangan lab, EKG va echo "
+                "tekshirilmasdan STOP qilmang. "
+                "mdt true agar holat murakkab, vosita xatosi, signal sifati yomon yoki zid dalil bo‘lsa. "
                 "Tashxis qo‘ymang. Xato tarqalishini to‘xtating."
             ),
-            foydalanuvchi=f"I:\n{holat.get('xom_i')}\nZ:\n{z}\nreja_indeks={indeks}/{len(reja)}",
+            foydalanuvchi=(
+                f"I:\n{holat.get('xom_i')}\nZ:\n{z}\n"
+                f"murakkablik={holat.get('murakkablik')}\n"
+                f"reja_indeks={indeks}/{len(reja)}"
+            ),
             zaxira=zaxira,
         )
-        amal: Amal = "STOP" if str(natija.get("A") or zaxira["A"]).upper() == "STOP" else "CONTINUE"
-        if indeks >= len(reja):
-            amal = "STOP"
-        if qadam_n >= self.max_qadam:
-            amal = "STOP"
-        # Qoida noaniqligi majburiy. Model qo‘shimcha noaniqlik aytsa ham ochiladi.
-        # Tasvir yoki murakkablikning o‘zi yetarli emas.
-        mdt_kerak = amal == "STOP" and (noaniq or bool(natija.get("mdt", zaxira["mdt"])))
+        model_amal: Amal = "STOP" if str(natija.get("A") or zaxira["A"]).upper() == "STOP" else "CONTINUE"
+        if qadam_n >= self.max_qadam or indeks >= len(reja):
+            amal: Amal = "STOP"
+        else:
+            # Maqola: xulosa reja qadamlari tugagach. Model yuklangan modalitetni tashlab STOP qilmaydi.
+            amal = "CONTINUE"
+        # Murakkab holatda MDT majburiy (maqola: complex cases). Noaniq dalil ham ochadi.
+        murakkab = holat.get("murakkablik") == "murakkab"
+        mdt_kerak = amal == "STOP" and (
+            murakkab or noaniq or bool(natija.get("mdt", zaxira["mdt"]))
+        )
         s_matn = str(natija.get("S") or zaxira["S"])
         p_next = natija.get("P_next")
-        if amal == "CONTINUE" and isinstance(p_next, dict) and p_next.get("vosita"):
+        if model_amal == "CONTINUE" and isinstance(p_next, dict) and p_next.get("vosita"):
             yangi_reja = [dict(q) for q in reja]
             yangi_reja.append(
                 {

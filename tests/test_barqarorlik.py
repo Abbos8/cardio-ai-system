@@ -10,13 +10,14 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 _ILDIG = Path(__file__).resolve().parents[1]
 _SRC = _ILDIG / "src"
 if str(_SRC) not in sys.path:
     sys.path.insert(0, str(_SRC))
 
-from agents.chief_agent import ChiefCardiologist, _dalil_noaniq
+from agents.chief_agent import ChiefCardiologist, _dalil_noaniq, _reja_modalitet_toldir
 from agents.mdt import (
     _foydalanuvchi_matn,
     _mulohazani_ajrat,
@@ -184,8 +185,77 @@ class BarqarorlikTest(unittest.TestCase):
         self.assertTrue("lab" in dalil)
         self.assertNotIn("echo", fellow.get("yoq_dalillar") or [])
         self.assertEqual(fellow.get("manba"), "shablon")
-        self.assertIsNone(holat.get("mdt_natija"))
         self.assertFalse(_dalil_noaniq(holat))
+        self.assertEqual(holat.get("murakkablik"), "murakkab")
+        self.assertTrue(holat.get("mdt_kerak"))
+        mdt = holat.get("mdt_natija") or {}
+        self.assertTrue(mdt.get("ok"))
+        vositalar = [q.get("vosita") for q in (holat.get("reja") or [])]
+        self.assertEqual(
+            vositalar,
+            [
+                "lab_technician",
+                "ecg_technician",
+                "electrophysiologist",
+                "echo_technician",
+                "echo_segmenter",
+                "cardiology_fellow",
+            ],
+        )
+        self.assertTrue(all(q.get("holat") == "done" for q in holat.get("reja") or []))
+
+    def test_qisqa_reja_modalitet_toldiriladi(self) -> None:
+        """Model faqat EKG texnikini qaytarsa ham yuklangan lab/echo qoladi."""
+        bemor = {
+            "laboratoriya": {"troponin_i": 80},
+            "ecg_signal": namuna_12_tasma_ekg(sampling_rate=500.0, davomiylik=2.0),
+            "echo_fayllar": [{"nom": "a.dcm", "bayt": b"x"}],
+        }
+        reja = _reja_modalitet_toldir(
+            bemor,
+            [{"id": "p1", "vosita": "ecg_technician", "tavsif": "faqat EKG", "holat": "pending"}],
+        )
+        vositalar = [q["vosita"] for q in reja]
+        self.assertEqual(vositalar[0], "lab_technician")
+        self.assertIn("electrophysiologist", vositalar)
+        self.assertIn("echo_technician", vositalar)
+        self.assertIn("echo_segmenter", vositalar)
+        self.assertEqual(vositalar[-1], "cardiology_fellow")
+        ecg = next(q for q in reja if q["vosita"] == "ecg_technician")
+        self.assertEqual(ecg["tavsif"], "faqat EKG")
+
+    def test_stepwise_erta_stop_va_murakkab_mdt(self) -> None:
+        """Reja tugamaguncha STOP qabul qilinmaydi; tugagach murakkab holat MDT ochadi."""
+        agent = _agent()
+        qisman = {
+            "bemor": {"yosh": 60, "laboratoriya": {"troponin_i": 90}},
+            "murakkablik": "murakkab",
+            "reja": [
+                {"id": "p1", "vosita": "lab_technician", "tavsif": "lab", "holat": "done"},
+                {"id": "p2", "vosita": "ecg_technician", "tavsif": "ekg", "holat": "pending"},
+            ],
+            "reja_indeks": 1,
+            "qadam": 4,
+            "xom_i": "yosh=60",
+            "qadam_tarixi": [],
+            "lab_natija": {"ok": True, "xabar": "lab"},
+        }
+        with patch(
+            "agents.chief_agent.llm_json",
+            return_value={"S": "erta tohta", "A": "STOP", "mdt": False, "P_next": None},
+        ):
+            davom = agent._stepwise_yangilash(qisman)
+        self.assertEqual(davom["amal"], "CONTINUE")
+        self.assertFalse(davom["mdt_kerak"])
+        tugagan = dict(qisman)
+        tugagan["reja_indeks"] = 2
+        with patch(
+            "agents.chief_agent.llm_json",
+            return_value={"S": "reja tugadi", "A": "STOP", "mdt": False, "P_next": None},
+        ):
+            stop = agent._stepwise_yangilash(tugagan)
+        self.assertEqual(stop["amal"], "STOP")
+        self.assertTrue(stop["mdt_kerak"])
 
     def test_ekg_xatosida_mdt(self) -> None:
         """Qisqa signal vositani yiqitadi — muhokara shunda ochiladi."""

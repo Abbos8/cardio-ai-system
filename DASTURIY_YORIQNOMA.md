@@ -139,9 +139,9 @@ Chegara o‘zgaruvchilari (agent va EKG da takrorlanadi, tashxis emas): `QRS_KEN
 | `_graf_qur` | Tugun va qirralarni yig‘adi |
 | `_qabul_qilish` | Bemorni tozalaydi, bo‘sh natijalarni qo‘yadi, `xom_i` yozadi |
 | `_murakkablik_baholash` | `llm_json` dan `oddiy`/`murakkab`. API yo‘q bo‘lsa qoida: troponin ≥ 34, NT-proBNP ≥ 300, echo bor, yoki EKG + boshqa modalitet |
-| `_cardiac_rag_reja` | Murakkab va RAG bor bo‘lsa `retrieve` + `reja_tuz`. Aks holda `_oddiy_reja` |
+| `_cardiac_rag_reja` | Murakkab va RAG bor bo‘lsa `retrieve` + `reja_tuz`, so‘ng `_reja_modalitet_toldir`. Aks holda `_oddiy_reja` |
 | `_qadam_bajarish` | `reja[reja_indeks].vosita` bo‘yicha bitta vosita |
-| `_stepwise_yangilash` | `oraliq_z` ni yangilaydi, `llm_json` dan `CONTINUE`/`STOP` va `mdt` |
+| `_stepwise_yangilash` | Reja tugamaguncha `CONTINUE`. STOP dan keyin murakkab holat yoki noaniq dalil bo‘lsa MDT |
 | `_mdt` | `mdt_munozara` ni chaqiradi |
 | `_xulosa_tayyorlash` | Matn yig‘adi, `audit_yig` + `audit_saqla` |
 | `_keyingi_stepwise` | CONTINUE → vosita; STOP+mdt → MDT; aks holda xulosa |
@@ -164,6 +164,8 @@ Yordamchi funksiya `chief_cardiologist_yarat(rag=None)` RAG ni urinib ko‘radi 
 Noma’lum nom jurnalga yoziladi, dastur yiqilmaydi. Katta echo/EKG massivlari holatga `_echo_qisqacha`, `_lv_qisqacha`, `_ekg_qisqacha` orqali qisqartirib qo‘yiladi.
 
 `_oddiy_reja` bemorda nima borligiga qarab shu oltita qadamdan keraklisini qo‘shadi. Signal yo‘q bo‘lsa EKG/EP tushadi. Echo yo‘q bo‘lsa echo qadamlari tushadi. Fellow har doim oxirida.
+
+`_reja_modalitet_toldir` CardiacRAG qisqa reja qaytarsa ham shu ro‘yxatni tiklaydi (model tavsifi saqlanadi). Stepwise qolgan qadam bor ekan `STOP` ni qabul qilmaydi. Holat `murakkab` bo‘lsa reja tugagach MDT ochiladi; oddiy holatda MDT faqat vosita yiqilsa yoki EKG sifati yomon bo‘lsa.
 
 ---
 

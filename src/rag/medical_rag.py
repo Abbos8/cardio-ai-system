@@ -628,7 +628,10 @@ class MedicalRAG:
                 "Siz CardiacRAG reja tuzuvchisisiz. Faqat JSON qaytaring: "
                 '{"qadamlar":[{"id":"p1","vosita":"lab_technician|ecg_technician|'
                 'electrophysiologist|echo_technician|echo_segmenter|cardiology_fellow",'
-                '"tavsif":"..."}]}. Tashxis yozmang. Kerakli vositalarnigina tanlang.'
+                '"tavsif":"..."}]}. Tashxis yozmang. '
+                "So‘rovda laboratoriya bo‘lsa lab_technician, EKG bo‘lsa ecg_technician va "
+                "electrophysiologist, echo bo‘lsa echo_technician va echo_segmenter kirsin. "
+                "Oxirida cardiology_fellow. Bitta vosita bilan to‘xtamang."
             ),
             foydalanuvchi=f"So‘rov:\n{sorov}\n\nKontekst C:\n{c_matn}",
             zaxira=zaxira,

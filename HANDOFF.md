@@ -6,15 +6,15 @@ Tizim shifokor o‘rnini bosmaydi. Yakuniy qaror shifokorga tegishli. **Klinik p
 
 ---
 
-## Hozir qayerdamiz (2026-10-12)
+## Hozir qayerdamiz (2026-10-13)
 
 | Maydon | Qiymat |
 |---|---|
-| Keyingi ish | **K2** — MedGemma ni foydalanuvchi qayta ishga tushiradi (kod emas). Keyingi kod qatori **K5** (EchoPrime og‘irligi yo‘q). K3/K4 ni qayta so‘ramang |
-| Oxirgi kod | CardiacRAG: StatPearls 20 md + ESC slayd PDF 2; indeks **900** bo‘lak, BERT=True |
+| Keyingi ish | K8 yopildi. Ochiq: K2 (foydalanuvchi, kod emas), K5, K6, K7, K10. K3/K4 ni qayta so‘ramang |
+| Oxirgi kod | Murakkab reja yuklangan lab/EKG/echo ni to‘ldiradi; qadamlar tugaguncha CONTINUE; murakkab bo‘lsa MDT |
 | GitHub | https://github.com/Abbos8/cardio-ai-system (private, `main`) |
 | UI | `./ishga_tushir.sh` → http://127.0.0.1:8501 |
-| Oqim | murakkablik → CardiacRAG reja → vosita → CONTINUE/STOP → MDT (T=4, faqat noaniq dalil) → xulosa. Vizual panel tugma bilan |
+| Oqim | murakkablik → CardiacRAG reja → vosita → CONTINUE/STOP → MDT → xulosa. Vizual panel tugma bilan |
 
 Maqola (`arXiv:2508.13256`) kamchiliklarini koddan qayta qidirmang. Jadval manba. Yopilganda status `qilindi`, keyingi ochiq qatorga o‘ting.
 
@@ -33,7 +33,7 @@ Aniqliq raqamlari (MIMIC-IV 0.87, PTB-XL 0.96, PTB 0.77) bu loyihada o‘lchanma
 | K5 | Echo 11 ko‘rinish EchoPrime emas | ochiq | `src/tools/echo_view_model.py` | Klinik tasnif og‘irligi. Hozir DICOM teg + geometrik model. A5C va Doppler yo‘q |
 | K6 | LV segment Zhang 2024 emas | ochiq | `src/tools/echo_segmenter.py` | Og‘irlik yo‘q. Hozir OpenCV kavak. EF yo‘q |
 | K7 | Fellow o‘qitilgan multimodal model emas | ochiq | `src/tools/fellow_tool.py` | TGMM og‘irligi yo‘q. Hozir Qwen/DeepSeek prompt |
-| K8 | Muhokara faqat noaniq holatda | **qilindi** (2026-10-12) | `chief_agent._dalil_noaniq` | Signal yoki echo yiqilsa, yoki EKG sifati yomon |
+| K8 | Muhokama | **qilindi** (2026-10-13) | `chief_agent._reja_modalitet_toldir`, `_stepwise_yangilash` | — |
 | K9 | Vizual panel so‘ralganda | **qilindi** (2026-10-12) | `src/ui/app.py` | «Vizual tekshiruvni ochish». Yangi tahlil panelni yopadi |
 | K10 | MIMIC-IV / PTB-XL baholash | ochiq | yo‘q | PhysioNet to‘plami. E’lon qilingan ACC/AUC bu tizimniki emas |
 
@@ -48,6 +48,10 @@ PYTHONPATH=src python src/rag/indeks_qur.py --rebuild
 ```
 
 Cheklov: Bookshelf HTML captcha — StatPearls da E-utilities xulosasi. Aortic regurgitation faqat Archived. Slayd PDF ko‘p bo‘lak beradi, ba’zi so‘rovda StatPearls dan oldin chiqadi. Xom matn gitda yo‘q.
+
+## Hozirgi qoida
+
+Maqola (arXiv:2508.13256): murakkab holatda reja yuklangan modalitetlar bo‘yicha yuradi va xulosa qadamlar tugagach chiqadi; MDT murakkab holat uchun. Kod: `_reja_modalitet_toldir`, reja tugaguncha CONTINUE, `murakkablik=murakkab` bo‘lsa MDT. Oddiy holatda MDT faqat vosita yiqilsa yoki EKG sifati yomon.
 
 ---
 
