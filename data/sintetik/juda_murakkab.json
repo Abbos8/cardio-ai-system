@@ -1,0 +1,36 @@
+{
+  "sarlavha": "Juda murakkab",
+  "izoh": "Nafas qisishi va hushdan ketish, xavfli biomarkerlar, bradikardiya, 11 ta echo ko‘rinish.",
+  "kuzatish": "Lab kartalari xavf rangida, HR 50 dan past, echo panelidagi 11 slot to‘la. Xulosadagi ogohlantirishlar murakkab holatdan ko‘proq bo‘lishi kerak.",
+  "yosh": 78,
+  "jins": "erkak",
+  "shikoyatlar": "Dam olishda nafas qisishi, ko‘krak og‘rig‘i, hushdan ketish epizodi, oyoq shishi.",
+  "anamnez": "Yurak yetishmovchiligi, qandli diabet, buyrak funksiyasi pasaygan, oldingi MI. Gipertenziya.",
+  "dorilar": "bisoprolol | 2.5 mg | once daily\nfurosemid | 40 mg | once daily\ninsulin | 10 IU | twice daily\nspironolakton | 25 mg | once daily",
+  "sampling_rate": 500,
+  "ekg_davomiylik": 8,
+  "yurak_chastotasi": 46,
+  "echo_korinishlar": [
+    "A2C",
+    "A4C",
+    "A3C",
+    "PLAX",
+    "PSAX-AV",
+    "PSAX-MV",
+    "PSAX-PM",
+    "PSAX-APEX",
+    "SUBCOSTAL-4C",
+    "SUBCOSTAL-IVC",
+    "SSN"
+  ],
+  "laboratoriya": {
+    "troponin_i": 240.0,
+    "nt_probnp": 4800.0,
+    "kreatinin": 360.0,
+    "kaliy": 6.1,
+    "glyukoza": 18.5,
+    "ldl": 5.6,
+    "hdl": 0.55,
+    "hba1c": 9.4
+  }
+}

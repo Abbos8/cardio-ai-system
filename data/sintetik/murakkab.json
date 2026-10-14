@@ -1,0 +1,24 @@
+{
+  "sarlavha": "Murakkab",
+  "izoh": "O‘tkir ko‘krak og‘rig‘i, troponin va NT-proBNP ogohlantirish zonasida, taxikardiya, 6 ta echo ko‘rinish.",
+  "kuzatish": "Lab kartalari asosan ogohlantirish rangi. HR 100 dan yuqori. CardiacRAG va MDT ochilishini sodda holat bilan solishtiring.",
+  "yosh": 62,
+  "jins": "erkak",
+  "shikoyatlar": "1 soatdan beri ko‘krak qisilishi, chap qo‘lga tarqaladi, terlash.",
+  "anamnez": "Gipertenziya 8 yil. Chekuvchi. Oldingi MI yo‘q.",
+  "dorilar": "aspirin | 100 mg | once daily\namlodipin | 5 mg | once daily",
+  "sampling_rate": 500,
+  "ekg_davomiylik": 8,
+  "yurak_chastotasi": 118,
+  "echo_korinishlar": ["A4C", "A2C", "A3C", "PLAX", "PSAX-MV", "SUBCOSTAL-4C"],
+  "laboratoriya": {
+    "troponin_i": 72.0,
+    "nt_probnp": 640.0,
+    "kreatinin": 140.0,
+    "kaliy": 3.2,
+    "glyukoza": 8.4,
+    "ldl": 3.8,
+    "hdl": 0.9,
+    "hba1c": 6.1
+  }
+}

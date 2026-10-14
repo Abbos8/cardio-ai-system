@@ -8,6 +8,7 @@ Tashxis o‘rnini bosmaydi.
 from __future__ import annotations
 
 import sys
+import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 import html
@@ -46,6 +47,7 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 import streamlit as st
 
 _SRC = Path(__file__).resolve().parents[1]
@@ -60,6 +62,16 @@ from tools.ekg_yuklash import ekg_fayllardan_oqish
 from tools.echo_view_model import ECHO_KORINISHLAR
 from tools.echo_yuklash import echo_fayldan_kadrlar
 from tools.lab_tool import process_lab
+from tools.sintetik_bemor import HOLAT_IDLAR, sintetik_yukla
+from ui.jonli_tahlil import (
+    BOSQICH_NOMLARI,
+    TahlilOmbori,
+    bosqich_holati,
+    ish_holati,
+    jonli_xabarlar,
+    oqim_bosqichlari,
+    paket_xulosasi,
+)
 from xavfsizlik.audit import KLINIK_OGOHLANTIRISH, KLINIK_PRODUCTION
 
 # Namuna EKG: kamida 2 s (ecg_tool talabi)
@@ -224,7 +236,7 @@ def _klinik_ogohlantirish() -> None:
 .oqim-chip.skip { background: #f7f7f7; color: #6b7280; }
 /* ── Yangi komponentlar ─────────────────────────────────────────────────── */
 .lab-card {
-  display:flex; align-items:center; gap:0.5rem; background:#f9fafb;
+  display:flex; align-items:center; gap:0.5rem; background:#f9fafb; color:#1f2937;
   border-radius:6px; padding:0.35rem 0.6rem; margin:0.18rem 0;
   font-size:0.84rem; border-left:4px solid #9ca3af;
 }
@@ -363,49 +375,22 @@ def _sidebar_paneli(rag_paket: Any, agent_holat: Optional[Dict[str, Any]]) -> No
             st.session_state.agent_holat = None
             st.session_state.bemor_tahlil = None
             st.session_state.vizual_ochiq = False
+            if _tahlil_ombori().ishlayapti():
+                # Ishlayotgan tahlil paketi qayta ulansin
+                st.session_state.job_paket_id = None
             st.rerun()
 
 
 def _oqim_bosqichlari(holat: Optional[Dict[str, Any]]) -> List[str]:
-    """6 bosqich holatini tarixdan chiqaradi.
+    """6 bosqich chiplari holatini graf holatidan chiqaradi.
 
     Args:
-        holat: Agent run natijasi.
+        holat: Joriy yoki yakuniy graf holati.
 
     Returns:
-        pending|current|done|skip ro‘yxati (6 ta).
+        pending|current|done|skip ro‘yxati (6 ta). Mantiq jonli_tahlil modulida.
     """
-    nomlar = ["pending"] * 6
-    if not holat:
-        nomlar[0] = "current"
-        return nomlar
-    tarix = [str(t) for t in (holat.get("qadam_tarixi") or [])]
-    belgilar = [
-        any(t.startswith("qabul_qilish") for t in tarix),
-        any(t.startswith("murakkablik") for t in tarix),
-        any("cardiac_rag_reja" in t for t in tarix),
-        any(t.startswith("qadam_bajarish") or t.startswith("stepwise") for t in tarix),
-        bool(holat.get("mdt_natija")) or any(t.startswith("mdt:") for t in tarix),
-        any("xulosa_tayyorlash" in t for t in tarix) or bool(holat.get("xulosa")),
-    ]
-    if belgilar[5] and not belgilar[4]:
-        belgilar[4] = False  # skip later
-    last = -1
-    for i, b in enumerate(belgilar):
-        if b:
-            nomlar[i] = "done"
-            last = i
-    if belgilar[5] and not holat.get("mdt_natija"):
-        nomlar[4] = "skip"
-    elif last >= 0 and last < 5 and not belgilar[5]:
-        nomlar[last + 1] = "current"
-    if belgilar[5]:
-        for i in range(6):
-            if nomlar[i] == "current":
-                nomlar[i] = "done"
-            if nomlar[i] == "pending" and i != 4:
-                nomlar[i] = "done"
-    return nomlar
+    return oqim_bosqichlari(holat)
 
 
 def _olti_bosqich_chiz(holat: Optional[Dict[str, Any]]) -> None:
@@ -417,14 +402,7 @@ def _olti_bosqich_chiz(holat: Optional[Dict[str, Any]]) -> None:
     Returns:
         None. Tashxis emas.
     """
-    sarlavhalar = [
-        "1 · Qabul",
-        "2 · Murakkablik",
-        "3 · RAG reja",
-        "4 · Vositalar",
-        "5 · MDT",
-        "6 · Xulosa",
-    ]
+    sarlavhalar = BOSQICH_NOMLARI
     holatlar = _oqim_bosqichlari(holat)
     st.markdown("**6 bosqichli oqim**")
     qismlar = []
@@ -1279,6 +1257,114 @@ def ehtiyotkor_tavsiyalar(bemor: Dict[str, Any], agent_holat: Dict[str, Any]) ->
     return tavsiya
 
 
+_SINTETIK_YORLIQ = {
+    "yoq": "O‘chirilgan (o‘z faylim)",
+    "sodda": "Sodda holat",
+    "murakkab": "Murakkab holat",
+    "juda_murakkab": "Juda murakkab holat",
+}
+
+# Natija bo'limlari — agent oqimi tartibida (6 bosqichga mos)
+NATIJA_BOLIMLAR: List[Tuple[str, str]] = [
+    ("klinik_reja",  "Klinik reja P"),
+    ("cardiac_rag",  "CardiacRAG kontekst C"),
+    ("lab_tech",     "Lab technician"),
+    ("ekg_tech",     "EKG technician"),
+    ("elektrofiz",   "Elektrofiziolog"),
+    ("echo_tech",    "Echo technician"),
+    ("echo_seg",     "Echo segmenter"),
+    ("fellow",       "Cardiology fellow"),
+    ("qadamlar",     "Qadamlar (LangGraph)"),
+    ("mdt",          "MDT munozara"),
+    ("agent_izlar",  "Agent izlar va mulohaza"),
+]
+
+
+def _forma_odatiy_kalitlar() -> None:
+    """Forma widget kalitlarini birinchi marta odatiy qiymat bilan to‘ldiradi.
+
+    Returns:
+        None. Kalit allaqachon bo‘lsa tegmaydi. Sintetik tanlov keyin ustidan yozadi.
+    """
+    odatiy = {
+        "bemor_yosh": 58,
+        "bemor_jins": "erkak",
+        "bemor_shikoyat": "Ko‘krak og‘rig‘i, zo‘riqishda nafas qisishi",
+        "bemor_anamnez": "Gipertenziya. Oldingi MI yo‘q.",
+        "bemor_dorilar": "aspirin | 75 mg | once daily\nbisoprolol | 5 mg | once daily",
+        "ekg_hz": ODATIY_HZ,
+        "sintetik_tanlov": "sodda",
+    }
+    for kalit, qiymat in odatiy.items():
+        if kalit not in st.session_state:
+            st.session_state[kalit] = qiymat
+    for kalit, _sarlavha, _izoh, _past, _yuqori, lab_odatiy in LAB_MAYDONLARI:
+        lab_kalit = f"lab_{kalit}"
+        if lab_kalit not in st.session_state:
+            st.session_state[lab_kalit] = float(lab_odatiy)
+
+
+def _sintetik_qollash(tanlov: str) -> None:
+    """Tanlangan sintetik holatni bemor, lab, EKG va echo oynalariga yozadi.
+
+    Args:
+        tanlov: yoq, sodda, murakkab yoki juda_murakkab.
+
+    Returns:
+        None. Session state yangilanadi. Haqiqiy bemor yozuvi emas.
+    """
+    if tanlov == "yoq":
+        st.session_state.sintetik_echo = []
+        st.session_state.sintetik_izoh = ""
+        st.session_state.sintetik_kuzatish = ""
+        st.session_state.sintetik_fayl = ""
+        st.session_state.sintetik_hz = None
+        st.session_state.ekg_signal = None
+        st.session_state.ekg_xabar = "Sintetik o‘chirilgan. EKG faylini yuklang."
+        return
+    holat = sintetik_yukla(tanlov)
+    st.session_state.bemor_yosh = int(holat["yosh"])
+    st.session_state.bemor_jins = str(holat["jins"])
+    st.session_state.bemor_shikoyat = str(holat["shikoyatlar"])
+    st.session_state.bemor_anamnez = str(holat["anamnez"])
+    st.session_state.bemor_dorilar = str(holat["dorilar"])
+    for kalit, qiymat in holat["laboratoriya"].items():
+        st.session_state[f"lab_{kalit}"] = float(qiymat)
+    st.session_state.ekg_hz = float(holat["sampling_rate"])
+    st.session_state.sampling_rate = float(holat["sampling_rate"])
+    st.session_state.sintetik_hz = float(holat["sampling_rate"])
+    st.session_state.ekg_signal = holat["signal"]
+    st.session_state.ekg_xabar = str(holat["ekg_xabar"])
+    st.session_state.sintetik_echo = holat["echo_fayllar"]
+    st.session_state.sintetik_izoh = str(holat["izoh"])
+    st.session_state.sintetik_kuzatish = str(holat["kuzatish"])
+    st.session_state.sintetik_fayl = str((holat.get("fayllar") or {}).get("json") or "")
+
+
+def _sintetik_echo_korish(echo_fayllar: List[Dict[str, Any]]) -> None:
+    """Sintetik echo kadrlarini forma ichida ko‘rsatadi.
+
+    Args:
+        echo_fayllar: nom, korinish, kadr.
+
+    Returns:
+        None. Haqiqiy bemor echo si emas.
+    """
+    if not echo_fayllar:
+        return
+    st.caption(f"Sintetik echo: {len(echo_fayllar)} ta DICOM (haqiqiy yozuv emas).")
+    qatorlar = [echo_fayllar[i : i + 4] for i in range(0, len(echo_fayllar), 4)]
+    for qator in qatorlar:
+        ustunlar = st.columns(4)
+        for i, element in enumerate(qator):
+            with ustunlar[i]:
+                st.image(
+                    _kadr_rgb(element.get("kadr")),
+                    caption=str(element.get("korinish") or ""),
+                    width="stretch",
+                )
+
+
 def _ustun1_forma() -> Tuple[Dict[str, Any], Any, float, bool]:
     """Bemor va laboratoriya maydonlarini 1-ustunda guruhlangan holda chizadi.
 
@@ -1287,28 +1373,65 @@ def _ustun1_forma() -> Tuple[Dict[str, Any], Any, float, bool]:
 
     Returns:
         bemor lug‘ati (EKGsiz), yuklangan EKG fayllar ro‘yxati, sampling_rate,
-        yagona tahlil tugmasi. Demografiya doimo ko‘rinadi; tekshiruvlar alohida
-        bo‘lim; laboratoriya 2-ustunli grid; disk yo‘li va Hz kengaytirilganda.
+        yagona tahlil tugmasi. Sintetik tanlov forma, EKG va echoni to‘ldiradi.
     """
-    # ── 1. Asosiy klinik ma‘lumotlar ─────────────────────────────────────────────────
+    _forma_odatiy_kalitlar()
+
+    # ── 0. Sintetik holat tanlovi (loyihani solishtirish) ─────────────────────
+    st.markdown('<div class="bolim-sarlavha">Sintetik bemor</div>', unsafe_allow_html=True)
+    tanlov = st.selectbox(
+        "Sintetik holat",
+        ["yoq", *HOLAT_IDLAR],
+        format_func=lambda kalit: _SINTETIK_YORLIQ.get(kalit, kalit),
+        key="sintetik_tanlov",
+        help="data/sintetik dagi JSON. Tanlanganda bemor, lab, EKG va echo to‘ladi. Haqiqiy yozuv emas.",
+    )
+    if st.button("Sintetik faylni qayta o‘qish", use_container_width=True, key="sintetik_qayta"):
+        st.session_state.sintetik_qollangan = None
+        st.rerun()
+    if st.session_state.get("sintetik_qollangan") != tanlov:
+        try:
+            _sintetik_qollash(tanlov)
+        except Exception as exc:
+            st.session_state.sintetik_qollangan = tanlov
+            st.error(f"Sintetik holat o‘qilmadi: {exc}")
+        else:
+            st.session_state.sintetik_qollangan = tanlov
+            st.rerun()
+    if tanlov != "yoq" and st.session_state.get("sintetik_izoh"):
+        # Ma’lumotlar yuklangani haqida darhol xabar (forma, lab, EKG, echo to‘ldirildi)
+        st.success(
+            "✅ Ma’lumotlar yuklandi: "
+            + paket_xulosasi(
+                {
+                    "yosh": st.session_state.get("bemor_yosh"),
+                    "jins": st.session_state.get("bemor_jins"),
+                    "laboratoriya": {
+                        k: st.session_state.get(f"lab_{k}") for k, *_ in LAB_MAYDONLARI
+                    },
+                    "ecg_signal": st.session_state.get("ekg_signal"),
+                    "sampling_rate": st.session_state.get("sintetik_hz") or ODATIY_HZ,
+                    "echo_fayllar": st.session_state.get("sintetik_echo") or [],
+                }
+            )
+        )
+        st.caption(str(st.session_state.get("sintetik_izoh")))
+        if st.session_state.get("sintetik_fayl"):
+            st.caption("Fayl: " + str(st.session_state.get("sintetik_fayl")))
+        if st.session_state.get("sintetik_kuzatish"):
+            st.info(str(st.session_state.get("sintetik_kuzatish")))
+
+    # ── 1. Asosiy klinik ma‘lumotlar ──────────────────────────────────────────
     st.markdown('<div class="bolim-sarlavha">Bemor</div>', unsafe_allow_html=True)
-    yosh = st.number_input("Yosh (yil)", min_value=0, max_value=120, value=58, step=1)
-    jins = st.selectbox("Jins", ["erkak", "ayol", "ko‘rsatilmagan"])
-    shikoyatlar = st.text_area(
-        "Shikoyatlar",
-        value="Ko‘krak og‘rig‘i, zo‘riqishda nafas qisishi",
-        height=80,
-    )
-    anamnez = st.text_area(
-        "Anamnez",
-        value="Gipertenziya. Oldingi MI yo‘q.",
-        height=70,
-    )
+    yosh = st.number_input("Yosh (yil)", min_value=0, max_value=120, step=1, key="bemor_yosh")
+    jins = st.selectbox("Jins", ["erkak", "ayol", "ko‘rsatilmagan"], key="bemor_jins")
+    shikoyatlar = st.text_area("Shikoyatlar", height=80, key="bemor_shikoyat")
+    anamnez = st.text_area("Anamnez", height=70, key="bemor_anamnez")
     dorilar = st.text_area(
         "Dori-darmonlar (har qator: nom | doza | chastota)",
-        value="aspirin | 75 mg | once daily\nbisoprolol | 5 mg | once daily",
         height=70,
         help="Yoki: aspirin 75 mg od",
+        key="bemor_dorilar",
     )
 
     # ── 2. Tekshiruvlar (fayl yuklash) ────────────────────────────────────────────────
@@ -1330,9 +1453,14 @@ def _ustun1_forma() -> Tuple[Dict[str, Any], Any, float, bool]:
         "EKG fayl(lar) (CSV yoki WFDB .hea+.dat)",
         type=["csv", "hea", "dat", "txt"],
         accept_multiple_files=True,
-        help="CSV: I..V6 yoki 12 ustun; ixtiyoriy `# sampling_rate=500`. WFDB: .hea va .dat ni birga.",
+        help="CSV: I..V6 yoki 12 ustun; ixtiyoriy `# sampling_rate=500`. WFDB: .hea va .dat ni birga. "
+        "Bo‘sh qolsa tanlangan sintetik EKG ishlatiladi.",
     )
-    namuna = st.checkbox("Namuna (sintetik) EKG ishlatish", value=True)
+    sintetik_echo = list(st.session_state.get("sintetik_echo") or [])
+    if echo_yuk:
+        st.caption("Yuklangan echo tahlilda ishlatiladi.")
+    elif tanlov != "yoq" and sintetik_echo:
+        _sintetik_echo_korish(sintetik_echo)
 
     # ── 3. Laboratoriya raqamlari — 2-ustunli grid ──────────────────────────────────────────────
     with st.expander("Laboratoriya qiymatlari", expanded=True):
@@ -1341,7 +1469,7 @@ def _ustun1_forma() -> Tuple[Dict[str, Any], Any, float, bool]:
         juftlar = [LAB_MAYDONLARI[i : i + 2] for i in range(0, len(LAB_MAYDONLARI), 2)]
         for juft in juftlar:
             kol_chap, kol_ong = st.columns(2)
-            for kol, (kalit, sarlavha_lab, izoh, past, yuqori, odatiy) in zip(
+            for kol, (kalit, sarlavha_lab, izoh, past, yuqori, _odatiy) in zip(
                 [kol_chap, kol_ong], juft
             ):
                 with kol:
@@ -1350,9 +1478,9 @@ def _ustun1_forma() -> Tuple[Dict[str, Any], Any, float, bool]:
                             sarlavha_lab,
                             min_value=past,
                             max_value=yuqori,
-                            value=odatiy,
                             step=0.1,
                             help=izoh,
+                            key=f"lab_{kalit}",
                         )
                     )
 
@@ -1360,6 +1488,8 @@ def _ustun1_forma() -> Tuple[Dict[str, Any], Any, float, bool]:
     _lab_holat_s = st.session_state.get("agent_holat")
     if _lab_holat_s and (_lab_holat_s.get("lab_natija") or {}).get("qiymatlar"):
         _lab_kartalar(_lab_holat_s.get("lab_natija"), bemor=None)
+    elif lab:
+        _lab_kartalar({"qiymatlar": lab}, bemor=None)
 
     # ── 4. Kengaytirilgan sozlamalar (odatda yopiq) ────────────────────────────────────────────────
     with st.expander("Kengaytirilgan sozlamalar", expanded=False):
@@ -1368,8 +1498,8 @@ def _ustun1_forma() -> Tuple[Dict[str, Any], Any, float, bool]:
             "EKG sampling_rate (Hz)",
             min_value=100.0,
             max_value=2000.0,
-            value=ODATIY_HZ,
             help="CSV/WFDB da avtoaniqlansa shu qiymat bekor bo‘ladi.",
+            key="ekg_hz",
         )
         st.caption(
             "CSV: I..V6 yoki 12 ustun; ixtiyoriy `# sampling_rate=500` va `time` ustuni. "
@@ -1389,13 +1519,16 @@ def _ustun1_forma() -> Tuple[Dict[str, Any], Any, float, bool]:
         "laboratoriya": lab,
         "klinik_savol": laboratoriya_matn(lab),
         "sampling_rate": float(sampling_rate),
-        "namuna_ekg": namuna,
+        "namuna_ekg": tanlov != "yoq",
+        "sintetik_id": None if tanlov == "yoq" else tanlov,
     }
     if lab_fayl is not None:
         bemor["lab_fayl_bayt"] = lab_fayl.getvalue()
         bemor["lab_fayl_nomi"] = lab_fayl.name
     if echo_yuk:
         bemor["echo_fayllar"] = [{"nom": f.name, "bayt": f.getvalue()} for f in echo_yuk]
+    elif tanlov != "yoq" and sintetik_echo:
+        bemor["echo_fayllar"] = [{"nom": e["nom"], "bayt": e["bayt"]} for e in sintetik_echo]
     return bemor, fayllar, float(sampling_rate), tahlil
 
 
@@ -1418,7 +1551,7 @@ def _ustun2_ekg(
     """
     st.subheader("EKG signali")
     if signal is None:
-        st.info("CSV/WFDB yuklang yoki namuna EKG ni belgilang.")
+        st.info("CSV/WFDB yuklang yoki sintetik holatni tanlang.")
         return
     st.caption(xabar)
     tasma = st.selectbox("Ko‘rsatish", ["12 tasma"] + TASMA_NOMLARI, index=2)
@@ -1585,12 +1718,20 @@ def _vizual_tekshirish_paneli(
             st.info("MDT hali yo‘q. EKG/echo yoki murakkab holatda tahlildan keyin chiqadi.")
 
 
-def _ustun3_xulosa(agent_holat: Optional[Dict[str, Any]], bemor: Optional[Dict[str, Any]]) -> None:
+def _ustun3_xulosa(
+    agent_holat: Optional[Dict[str, Any]],
+    bemor: Optional[Dict[str, Any]],
+    davom_etmoqda: bool = False,
+) -> None:
     """3-ustunda agent xulosasi va ehtiyotkor tavsiyalarni ko'rinishli karta bilan chizadi.
+
+    Expander yo'q — bo'lim natijalari o'rta ustundagi _bolim_natija_paneli da.
+    Faqat badge, ixcham qadam paneli, xulosa kartasi, tavsiyalar va vizual izoh.
 
     Args:
         agent_holat: run() natijasi yoki None.
         bemor: Tahlil qilingan bemor.
+        davom_etmoqda: True bo‘lsa tahlil fonda ketmoqda, xulosa hali yo‘q.
 
     Returns:
         None. Xulosani ajratilgan karta ichida ko'rsatadi; audit sidebar da.
@@ -1625,8 +1766,15 @@ def _ustun3_xulosa(agent_holat: Optional[Dict[str, Any]], bemor: Optional[Dict[s
     if _sababi_q:
         st.caption(_sababi_q)
 
-    # ── Qadam panel — TASK 4 ──────────────────────────────────────────────────
-    with st.expander("Qadam-ba-qadam bajarish", expanded=True):
+    if davom_etmoqda:
+        st.info(
+            "Tahlil davom etmoqda. Xulosa barcha bosqichlardan keyin chiqadi; "
+            "tayyor bo‘lgan natijalar chapdagi bo‘limlarda ko‘rinadi."
+        )
+        return
+
+    # ── Qadam panel (ixcham) ─────────────────────────────────────────────────
+    with st.expander("Qadam-ba-qadam bajarish", expanded=False):
         _qadam_panel(agent_holat)
 
     # ── Xulosa kartasi (asosiy fokus) ─────────────────────────────────────────
@@ -1648,96 +1796,7 @@ def _ustun3_xulosa(agent_holat: Optional[Dict[str, Any]], bemor: Optional[Dict[s
     for band in ehtiyotkor_tavsiyalar(bemor or {}, agent_holat):
         st.markdown(f"- {band}")
 
-    # ── Agent izlar — TASK 5 ──────────────────────────────────────────────────
-    with st.expander("Agent izlar va mulohaza", expanded=False):
-        _agent_izlar(agent_holat)
-
-    # ── Lab technician ────────────────────────────────────────────────────────
-    lab_n = agent_holat.get("lab_natija") or {}
-    if lab_n:
-        with st.expander("Lab technician (token/RAG satr)"):
-            st.write(lab_n.get("xabar") or "")
-            st.code(lab_n.get("rag_satr") or lab_n.get("matn") or "")
-            if lab_n.get("dorilar"):
-                st.write(lab_n.get("dorilar"))
-            st.caption("Tokenlar: " + ", ".join(lab_n.get("tokenlar") or []))
-
-    # ── Klinik reja va qadamlar ───────────────────────────────────────────────
-    with st.expander("Klinik reja P", expanded=True):
-        _reja_jonli(agent_holat)
-    with st.expander("Qadamlar (LangGraph)", expanded=True):
-        for qator in agent_holat.get("qadam_tarixi") or []:
-            st.write(qator)
-
-    # ── CardiacRAG dalillari ──────────────────────────────────────────────────
-    dalillar = agent_holat.get("rag_dalillar") or []
-    if dalillar:
-        with st.expander("CardiacRAG kontekst C"):
-            for d in dalillar:
-                st.write(d)
-
-    # ── MDT munozara ──────────────────────────────────────────────────────────
-    mdt = agent_holat.get("mdt_natija")
-    if mdt:
-        with st.expander("MDT munozara (qisqa)", expanded=False):
-            _mdt_panel(mdt, agent_holat)
-
-    # ── EKG, Echo, Fellow expanders ───────────────────────────────────────────
-    tech_n = agent_holat.get("ecg_technician_natija") or {}
-    if tech_n:
-        with st.expander("EKG technician (tozalash / sifat)"):
-            st.write(tech_n.get("xabar") or "")
-            st.write(
-                f"Sifat: {tech_n.get('sifat')} | tasma {tech_n.get('tasma')} | "
-                f"R={tech_n.get('urishlar_soni')} | HR\u2248{tech_n.get('yurak_chastotasi_bpm')} | "
-                f"{tech_n.get('davomiylik_s')} s @ {tech_n.get('sampling_rate')} Hz"
-            )
-            if tech_n.get("yetishmagan"):
-                st.caption("Yetishmagan tasma: " + ", ".join(tech_n.get("yetishmagan") or []))
-    ep_n = agent_holat.get("ep_natija") or {}
-    if ep_n:
-        with st.expander("Elektrofiziolog (P/QRS/T, intervallar)"):
-            st.write(ep_n.get("xabar") or "")
-            st.write(
-                f"tasma {ep_n.get('tasma')} | HR {ep_n.get('yurak_chastotasi_bpm')} | "
-                f"PR {ep_n.get('pr_ms')} | QRS {ep_n.get('qrs_ms')} | "
-                f"QT {ep_n.get('qt_ms')} | QTc {ep_n.get('qtc_bazett_ms')} | "
-                f"SDNN {ep_n.get('hrv_sdnn_ms')} | RMSSD {ep_n.get('hrv_rmssd_ms')} | "
-                f"P={ep_n.get('p_soni')} T={ep_n.get('t_soni')}"
-            )
-            if ep_n.get("eslatmalar"):
-                for e in ep_n.get("eslatmalar") or []:
-                    st.markdown(f"- {e}")
-            st.caption("Qiymatlar taxminiy; tashxis emas.")
-    echo_n = agent_holat.get("echo_natija") or {}
-    if echo_n:
-        with st.expander("Echo technician (11 ko'rinish)"):
-            st.write(echo_n.get("xabar") or "")
-            st.write(echo_n.get("yozuvlar") or echo_n.get("korinishlar"))
-            yet = echo_n.get("yetishmagan_standart") or []
-            if yet:
-                st.caption("Hali yo'q (11 dan): " + ", ".join(yet))
-    mask_n = agent_holat.get("echo_mask") or {}
-    if mask_n:
-        with st.expander("Echo segmenter (LV maska)"):
-            st.write(mask_n.get("xabar") or "")
-            if mask_n.get("ok"):
-                st.write(
-                    f"ko'rinish={mask_n.get('korinish')} | {mask_n.get('maydon_px')} px | "
-                    f"ulush={mask_n.get('ulush')} | model={mask_n.get('model')}"
-                )
-            st.caption("Algoritmik kavak; klinik EF emas. To'liq rasm vizual tekshiruvda.")
-    fellow_n = agent_holat.get("fellow_natija") or {}
-    if fellow_n:
-        with st.expander("Cardiology fellow (multimodal)"):
-            st.write(f"manba={fellow_n.get('manba')} model={fellow_n.get('model')} | dalillar={fellow_n.get('dalillar')}")
-            if fellow_n.get("yoq_dalillar"):
-                st.caption("Yo'q (o'ylab topilmagan): " + ", ".join(fellow_n.get("yoq_dalillar") or []))
-            st.write(fellow_n.get("matn") or "")
-            st.caption((fellow_n.get("xabar") or "") + " Tashxis emas.")
-            if fellow_n.get("manba") == "shablon" or (agent_holat.get("mdt_natija") or {}).get("medgemma_manba") == "shablon":
-                st.warning("Fellow/MDT **shablon rejimida** (LLM yoki VLM javobi yo'q).")
-
+    # ── (bo'limlar o'rta ustunda: _bolim_natija_paneli) ─────────────────────
     # ── Vizual holat eslatmasi ─────────────────────────────────────────────────
     viz = agent_holat.get("vizual") or {}
     st.caption(
@@ -1745,6 +1804,616 @@ def _ustun3_xulosa(agent_holat: Optional[Dict[str, Any]], bemor: Optional[Dict[s
         f"sifat={viz.get('ekg_sifat')} echo={viz.get('echo_korinishlar')} "
         f"lv={viz.get('lv_maska')} mdt_raund={viz.get('mdt_raund')}."
     )
+
+
+def _bolim_holat(bolim_id: str, agent_holat: Optional[Dict[str, Any]]) -> Tuple[str, str]:
+    """Bo'lim uchun holat belgisi (✅/⏳/⚠️) va qisqa ko'rsatkichni qaytaradi.
+
+    Args:
+        bolim_id: NATIJA_BOLIMLAR dagi kalit (masalan 'lab_tech').
+        agent_holat: ChiefCardiologist.run natijasi yoki None.
+
+    Returns:
+        (emoji, qisqa_matn). Tahlildan oldin ('⏳', ''). Tashxis emas.
+    """
+    if not agent_holat:
+        return "⏳", ""
+
+    if bolim_id == "agent_izlar":
+        soni = len(agent_holat.get("qadam_tarixi") or [])
+        return ("✅", f"{soni} qadam") if soni else ("⏳", "")
+
+    kalit_map = {
+        "klinik_reja":  "reja",
+        "cardiac_rag":  "rag_dalillar",
+        "lab_tech":     "lab_natija",
+        "ekg_tech":     "ecg_technician_natija",
+        "elektrofiz":   "ep_natija",
+        "echo_tech":    "echo_natija",
+        "echo_seg":     "echo_mask",
+        "fellow":       "fellow_natija",
+        "qadamlar":     "qadam_tarixi",
+        "mdt":          "mdt_natija",
+    }
+    kalit = kalit_map.get(bolim_id)
+    if kalit is None:
+        return "⏳", ""
+    qiymat = agent_holat.get(kalit)
+    if not qiymat:
+        return "⏳", ""
+
+    if bolim_id == "klinik_reja":
+        reja = qiymat or []
+        done = sum(1 for q in reja if q.get("holat") == "done")
+        xato = sum(1 for q in reja if q.get("holat") == "xato")
+        return ("⚠️", f"{done}/{len(reja)}, {xato} xato") if xato else ("✅", f"{done}/{len(reja)} qadam")
+    if bolim_id == "cardiac_rag":
+        return "✅", f"{len(qiymat)} dalil"
+    if bolim_id == "lab_tech":
+        return "✅", f"{len(qiymat.get('tokenlar') or [])} token"
+    if bolim_id == "ekg_tech":
+        return "✅", f"HR≈{qiymat.get('yurak_chastotasi_bpm') or '?'}, {qiymat.get('sifat') or '?'}"
+    if bolim_id == "elektrofiz":
+        return "✅", f"HR {qiymat.get('yurak_chastotasi_bpm') or '?'}, QTc {qiymat.get('qtc_bazett_ms') or '?'}"
+    if bolim_id == "echo_tech":
+        return "✅", f"{len(qiymat.get('korinishlar') or [])} ko'rinish"
+    if bolim_id == "echo_seg":
+        if qiymat.get("ok"):
+            return "✅", f"ulush={qiymat.get('ulush') or '?'}"
+        return "⚠️", str(qiymat.get("xabar") or "xato")[:30]
+    if bolim_id == "fellow":
+        return "✅", str(qiymat.get("manba") or "?")
+    if bolim_id == "qadamlar":
+        return "✅", f"{len(qiymat)} qadam"
+    if bolim_id == "mdt":
+        k = "✓" if qiymat.get("konsensus") else "✗"
+        return "✅", f"{qiymat.get('raund_soni') or 0} raund {k}"
+    return "✅", ""
+
+
+def _natija_bolimlar_tanlovi(agent_holat: Optional[Dict[str, Any]]) -> str:
+    """Natija bo'limlari ro'yxatini chap ustun pastida oqim tartibida chizadi.
+
+    Har bo'lim yonida holat belgisi (✅/⏳/⚠️) va qisqa ko'rsatkich.
+    Tanlov st.session_state['tanlangan_bolim'] da saqlanadi.
+    Bir vaqtda bitta bo'lim ochiq.
+
+    Args:
+        agent_holat: ChiefCardiologist.run natijasi yoki None.
+
+    Returns:
+        Hozir tanlangan bo'lim identifikatori. Tashxis emas.
+    """
+    st.markdown('<div class="bolim-sarlavha">Natija bo\'limlari</div>', unsafe_allow_html=True)
+    if not agent_holat:
+        st.caption("Tahlildan keyin natijalar bo'lim-bo'lim ko'rinadi. ⏳ = hali yo'q.")
+    if "tanlangan_bolim" not in st.session_state:
+        st.session_state.tanlangan_bolim = "klinik_reja"
+
+    for bolim_id, bolim_nom in NATIJA_BOLIMLAR:
+        emoji, hint = _bolim_holat(bolim_id, agent_holat)
+        label = f"{emoji} {bolim_nom}"
+        if hint:
+            label += f"  ·  {hint}"
+        tanlangan = st.session_state.tanlangan_bolim == bolim_id
+        if st.button(
+            label,
+            key=f"bolim_btn_{bolim_id}",
+            use_container_width=True,
+            type="primary" if tanlangan else "secondary",
+        ):
+            st.session_state.tanlangan_bolim = bolim_id
+            st.rerun()
+
+    return str(st.session_state.get("tanlangan_bolim", "klinik_reja"))
+
+
+def _bolim_natija_paneli(
+    tanlangan: str,
+    agent_holat: Optional[Dict[str, Any]],
+    bemor: Optional[Dict[str, Any]],
+) -> None:
+    """Tanlangan bo'lim natijasini o'rta ustunning pastki scrollable panelida ko'rsatadi.
+
+    st.container(height=560, border=True) ishlatiladi — sahifa balandligi
+    bo'limlar soniga bog'liq bo'lib o'smaydi, faqat ichki scroll.
+    Xom dict/list st.write qilinmaydi — jadval, metrika yoki markdown ro'yxat.
+
+    Args:
+        tanlangan: NATIJA_BOLIMLAR dagi bo'lim identifikatori.
+        agent_holat: ChiefCardiologist.run natijasi yoki None.
+        bemor: Tahlil qilingan bemor (echo fayllar, ixtiyoriy).
+
+    Returns:
+        None. Tashxis emas; klinik qaror shifokorga tegishli.
+    """
+    nom_map = {b[0]: b[1] for b in NATIJA_BOLIMLAR}
+    sarlavha = nom_map.get(tanlangan, tanlangan)
+
+    with st.container(height=620, border=True):
+        st.markdown(f"**{sarlavha}**")
+
+        if not agent_holat:
+            st.info(
+                "Tahlil hali bajarilmagan. Chap ustunda bemor ma'lumotlarini kiriting, "
+                "so'ng «Tahlil qilish» tugmasini bosing."
+            )
+            return
+
+        # ── Klinik reja P ─────────────────────────────────────────────────────
+        if tanlangan == "klinik_reja":
+            reja = agent_holat.get("reja") or []
+            if not reja:
+                st.info("Klinik reja P hali tuzilmagan.")
+                return
+            qatorlar = []
+            for q in reja:
+                hol = str(q.get("holat") or "pending")
+                belgi = "✅" if hol == "done" else ("❌" if hol == "xato" else "🔷")
+                qatorlar.append({
+                    "": belgi,
+                    "ID": str(q.get("id") or ""),
+                    "Vosita": str(q.get("vosita") or ""),
+                    "Tavsif": str(q.get("tavsif") or "")[:80],
+                    "Holat": hol,
+                })
+            st.dataframe(pd.DataFrame(qatorlar), use_container_width=True, hide_index=True)
+            for q in reja:
+                if q.get("holat") == "xato" and q.get("xabar"):
+                    st.warning(f"❌ {q.get('id')}: {q.get('xabar')}")
+            baho = str(agent_holat.get("baho_sababi") or "")
+            if baho:
+                st.caption(f"Baholash: {baho}")
+
+        # ── CardiacRAG kontekst C ─────────────────────────────────────────────
+        elif tanlangan == "cardiac_rag":
+            dalillar = agent_holat.get("rag_dalillar") or []
+            if not dalillar:
+                st.info("CardiacRAG dalillari yo'q — RAG indeks bo'sh yoki bu bosqich o'tkazilgan.")
+                return
+            st.caption(f"Jami {len(dalillar)} ta dalil. Manba: BioClinicalBERT + FAISS. Tashxis emas.")
+            for i, d in enumerate(dalillar):
+                with st.container(border=True):
+                    st.markdown(f"**{i + 1}.** {str(d)}")
+
+        # ── Lab technician ────────────────────────────────────────────────────
+        elif tanlangan == "lab_tech":
+            lab_n = agent_holat.get("lab_natija") or {}
+            if not lab_n:
+                st.info("Lab technician bosqichi hali bajarilmagan.")
+                return
+            if lab_n.get("xabar"):
+                st.markdown(f"**Xabar:** {lab_n['xabar']}")
+            qiymatlar = lab_n.get("qiymatlar") or {}
+            if qiymatlar:
+                st.markdown("**Analitlar:**")
+                _lab_kartalar(lab_n)
+                birlik_map = {m[0]: m[2] for m in LAB_MAYDONLARI}
+                sarlavha_map2 = {m[0]: m[1] for m in LAB_MAYDONLARI}
+                df_rows = [
+                    {"Ko'rsatkich": sarlavha_map2.get(k, k), "Qiymat": v,
+                     "Birlik / izoh": birlik_map.get(k, "")}
+                    for k, v in qiymatlar.items()
+                ]
+                st.dataframe(pd.DataFrame(df_rows), use_container_width=True, hide_index=True)
+            rag_s = lab_n.get("rag_satr") or lab_n.get("matn") or ""
+            if rag_s:
+                st.markdown("**RAG satri:**")
+                st.code(rag_s, language=None)
+            dorilar = lab_n.get("dorilar") or []
+            if dorilar:
+                st.markdown("**Dorilar:**")
+                if isinstance(dorilar, list) and dorilar and isinstance(dorilar[0], dict):
+                    st.dataframe(pd.DataFrame(dorilar), use_container_width=True, hide_index=True)
+                elif isinstance(dorilar, list):
+                    for d in dorilar:
+                        st.markdown(f"- {d}")
+                else:
+                    st.markdown(str(dorilar))
+            tokenlar = lab_n.get("tokenlar") or []
+            if tokenlar:
+                st.markdown(f"**Tokenlar** ({len(tokenlar)} ta): `" + "`, `".join(tokenlar[:12]) + "`")
+            st.caption("Orientir. Tashxis emas.")
+
+        # ── EKG technician ────────────────────────────────────────────────────
+        elif tanlangan == "ekg_tech":
+            tech = agent_holat.get("ecg_technician_natija") or {}
+            if not tech:
+                st.info("EKG technician bosqichi hali bajarilmagan.")
+                return
+            c1, c2, c3 = st.columns(3)
+            c1.metric("Sifat", tech.get("sifat") or "—")
+            c2.metric("HR ≈", f"{tech.get('yurak_chastotasi_bpm') or '—'} bpm")
+            c3.metric("Davomiylik", f"{tech.get('davomiylik_s') or '—'} s")
+            c4, c5, c6 = st.columns(3)
+            c4.metric("Urishlar soni", tech.get("urishlar_soni") or "—")
+            c5.metric("Sampling rate", f"{tech.get('sampling_rate') or '—'} Hz")
+            c6.metric("Tasma", tech.get("tasma") or "—")
+            yet = tech.get("yetishmagan") or []
+            if yet:
+                st.warning("Yetishmagan tasma: " + ", ".join(yet))
+            else:
+                st.success("Barcha tasmalar mavjud.")
+            if tech.get("xabar"):
+                st.caption(tech["xabar"])
+            st.caption("Taxminiy o'lchov; tashxis emas.")
+
+        # ── Elektrofiziolog ───────────────────────────────────────────────────
+        elif tanlangan == "elektrofiz":
+            ep = agent_holat.get("ep_natija") or agent_holat.get("ecg_natija") or {}
+            if not ep:
+                st.info("Elektrofiziolog bosqichi hali bajarilmagan.")
+                return
+            _ecg_metrik(agent_holat.get("ecg_natija"), agent_holat.get("ep_natija"))
+            col_l, col_r = st.columns(2)
+            with col_l:
+                st.markdown("**Intervallar**")
+                for nom_ep, kalit_ep, birlik_ep in [
+                    ("HR", "yurak_chastotasi_bpm", "bpm"),
+                    ("PR", "pr_ms", "ms"),
+                    ("QRS", "qrs_ms", "ms"),
+                    ("QT", "qt_ms", "ms"),
+                    ("QTc (Bazett)", "qtc_bazett_ms", "ms"),
+                ]:
+                    v = ep.get(kalit_ep)
+                    if v is not None:
+                        st.markdown(f"- **{nom_ep}:** {v} {birlik_ep}")
+            with col_r:
+                st.markdown("**HRV / boshqa**")
+                for nom_ep, kalit_ep, birlik_ep in [
+                    ("SDNN", "hrv_sdnn_ms", "ms"),
+                    ("RMSSD", "hrv_rmssd_ms", "ms"),
+                    ("P to'lqin soni", "p_soni", ""),
+                    ("T to'lqin soni", "t_soni", ""),
+                    ("Tasma", "tasma", ""),
+                ]:
+                    v = ep.get(kalit_ep)
+                    if v is not None:
+                        st.markdown(f"- **{nom_ep}:** {v} {birlik_ep}")
+            eslatmalar = ep.get("eslatmalar") or []
+            if eslatmalar:
+                st.markdown("**Ogohlantirishlar:**")
+                for e in eslatmalar:
+                    st.warning(str(e))
+            if ep.get("xabar"):
+                st.caption(ep["xabar"])
+            st.caption("Qiymatlar taxminiy; tashxis emas.")
+
+        # ── Echo technician ───────────────────────────────────────────────────
+        elif tanlangan == "echo_tech":
+            echo = agent_holat.get("echo_natija") or {}
+            if not echo:
+                st.info("Echo technician bosqichi hali bajarilmagan.")
+                return
+            if echo.get("xabar"):
+                st.markdown(f"**Xabar:** {echo['xabar']}")
+            korinishlar = echo.get("korinishlar") or []
+            st.markdown(f"**Topilgan ko'rinishlar ({len(korinishlar)} ta) / 11 standart:**")
+            qatorlar_kor = [ECHO_KORINISHLAR[i:i + 4] for i in range(0, len(ECHO_KORINISHLAR), 4)]
+            for qator_kor in qatorlar_kor:
+                cols_kor = st.columns(len(qator_kor))
+                for ci, kor in enumerate(qator_kor):
+                    with cols_kor[ci]:
+                        if kor in korinishlar:
+                            st.markdown(f"✅ **{kor}**")
+                        else:
+                            st.markdown(f"⬜ {kor}")
+            yozuvlar = echo.get("yozuvlar") or []
+            if yozuvlar:
+                st.markdown("**Yozuvlar jadvali:**")
+                df_echo = []
+                for y in yozuvlar:
+                    if isinstance(y, dict):
+                        df_echo.append({
+                            "Fayl": str(y.get("fayl") or ""),
+                            "Ko'rinish": str(y.get("asosiy") or ""),
+                            "Ehtimol": y.get("ehtimol"),
+                            "Manba": str(y.get("manba") or ""),
+                            "Top-3": ", ".join(str(x) for x in (y.get("yuqori3") or [])[:3]),
+                        })
+                if df_echo:
+                    st.dataframe(pd.DataFrame(df_echo), use_container_width=True, hide_index=True)
+            yet = echo.get("yetishmagan_standart") or []
+            if yet:
+                st.warning(f"Hali yo'q ({len(yet)} ta): " + ", ".join(yet))
+            model_echo = echo.get("model") or ""
+            kadrlar_soni = echo.get("kadrlar_soni")
+            if model_echo or kadrlar_soni:
+                st.caption(f"Model: {model_echo} | Kadrlar: {kadrlar_soni}")
+            st.caption("11 standart ko'rinish tasnifi. Tashxis emas.")
+
+        # ── Echo segmenter ────────────────────────────────────────────────────
+        elif tanlangan == "echo_seg":
+            mask = agent_holat.get("echo_mask") or {}
+            if not mask:
+                st.info("Echo segmenter bosqichi hali bajarilmagan.")
+                return
+            c1, c2 = st.columns(2)
+            c1.metric("Holat", "✅ ok" if mask.get("ok") else "⚠️ xato")
+            c2.metric("Ko'rinish", mask.get("korinish") or "—")
+            c3, c4 = st.columns(2)
+            c3.metric("Maydon (px)", mask.get("maydon_px") or "—")
+            c4.metric("Ulush", mask.get("ulush") or "—")
+            st.caption(f"Model: {mask.get('model') or '—'}")
+            if mask.get("xabar"):
+                st.caption(mask["xabar"])
+            if mask.get("overlay_png"):
+                st.image(
+                    mask["overlay_png"],
+                    caption="LV kontur (algoritmik, EF/tashxis emas)",
+                    use_container_width=True,
+                )
+            st.caption("Algoritmik kavak; klinik EF emas. To'liq rasm vizual tekshiruvda.")
+
+        # ── Cardiology fellow ─────────────────────────────────────────────────
+        elif tanlangan == "fellow":
+            fellow = agent_holat.get("fellow_natija") or {}
+            if not fellow:
+                st.info("Cardiology fellow bosqichi hali bajarilmagan.")
+                return
+            c1, c2 = st.columns(2)
+            c1.metric("Manba", fellow.get("manba") or "—")
+            c2.metric("Model", str(fellow.get("model") or "—")[:30])
+            dalillar_f = fellow.get("dalillar") or []
+            if dalillar_f:
+                st.markdown("**✅ Dalillar:**")
+                for d in dalillar_f:
+                    st.markdown(f"- {d}")
+            yoq_f = fellow.get("yoq_dalillar") or []
+            if yoq_f:
+                st.markdown("**❌ Yo'q dalillar:**")
+                for d in yoq_f:
+                    st.markdown(f"- {d}")
+            matn_f = str(fellow.get("matn") or "")
+            if matn_f:
+                st.markdown("**To'liq matn:**")
+                st.markdown(matn_f)
+            if fellow.get("xabar"):
+                st.caption(str(fellow["xabar"]) + " Tashxis emas.")
+            if fellow.get("manba") == "shablon" or (agent_holat.get("mdt_natija") or {}).get("medgemma_manba") == "shablon":
+                st.warning("Fellow/MDT **shablon rejimida** (LLM yoki VLM javobi yo'q).")
+
+        # ── Qadamlar (LangGraph) ──────────────────────────────────────────────
+        elif tanlangan == "qadamlar":
+            tarix = agent_holat.get("qadam_tarixi") or []
+            if not tarix:
+                st.info("Qadam tarixi hali yo'q.")
+                return
+            st.caption(f"Jami {len(tarix)} ta qadam (LangGraph chain-of-thought).")
+            for i, q in enumerate(tarix):
+                st.markdown(
+                    f'<div class="log-entry">[{i + 1}] {html.escape(str(q))}</div>',
+                    unsafe_allow_html=True,
+                )
+
+        # ── MDT munozara ──────────────────────────────────────────────────────
+        elif tanlangan == "mdt":
+            mdt = agent_holat.get("mdt_natija")
+            if not mdt:
+                st.info(
+                    "MDT munozara hali bajarilmagan. "
+                    "Faqat murakkab holatda yoki vosita yiqilganda MDT ishga tushadi."
+                )
+                return
+            _mdt_panel(mdt, agent_holat)
+
+        # ── Agent izlar va mulohaza ───────────────────────────────────────────
+        elif tanlangan == "agent_izlar":
+            _agent_izlar(agent_holat)
+
+        else:
+            st.info(f"Noma'lum bo'lim: {tanlangan}")
+
+
+@st.cache_resource
+def _tahlil_ombori() -> TahlilOmbori:
+    """Fon oqimidagi tahlil ishini server jarayonida saqlaydi.
+
+    Returns:
+        Bitta umumiy TahlilOmbori. Sahifa yangilansa ham ish va natija yo‘qolmaydi.
+    """
+    return TahlilOmbori()
+
+
+def _job_bekor() -> None:
+    """«Natijani kutmaslik» tugmasi: ishni tugagan deb belgilaydi.
+
+    Returns:
+        None. Qisman natija saqlanadi; yakuniy xulosa bo‘lmasligi mumkin.
+    """
+    _tahlil_ombori().bekor_qilish()
+
+
+def _job_dan_tiklash() -> None:
+    """Fon ishi holatini joriy sessiyaga ulaydi (yangilangan sahifada ham).
+
+    Tugagan ish natijasi bir marta agent_holat ga o‘tadi. Ishlayotgan ish
+    bo‘lsa, uning bemor paketi ko‘rsatish uchun sessiyaga qo‘yiladi.
+
+    Returns:
+        None.
+    """
+    job = _tahlil_ombori().joriy()
+    if not job:
+        return
+    if st.session_state.get("job_paket_id") != job["id"]:
+        st.session_state.bemor_tahlil = job["paket"]
+        st.session_state.job_paket_id = job["id"]
+    if job["tugadi"] and st.session_state.get("job_natija_id") != job["id"]:
+        st.session_state.agent_holat = ish_holati(job)
+        st.session_state.bemor_tahlil = job["paket"]
+        st.session_state.job_natija_id = job["id"]
+        st.session_state.vizual_ochiq = False
+
+
+def _korinadigan_holat(
+    job: Optional[Dict[str, Any]], ishlayapti: bool
+) -> Optional[Dict[str, Any]]:
+    """Bo‘limlar va ustunlar uchun hozirgi (qisman yoki yakuniy) agent holatini beradi.
+
+    Args:
+        job: Fon ishi.
+        ishlayapti: Ish hali tugamagan.
+
+    Returns:
+        Ishlayotgan bo‘lsa qisman holat (bo‘sh bo‘lsa ham dict), aks holda yakuniy holat.
+    """
+    if ishlayapti and job:
+        return job.get("holat") or {"qadam_tarixi": []}
+    return st.session_state.agent_holat
+
+
+@st.fragment(run_every=2)
+def _jonli_oqim_paneli() -> None:
+    """Tahlil davomida har 2 soniyada yangilanuvchi jonli jarayon panelini chizadi.
+
+    Bemor ma’lumotlari yuklangani, reja, har vosita natijasi, stepwise va MDT
+    tugagan zahoti ko‘rinadi. Ish tugaganda butun sahifa yakuniy natija bilan qayta chiziladi.
+
+    Returns:
+        None. Tashxis emas; faqat jarayon holati.
+    """
+    job = _tahlil_ombori().joriy()
+    if not job:
+        return
+    if job["tugadi"]:
+        st.rerun()
+        return
+    holat = job.get("holat")
+    indeks, hozir = bosqich_holati(holat)
+    otgan = int(time.time() - job["boshlandi"])
+    _olti_bosqich_chiz(holat)
+    st.info(f"▶ Hozir: {hozir} · {otgan} s")
+    with st.container(height=400, border=True):
+        for q in jonli_xabarlar(job["paket"], holat, indeks):
+            bosh = "&emsp;&emsp;" if q["ichki"] else ""
+            st.markdown(f"{bosh}{q['belgi']} {q['matn']}")
+    st.button(
+        "Natijani kutmaslik (bekor qilish)",
+        key="job_bekor_tugma",
+        on_click=_job_bekor,
+        help="LLM javobi uzoq kutilsa foydali; qisman natijalar saqlanadi.",
+    )
+
+
+def _bolimlar_tanlovi_jonli() -> None:
+    """Bo‘limlar ro‘yxatini hozirgi (qisman) natija bilan chizadi (fragment ichida).
+
+    Returns:
+        None. Tahlil ketayotganda har 2 soniyada yangilanadi.
+    """
+    job = _tahlil_ombori().joriy()
+    ishlayapti = bool(job) and not job["tugadi"]
+    _natija_bolimlar_tanlovi(_korinadigan_holat(job, ishlayapti))
+
+
+def _bolim_paneli_jonli() -> None:
+    """Tanlangan bo‘lim natijasini hozirgi (qisman) holat bilan chizadi (fragment ichida).
+
+    Returns:
+        None. Bo‘lim natijasi vosita tugagan zahoti paydo bo‘ladi.
+    """
+    job = _tahlil_ombori().joriy()
+    ishlayapti = bool(job) and not job["tugadi"]
+    _bolim_natija_paneli(
+        st.session_state.get("tanlangan_bolim", "klinik_reja"),
+        _korinadigan_holat(job, ishlayapti),
+        st.session_state.bemor_tahlil,
+    )
+
+
+def _jonli_fragment(funksiya: Any, ishlayapti: bool) -> None:
+    """Funksiyani fragment sifatida chaqiradi; tahlil ketayotganda har 2 s yangilanadi.
+
+    Args:
+        funksiya: Argumentsiz chizuvchi funksiya.
+        ishlayapti: Fon ishi ketmoqdami.
+
+    Returns:
+        None.
+    """
+    st.fragment(run_every=2 if ishlayapti else None)(funksiya)()
+
+
+def _tahlil_boshlash_forma(bemor: Dict[str, Any], fayllar: Any, sampling_rate: float) -> None:
+    """Forma ma’lumotidan bemor paketini tuzib, tahlilni fon oqimida boshlaydi.
+
+    EKG manbasi: yuklangan fayllar, sintetik tanlov, namuna yoki yo‘q.
+    Laboratoriya oldindan qayta ishlanadi. Skript bloklanmaydi: natija
+    jonli panelda bosqichma-bosqich chiqadi.
+
+    Args:
+        bemor: Forma qiymatlari.
+        fayllar: Yuklangan EKG fayllari (yoki bo‘sh).
+        sampling_rate: Namuna olish tezligi (Hz).
+
+    Returns:
+        None. Holat session_state va tahlil omborida. Klinik tashxis o‘rnini bosmaydi.
+    """
+    signal = st.session_state.ekg_signal
+    xabar = st.session_state.ekg_xabar
+    if fayllar:
+        juft = [(f.name, f.getvalue()) for f in fayllar]
+        natija = ekg_fayllardan_oqish(juft, sampling_rate_hint=sampling_rate)
+        signal = natija.get("signal")
+        xabar = str(natija.get("xabar") or "")
+        if natija.get("sampling_rate"):
+            sampling_rate = float(natija["sampling_rate"])
+    elif bemor.get("sintetik_id") and st.session_state.ekg_signal is not None:
+        signal = st.session_state.ekg_signal
+        xabar = str(st.session_state.ekg_xabar or "Sintetik EKG (haqiqiy yozuv emas).")
+        if st.session_state.get("sintetik_hz"):
+            sampling_rate = float(st.session_state.sintetik_hz)
+    elif bemor.get("namuna_ekg"):
+        signal = namuna_ekg_signal(sampling_rate)
+        xabar = "Sintetik namuna EKG (haqiqiy yozuv emas)."
+    else:
+        signal, xabar = None, "EKG yo‘q."
+    st.session_state.ekg_signal = signal
+    st.session_state.ekg_xabar = xabar
+    st.session_state.sampling_rate = sampling_rate
+
+    paket = dict(bemor)
+    if signal is not None:
+        paket["ecg_signal"] = signal
+    paket["sampling_rate"] = sampling_rate
+    lab_oldindan = process_lab(paket)
+    if lab_oldindan.get("qiymatlar"):
+        paket["laboratoriya"] = lab_oldindan["qiymatlar"]
+    if lab_oldindan.get("rag_satr"):
+        paket["klinik_savol"] = lab_oldindan["rag_satr"]
+    if lab_oldindan.get("dorilar"):
+        paket["dorilar_tuzilgan"] = lab_oldindan["dorilar"]
+    st.session_state.vizual_ochiq = False
+
+    try:
+        agent = _agent_ol()
+    except Exception as exc:
+        st.session_state.agent_holat = {
+            "amal": "STOP",
+            "xulosa": (
+                f"Tahlil bajarilmadi: {exc}. "
+                "Bu tashxis emas; shifokor bilan ko'rib chiqing."
+            ),
+            "qadam_tarixi": [str(exc)],
+            "ecg_natija": None,
+            "rag_dalillar": [],
+        }
+        st.session_state.bemor_tahlil = paket
+        st.error("Tahlil xatosi: " + str(exc))
+        return
+
+    job = _tahlil_ombori().boshlash(agent, paket, str(xabar))
+    if job is None:
+        st.warning(
+            "Oldingi tahlil hali tugamagan. Tugashini kuting yoki "
+            "«Natijani kutmaslik» tugmasini bosing."
+        )
+        return
+    st.session_state.agent_holat = None
+    st.session_state.bemor_tahlil = paket
+    st.session_state.job_paket_id = job["id"]
+    st.session_state.job_natija_id = None
 
 
 def asosiy() -> None:
@@ -1776,112 +2445,73 @@ def asosiy() -> None:
         rag = _rag_obyekt(rag_paket)
 
     if "ekg_signal" not in st.session_state:
-        st.session_state.ekg_signal = namuna_ekg_signal()
-        st.session_state.ekg_xabar = "Sintetik namuna EKG (haqiqiy yozuv emas, tahlil kutilmoqda)."
+        st.session_state.ekg_signal = None
+        st.session_state.ekg_xabar = "Sintetik holat tanlanmoqda."
         st.session_state.sampling_rate = ODATIY_HZ
         st.session_state.agent_holat = None
         st.session_state.bemor_tahlil = None
         st.session_state.vizual_ochiq = False
+        st.session_state.tanlangan_bolim = "klinik_reja"
+
+    # Fon oqimida tugagan tahlil natijasi shu sessiyaga ulanadi (sahifa yangilansa ham saqlanadi)
+    _job_dan_tiklash()
 
     # Sidebar: texnik holat, audit, tozalash tugmasi
     _sidebar_paneli(rag_paket, st.session_state.agent_holat)
 
-    # 6 bosqichli progress qatori asosiy kanvas yuqorida
-    bosqich_joy = st.empty()
-    with bosqich_joy.container():
-        _olti_bosqich_chiz(st.session_state.agent_holat)
-        if st.session_state.agent_holat:
-            _reja_jonli(st.session_state.agent_holat)
+    # Jonli jarayon paneli joyi: forma tahlilni boshlaganini bilgach to‘ldiriladi
+    ust_joy = st.empty()
 
-    col1, col2, col3 = st.columns([1.05, 1.25, 1.15], gap="large")
+    col1, col2, col3 = st.columns([1.0, 1.5, 1.0], gap="large")
     with col1:
         bemor, fayllar, sampling_rate, tahlil = _ustun1_forma()
+        if tahlil:
+            _tahlil_boshlash_forma(bemor, fayllar, sampling_rate)
+        job = _tahlil_ombori().joriy()
+        ishlayapti = bool(job) and not job["tugadi"]
+        kor_holat = _korinadigan_holat(job, ishlayapti)
+        _jonli_fragment(_bolimlar_tanlovi_jonli, ishlayapti)
 
-    signal = st.session_state.ekg_signal
-    xabar = st.session_state.ekg_xabar
-    if tahlil:
-        if fayllar:
-            juft = [(f.name, f.getvalue()) for f in fayllar]
-            natija = ekg_fayllardan_oqish(juft, sampling_rate_hint=sampling_rate)
-            signal = natija.get("signal")
-            xabar = str(natija.get("xabar") or "")
-            if natija.get("sampling_rate"):
-                sampling_rate = float(natija["sampling_rate"])
-        elif bemor.get("namuna_ekg"):
-            signal = namuna_ekg_signal(sampling_rate)
-            xabar = "Sintetik namuna EKG (haqiqiy yozuv emas)."
+    with ust_joy.container():
+        if ishlayapti:
+            _jonli_oqim_paneli()
         else:
-            signal, xabar = None, "EKG yo'q."
-        st.session_state.ekg_signal = signal
-        st.session_state.ekg_xabar = xabar
-        st.session_state.sampling_rate = sampling_rate
-        paket = dict(bemor)
-        if signal is not None:
-            paket["ecg_signal"] = signal
-        paket["sampling_rate"] = sampling_rate
-        lab_oldindan = process_lab(paket)
-        if lab_oldindan.get("qiymatlar"):
-            paket["laboratoriya"] = lab_oldindan["qiymatlar"]
-        if lab_oldindan.get("rag_satr"):
-            paket["klinik_savol"] = lab_oldindan["rag_satr"]
-        if lab_oldindan.get("dorilar"):
-            paket["dorilar_tuzilgan"] = lab_oldindan["dorilar"]
-        st.session_state.vizual_ochiq = False
-        oxirgi: Optional[Dict[str, Any]] = None
-        try:
-            agent = _agent_ol()
-            with st.status("Agent tahlil qilmoqda (6 bosqich)...", expanded=True) as holat_ui:
-                for holat in agent.run_oqim(paket):
-                    oxirgi = holat
-                    holat_ui.update(
-                        label="Oqim: "
-                        + str((holat.get("qadam_tarixi") or ["..."])[-1])[:120],
-                        state="running",
-                    )
-                    with bosqich_joy.container():
-                        _olti_bosqich_chiz(holat)
-                        _reja_jonli(holat)
-                    st.session_state.agent_holat = holat
-                if oxirgi is None:
-                    oxirgi = agent.run(paket)
-                holat_ui.update(label="Tahlil tugadi (tashxis emas).", state="complete")
-            st.session_state.agent_holat = oxirgi
-        except Exception as exc:
-            st.session_state.agent_holat = {
-                "amal": "STOP",
-                "xulosa": (
-                    f"Tahlil bajarilmadi: {exc}. "
-                    "Bu tashxis emas; shifokor bilan ko'rib chiqing."
-                ),
-                "qadam_tarixi": [str(exc)],
-                "ecg_natija": None,
-                "rag_dalillar": [],
-            }
-            st.error("Tahlil xatosi: " + str(exc))
-        st.session_state.bemor_tahlil = paket
+            _olti_bosqich_chiz(kor_holat)
+            if kor_holat:
+                _reja_jonli(kor_holat)
+
+    # Tahlil qilingan EKG: natija bor bo‘lsa shu paketdagi signal (forma o‘zgarsa ham mos qoladi)
+    bemor_k = st.session_state.bemor_tahlil if kor_holat else None
+    if bemor_k and bemor_k.get("ecg_signal") is not None:
+        signal_k = bemor_k["ecg_signal"]
+        hz_k = float(bemor_k.get("sampling_rate") or ODATIY_HZ)
+        if job and job["paket"] is bemor_k and job.get("ekg_xabar"):
+            xabar_k = job["ekg_xabar"]
+        else:
+            xabar_k = "Tahlil qilingan EKG (haqiqiy yozuv emas bo‘lishi mumkin)."
+    else:
+        signal_k = st.session_state.ekg_signal
+        hz_k = float(st.session_state.sampling_rate)
+        xabar_k = st.session_state.ekg_xabar
 
     with col2:
-        _ustun2_ekg(
-            st.session_state.ekg_signal,
-            float(st.session_state.sampling_rate),
-            st.session_state.ekg_xabar,
-            st.session_state.agent_holat,
-        )
+        _ustun2_ekg(signal_k, hz_k, xabar_k, kor_holat)
+        _jonli_fragment(_bolim_paneli_jonli, ishlayapti)
     with col3:
         # Audit sidebar da; bu yerda faqat klinik xulosa
-        _ustun3_xulosa(st.session_state.agent_holat, st.session_state.bemor_tahlil)
+        _ustun3_xulosa(kor_holat, st.session_state.bemor_tahlil, davom_etmoqda=ishlayapti)
 
-    if st.session_state.agent_holat:
+    if st.session_state.agent_holat and not ishlayapti:
         yozuv = "Vizual panelni yopish" if st.session_state.get("vizual_ochiq") else "Vizual tekshiruvni ochish"
         if st.button(yozuv):
             st.session_state.vizual_ochiq = not bool(st.session_state.get("vizual_ochiq"))
             st.rerun()
-    if st.session_state.get("vizual_ochiq") and st.session_state.agent_holat:
+    if st.session_state.get("vizual_ochiq") and st.session_state.agent_holat and not ishlayapti:
         _vizual_tekshirish_paneli(
             st.session_state.agent_holat,
             st.session_state.bemor_tahlil,
-            st.session_state.ekg_signal,
-            float(st.session_state.sampling_rate),
+            signal_k,
+            hz_k,
         )
 
 

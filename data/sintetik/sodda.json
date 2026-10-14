@@ -1,0 +1,24 @@
+{
+  "sarlavha": "Sodda",
+  "izoh": "Yengil shikoyat, biomarkerlar me’yorda, sinus ritmiga yaqin EKG, 2 ta echo ko‘rinish.",
+  "kuzatish": "Laboratoriya yashil kartalar, HR taxminan 72. Echo panelida ko‘p slot «yo‘q». Echo borligi agentni ko‘p modalitet deb «murakkab» baholashi mumkin — shu farqni murakkab holat bilan solishtiring.",
+  "yosh": 45,
+  "jins": "ayol",
+  "shikoyatlar": "Vaqti-vaqti bilan yengil yurak urishi. Ko‘krak og‘rig‘i yo‘q, hushdan ketish yo‘q.",
+  "anamnez": "Surunkali kasallik yo‘q. Chekmaydi. Oldingi MI yo‘q.",
+  "dorilar": "yo‘q",
+  "sampling_rate": 500,
+  "ekg_davomiylik": 8,
+  "yurak_chastotasi": 72,
+  "echo_korinishlar": ["A4C", "PLAX"],
+  "laboratoriya": {
+    "troponin_i": 8.0,
+    "nt_probnp": 80.0,
+    "kreatinin": 78.0,
+    "kaliy": 4.2,
+    "glyukoza": 5.2,
+    "ldl": 2.2,
+    "hdl": 1.4,
+    "hba1c": 5.3
+  }
+}

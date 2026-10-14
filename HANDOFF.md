@@ -6,17 +6,31 @@ Tizim shifokor o‘rnini bosmaydi. Yakuniy qaror shifokorga tegishli. **Klinik p
 
 ---
 
-## Hozir qayerdamiz (2026-10-13)
+## Hozir qayerdamiz (2026-10-14)
 
 | Maydon | Qiymat |
 |---|---|
 | Keyingi ish | K8 yopildi. Ochiq: K2 (foydalanuvchi, kod emas), K5, K6, K7, K10. K3/K4 ni qayta so‘ramang |
-| Oxirgi kod | Dashboard boyitildi: lab-card, ecg-badge, risk/agent-badge CSS; _lab_kartalar, _ecg_metrik, _qadam_panel, _agent_izlar, _mdt_panel funksiyalari qo‘shildi (7 ta vazifa). Agent oqimi o‘zgartirilmadi. |
+| Oxirgi kod | Sintetik tanlov: `data/sintetik/{sodda,murakkab,juda_murakkab}.json`. UI shu fayldan bemor, lab, EKG va echo ni to‘ldiradi. Agent oqimi o‘zgartirilmadi. |
+| Ochiq UI reja | **qilindi** (2026-10-14): 11 bo‘lim tugmalari chap ustunda, bo‘lim natijasi o‘rta ustunda (`st.container(height=620)`, ichki scroll; 11 bo‘limda sahifa balandligi o‘zgarmasligi tekshirildi), o‘ng ustunda faqat badge+xulosa+tavsiyalar. Expander yo‘q. Ustun nisbat [1.0, 1.5, 1.0]. |
+| Jonli jarayon | **qilindi** (2026-10-14): tahlil fon oqimida (`src/ui/jonli_tahlil.py`, `TahlilOmbori`), UI har 2 s o‘qiydi (`st.fragment`). Bemor ma’lumotlari yuklandi, murakkablik, reja (qadamlari bilan), har vosita natijasi, stepwise, MDT tugagan zahoti chiqadi; bo‘lim tugmalari va o‘rta panel ham jonli. Sahifa yangilansa ish va natija yo‘qolmaydi; «Natijani kutmaslik» tugmasi bor. `st.status` olib tashlandi. |
 | GitHub | https://github.com/Abbos8/cardio-ai-system (private, `main`) |
 | UI | `./ishga_tushir.sh` → http://127.0.0.1:8501 |
 | Oqim | murakkablik → CardiacRAG reja → vosita → CONTINUE/STOP → MDT → xulosa. Vizual panel tugma bilan |
 
 Maqola (`arXiv:2508.13256`) kamchiliklarini koddan qayta qidirmang. Jadval manba. Yopilganda status `qilindi`, keyingi ochiq qatorga o‘ting.
+
+### UI reja: natija bo‘limlari chapda, o‘qish joyi o‘rtada
+
+Muammo: o‘ng ustunda 11 ta expander ketma-ket, ichida ma’lumot kam, sahifa pastga cho‘zilyapti. Agent oqimi va kod mantig‘i o‘zgarmaydi; faqat `src/ui/app.py` ko‘rinishi.
+
+| Ustun | Reja |
+|---|---|
+| Chap | Forma ostida **«Natija bo‘limlari»** ro‘yxati. Oqim tartibida: Klinik reja P → CardiacRAG C → Lab technician → EKG technician → Elektrofiziolog → Echo technician → Echo segmenter → Cardiology fellow → Qadamlar (LangGraph) → MDT → Agent izlar. Har bandda holat belgisi (tayyor / yo‘q / xato) va qisqa ko‘rsatkich |
+| O‘rta | EKG grafigi tepada qoladi. Tanlangan bo‘lim natijasi **kenglikka mos o‘qiladigan panel**da (`st.container(height=…)`, ichida scroll), to‘liq maydonlar: jadval/metrika, matn, rasm. Tanlanmagan bo‘lsa — qisqa ko‘rsatma |
+| O‘ng | Faqat xulosa, tavsiyalar, rangli badge (murakkablik, CONTINUE/STOP). Expanderlar yo‘q |
+
+Qoidalar: bir vaqtda bitta bo‘lim ochiq (`st.session_state`); sahifa balandligi bo‘limlar sonidan bog‘liq bo‘lmasin; tahlildan oldin bo‘limlar «hali yo‘q» deb ko‘rinsin; tibbiy ogohlantirish («tashxis emas») saqlansin; `_agent_izlar`, `_mdt_panel`, `_reja_jonli` mavjud funksiyalar qayta ishlatilsin. Tekshiruv: sodda va juda murakkab sintetik holatni tahlil qilib, 11 bo‘limni ketma-ket ochish.
 
 ---
 
@@ -67,7 +81,7 @@ cd cardio-ai-system
 Conda `(base)` bilan `streamlit` ishlatmang (NumPy/FAISS aralashadi).
 
 - Smoke: `PYTHONPATH=src python3 -c "from agents.chief_agent import ChiefCardiologist"`
-- Test: `PYTHONPATH=src python -m unittest tests.test_barqarorlik tests.test_xavfsizlik tests.test_rag_korpus -v`
+- Test: `PYTHONPATH=src python -m unittest tests.test_barqarorlik tests.test_xavfsizlik tests.test_rag_korpus tests.test_sintetik_bemor -v`
 - 2026-10-12: DeepSeek-R1 va Qwen2.5-VL javob berdi. Fellow rasmi `FELLOW_VISION_*` yoki `QWEN_VL_*` (`qwen/qwen-2.5-vl-72b-instruct`). Reasoner ga rasm ketmaydi.
 
 14 bosqich (1–14) **qilindi**. Kod xaritasi `DASTURIY_YORIQNOMA.md`.

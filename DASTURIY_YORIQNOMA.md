@@ -70,6 +70,7 @@ cardio-ai-system/
   data/raw/                # yuklangan HTML; git emas
   data/processed/rag_index/  # FAISS; git emas
   data/audit/              # tahlil JSON; git emas
+  data/sintetik/           # sodda / murakkab / juda_murakkab JSON, EKG CSV, echo DICOM
 ```
 
 `src/llm/__init__.py` va `src/xavfsizlik/__init__.py` bo‘sh paket belgilari. Ish mantig‘i yo‘q.
@@ -342,6 +343,18 @@ Muvaffaqiyatda `model="opencv-kavak"`. U-Net yo‘q. EF hisoblanmaydi. Kadr yoki
 
 `model` maydoni: multimodal da vision nomi, matnda chat nomi, aks holda `shablon`.
 
+### `sintetik_bemor.py` — sinov holatlari
+
+`data/sintetik/<id>.json` klinik matn va laboratoriyani beradi. `sintetik_yukla` 12 tasmali EKG (`namuna_12_tasma_ekg`) va ko‘rinish tegi yozilgan DICOM (`yasama_echo_kadr`) yasab, `data/sintetik/<id>/ekg.csv` va `echo/*.dcm` ga yozadi.
+
+| Holat | Maqsad |
+|---|---|
+| `sodda` | Me’yoriy lab, HR 72, 2 ta echo |
+| `murakkab` | Troponin/NT-proBNP ogohlantirish, HR 118, 6 ta echo |
+| `juda_murakkab` | Xavfli biomarkerlar, HR 46, 11 ta echo |
+
+UI dagi «Sintetik holat» shu faylni tanlaydi va bemor, laboratoriya, EKG grafigi hamda echo kadrlarini to‘ldiradi. Haqiqiy bemor emas.
+
 ---
 
 ## 9. `src/rag/` — CardiacRAG
@@ -398,16 +411,39 @@ Klass yo‘q. `asosiy()` sahifani yig‘adi.
 | Funksiya | Vazifasi |
 |---|---|
 | `_conda_numpy_aralashmasin` | conda `(base)` NumPy aralashsa darhol xato |
-| `_ustun1_forma` | Yosh, shikoyat, echo/lab yuklash, «Tahlil qilish» |
-| `_ustun2_ekg` | Tozalangan 12 tasma |
-| `_ustun3_xulosa` | Xulosa, fellow, echo, LV, audit |
-| `_olti_bosqich_chiz` | Murakkablik → RAG → vosita → stepwise → MDT → xulosa |
-| `_reja_jonli` | `reja` dagi `pending`/`bajarildi` |
+| `_ustun1_forma` | Sintetik holat tanlovi, yosh, shikoyat, echo/lab, «Tahlil qilish» |
+| `_sintetik_qollash` | Tanlangan JSON dan forma, EKG va echo ni session ga yozadi |
+| `_ustun2_ekg` | Tozalangan 12 tasma, undan pastda `_bolim_natija_paneli` |
+| `_ustun3_xulosa` | Badge, ixcham qadam paneli, xulosa kartasi, tavsiyalar (expander yo'q) |
+| `_natija_bolimlar_tanlovi` | 11 bo'lim tugmalari chap ustun pastida; ✅/⏳/⚠️ holat va qisqa ko'rsatkich |
+| `_bolim_holat` | Bir bo'lim uchun emoji va qisqa matn qaytaradi |
+| `_bolim_natija_paneli` | Tanlangan bo'lim natijasini `st.container(height=560)` da to'liq ko'rsatadi |
+| `_olti_bosqich_chiz` | 6 bosqich chiplari (holat `jonli_tahlil.oqim_bosqichlari` dan) |
+| `_reja_jonli` | Tugagan tahlildan keyin `reja` holati |
+| `_tahlil_ombori` | `st.cache_resource` bilan bitta `TahlilOmbori` (fon ishi server jarayonida) |
+| `_tahlil_boshlash_forma` | Forma → bemor paketi → fon oqimini boshlaydi, skriptni bloklamaydi |
+| `_job_dan_tiklash` | Tugagan fon ishi natijasini sessiyaga o‘tkazadi (sahifa yangilansa ham) |
+| `_jonli_oqim_paneli` | `st.fragment(run_every=2)`: bosqich chiplari, «Hozir», bosqich xabarlari, bekor tugmasi |
+| `_jonli_fragment` | Bo‘limlar ro‘yxati va o‘rta panelni tahlil ketayotganda har 2 s yangilaydi |
 | `_vizual_tekshirish_paneli` | EKG, 11 echo slot, LV, MDT yonma-yon |
 | `_agent_ol` | Keshlangan `ChiefCardiologist` |
 | `_rag_ol` | Keshlangan `MedicalRAG` |
 
 Fellow expanderidagi ogohlantirish shu shart bilan chiqadi: fellow `manba=="shablon"` **yoki** MDT MedGemma `manba=="shablon"`. Qwen ishlasa ham MedGemma yiqilsa shu yozuv ko‘rinadi.
+
+---
+
+### `src/ui/jonli_tahlil.py` (Streamlit siz)
+
+| Nom | Vazifasi |
+|---|---|
+| `bosqich_holati` | Graf holatidan joriy bosqich (0..5, 6 = tugadi) va «hozir nima bo‘layapti» matni |
+| `oqim_bosqichlari` | 6 chip: done/current/pending/skip (MDT bo‘lmasa skip) |
+| `jonli_xabarlar` | Yuklandi → murakkablik → reja qadamlari → natijalar → stepwise → MDT → xulosa |
+| `TahlilOmbori` | Bitta fon ishi: `boshlash`, `joriy`, `ishlayapti`, `bekor_qilish` |
+| `ish_holati` | Tugagan ishdan holat; xato/bekorda ehtiyotkor «tashxis emas» xulosa |
+
+Testlar: `tests/test_jonli_tahlil.py`.
 
 ---
 
@@ -449,9 +485,11 @@ Fellow expanderidagi ogohlantirish shu shart bilan chiqadi: fellow `manba=="shab
 
 `tests/test_xavfsizlik.py` gitda `.env` yo‘qligini, auditda signal/kalit yo‘qligini va `KLINIK_PRODUCTION is False` ni tekshiradi.
 
+`tests/test_sintetik_bemor.py` uch holat fayli, EKG CSV va echo DICOM tegi bir-biriga mosligini tekshiradi.
+
 ```bash
 source venv/bin/activate
-PYTHONPATH=src python -m unittest tests.test_barqarorlik tests.test_xavfsizlik -v
+PYTHONPATH=src python -m unittest tests.test_barqarorlik tests.test_xavfsizlik tests.test_sintetik_bemor -v
 ```
 
 ---
