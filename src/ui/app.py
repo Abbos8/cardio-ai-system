@@ -199,46 +199,161 @@ def _rejim_banner() -> None:
 
 
 def _klinik_ogohlantirish() -> None:
-    """Har sahifada yuqori ogohlantirish (sticky).
+    """Sahifa uslubi, sarlavha va yuqori klinik ogohlantirishni chizadi.
 
     Returns:
-        None. Tashxis o‘rnini bosmaydi.
+        None. Tashxis o‘rnini bosmaydi; demo holati ochiq yoziladi.
     """
     st.markdown(
         """
 <style>
+@import url('https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,500;6..72,600&family=Source+Sans+3:wght@400;600;700&display=swap');
+
+.stApp {
+  background: #f4f0e6;
+  color: #1c2430;
+  font-family: "Source Sans 3", "Segoe UI", sans-serif;
+}
+[data-testid="stHeader"] { background: transparent; }
+[data-testid="stSidebar"] {
+  background: #ebe4d4;
+  border-right: 1px solid #d5ccbb;
+}
+[data-testid="stSidebar"] [data-testid="stMarkdown"] h3 {
+  font-family: "Newsreader", Georgia, serif;
+  letter-spacing: 0.01em;
+}
+h1, h2, h3, .sahifa-nom, .bolim-sarlavha {
+  font-family: "Newsreader", Georgia, serif;
+  color: #1a2740;
+}
+.block-container { padding-top: 1.1rem; }
+div[data-testid="stVerticalBlockBorderWrapper"] {
+  background: #fbf8f2;
+  border-color: #ddd4c4 !important;
+}
+button[kind="primary"], button[data-testid="stBaseButton-primary"] {
+  background: #0f5f57;
+  border: 1px solid #0c4c46;
+  color: #f7f3ea;
+  border-radius: 4px;
+  font-weight: 600;
+}
+button[kind="primary"]:hover, button[data-testid="stBaseButton-primary"]:hover {
+  background: #0c4e48;
+  border-color: #0c4e48;
+  color: #f7f3ea;
+}
+button[kind="secondary"], button[data-testid="stBaseButton-secondary"] {
+  background: #fbf8f2;
+  border: 1px solid #d5ccbb;
+  color: #243044;
+  border-radius: 4px;
+  text-align: left;
+  justify-content: flex-start;
+}
+button[kind="secondary"]:hover, button[data-testid="stBaseButton-secondary"]:hover {
+  border-color: #0f5f57;
+  color: #0f5f57;
+  background: #f3f7f4;
+}
+[class*="st-key-xulosa"] button {
+  white-space: nowrap;
+  font-size: 0.84rem;
+  min-height: 2.15rem;
+  height: auto;
+  padding-left: 0.45rem;
+  padding-right: 0.45rem;
+}
+.sahifa-boshi {
+  border-bottom: 1px solid #d5ccbb;
+  padding-bottom: 0.35rem; margin: 0 0 0.5rem;
+}
+.sahifa-kicker {
+  margin-top: 0.1rem;
+  font-size: 0.72rem; letter-spacing: 0.14em; text-transform: uppercase;
+  color: #6d6456; font-weight: 600;
+}
+.sahifa-nom {
+  font-size: 1.85rem; font-weight: 600; line-height: 1.05;
+  letter-spacing: -0.02em;
+}
 .klinik-ogoh {
   position: sticky; top: 0; z-index: 999;
-  background: #fff3cd; border: 1px solid #ffc107; color: #4a3800;
-  padding: 0.42rem 0.8rem; border-radius: 6px; margin-bottom: 0.4rem;
-  font-size: 0.87rem; line-height: 1.3;
+  background: #f4e4c4; border: 1px solid #c9a15a; color: #3f2e08;
+  padding: 0.42rem 0.8rem; border-radius: 4px; margin-bottom: 0.55rem;
+  font-size: 0.87rem; line-height: 1.35;
+  border-left: 4px solid #a67c2d;
 }
 .bolim-sarlavha {
-  font-size: 0.93rem; font-weight: 600; color: #07111f;
-  border-bottom: 1px solid #dde3ec; padding-bottom: 0.15rem;
-  margin-top: 0.8rem; margin-bottom: 0.3rem;
+  font-size: 1.05rem; font-weight: 600; color: #1a2740;
+  border-bottom: 1px solid #d5ccbb; padding-bottom: 0.12rem;
+  margin-top: 0.85rem; margin-bottom: 0.35rem;
+  letter-spacing: 0.01em;
 }
 .bosh-holat-ogoh {
-  background: #eaf1fb; border: 1px dashed #9ab4d4; color: #1a3657;
-  border-radius: 6px; padding: 1rem 1.2rem; text-align: center;
-  font-size: 0.95rem; margin-top: 1rem;
+  background: #fbf8f2; border: 1px dashed #c9bfae; color: #243044;
+  border-radius: 4px; padding: 1rem 1.15rem; text-align: left;
+  font-size: 0.95rem; margin-top: 0.4rem; line-height: 1.45;
+}
+.xulosa-qisqa {
+  font-family: "Newsreader", Georgia, serif;
+  font-size: 1.08rem; line-height: 1.45; color: #1a2740;
+  margin: 0.15rem 0 0.2rem;
+}
+.xulosa-blok {
+  border-top: 1px solid #d5ccbb;
+  padding: 0.45rem 0 0.2rem; margin-top: 0.15rem;
+}
+.xulosa-nom {
+  font-size: 0.68rem; letter-spacing: 0.14em; text-transform: uppercase;
+  color: #6d6456; font-weight: 700; margin-bottom: 0.15rem;
+}
+.xulosa-matn {
+  white-space: pre-wrap; font-size: 0.9rem; line-height: 1.45; color: #1c2430;
 }
 .oqim-qator {
-  display: flex; flex-wrap: wrap; gap: 0.4rem; margin: 0.2rem 0 0.8rem;
+  display: flex; flex-wrap: wrap; gap: 0.35rem; margin: 0.15rem 0 0.7rem;
 }
 .oqim-chip {
-  font-size: 0.82rem; line-height: 1.2; white-space: nowrap;
-  padding: 0.28rem 0.55rem; border-radius: 999px; border: 1px solid #d5dbe3;
-  background: #f4f6f8; color: #3d4a5c;
+  font-size: 0.8rem; line-height: 1.2; white-space: nowrap;
+  padding: 0.26rem 0.55rem; border-radius: 4px; border: 1px solid #d5ccbb;
+  background: #fbf8f2; color: #3d4a5c;
 }
-.oqim-chip.done { background: #e5f6ea; border-color: #8dcea0; color: #145c2e; }
-.oqim-chip.current { background: #e7f1fb; border-color: #7eb0e0; color: #0b3a66; font-weight: 600; }
-.oqim-chip.skip { background: #f7f7f7; color: #6b7280; }
+.oqim-chip.done { background: #e4f0e6; border-color: #8dcea0; color: #145c2e; }
+.oqim-chip.current { background: #e7f1ef; border-color: #7eaea6; color: #0f5f57; font-weight: 700; }
+.oqim-chip.skip { background: #f3efe6; color: #6b6458; }
+.tahlil-yuradi {
+  display: flex; align-items: center; gap: 0.65rem;
+  background: #e7f1ef; border: 1px solid #7eaea6; border-left: 4px solid #0f5f57;
+  color: #14332f; border-radius: 4px;
+  padding: 0.55rem 0.75rem; margin: 0.1rem 0 0.55rem;
+  font-size: 0.92rem; line-height: 1.35;
+}
+.tahlil-nuqta {
+  width: 0.55rem; height: 0.55rem; border-radius: 50%;
+  background: #0f5f57; flex-shrink: 0;
+  animation: tahlil-pulse 1.4s ease-in-out infinite;
+}
+.tahlil-yuradi strong {
+  font-family: "Newsreader", Georgia, serif; font-weight: 600;
+}
+.tahlil-vaqt {
+  margin-left: auto; font-size: 0.78rem; letter-spacing: 0.06em;
+  color: #0f5f57; font-weight: 700; white-space: nowrap;
+}
+@keyframes tahlil-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tahlil-nuqta { animation: none; }
+}
 /* ── Yangi komponentlar ─────────────────────────────────────────────────── */
 .lab-card {
-  display:flex; align-items:center; gap:0.5rem; background:#f9fafb; color:#1f2937;
-  border-radius:6px; padding:0.35rem 0.6rem; margin:0.18rem 0;
-  font-size:0.84rem; border-left:4px solid #9ca3af;
+  display:flex; align-items:center; gap:0.5rem; background:#fbf8f2; color:#1c2430;
+  border-radius:4px; padding:0.35rem 0.6rem; margin:0.18rem 0;
+  font-size:0.84rem; border:1px solid #e4dccb; border-left:4px solid #9ca3af;
 }
 .lab-card.ok     { border-left-color:#16a34a; }
 .lab-card.warning{ border-left-color:#d97706; }
@@ -290,6 +405,13 @@ def _klinik_ogohlantirish() -> None:
 }
 </style>
 """,
+        unsafe_allow_html=True,
+    )
+    st.markdown(
+        '<div class="sahifa-boshi">'
+        '<div class="sahifa-nom">Kardiologik AI agent</div>'
+        '<div class="sahifa-kicker">Qaror yordami · tashxis emas</div>'
+        "</div>",
         unsafe_allow_html=True,
     )
     holat = "demo — klinik production emas" if not KLINIK_PRODUCTION else "production"
@@ -391,6 +513,27 @@ def _oqim_bosqichlari(holat: Optional[Dict[str, Any]]) -> List[str]:
         pending|current|done|skip ro‘yxati (6 ta). Mantiq jonli_tahlil modulida.
     """
     return oqim_bosqichlari(holat)
+
+
+def _tahlil_boshlandi(hozir: str, otgan: int) -> None:
+    """Tahlil fon oqimida ketayotganini klinik lenta bilan bildiradi.
+
+    Args:
+        hozir: Joriy bosqich matni (masalan, murakkablik baholanmoqda).
+        otgan: Ish boshlanganidan beri o‘tgan soniyalar.
+
+    Returns:
+        None. Tashxis emas; faqat jarayon boshlanganini ko‘rsatadi.
+    """
+    st.markdown(
+        '<div class="tahlil-yuradi">'
+        '<span class="tahlil-nuqta" aria-hidden="true"></span>'
+        "<span><strong>Tahlil boshlandi.</strong> "
+        f"{html.escape(hozir)}</span>"
+        f'<span class="tahlil-vaqt">{int(otgan)} s</span>'
+        "</div>",
+        unsafe_allow_html=True,
+    )
 
 
 def _olti_bosqich_chiz(holat: Optional[Dict[str, Any]]) -> None:
@@ -1718,12 +1861,199 @@ def _vizual_tekshirish_paneli(
             st.info("MDT hali yo‘q. EKG/echo yoki murakkab holatda tahlildan keyin chiqadi.")
 
 
+def _matn_qisqa(matn: Any, uzunlik: int = 220) -> str:
+    """Matnni bir qatorga yig‘ib, berilgan uzunlikda kesadi.
+
+    Args:
+        matn: Istalgan maydon (None bo‘lishi mumkin).
+        uzunlik: Eng ko‘p belgi.
+
+    Returns:
+        Bo‘sh joyi yig‘ilgan qisqa matn. Tibbiy mazmunni o‘zgartirmaydi.
+    """
+    s = " ".join(str(matn or "").split())
+    if len(s) > uzunlik:
+        return s[: uzunlik - 1].rstrip() + "…"
+    return s
+
+
+def _xulosa_qisqa_matn(agent_holat: Dict[str, Any], bemor: Optional[Dict[str, Any]]) -> str:
+    """O‘ng ustun uchun 3–4 gaplik xulosa yasaydi.
+
+    Args:
+        agent_holat: ChiefCardiologist natijasi.
+        bemor: Tahlil qilingan paket.
+
+    Returns:
+        O‘qiladigan qisqa matn. Tashxis emas; to‘liq yozuv alohida rejimda.
+    """
+    bemor = bemor or agent_holat.get("bemor") or {}
+    if not any(agent_holat.get(k) for k in ("murakkablik", "ecg_natija", "lab_natija", "umumlashtirish")):
+        qatorlar = [
+            q.strip()
+            for q in str(agent_holat.get("xulosa") or "").splitlines()
+            if q.strip() and not q.strip().startswith(("Bosh kardiolog", "Modellar:"))
+        ]
+        return _matn_qisqa(" ".join(qatorlar[:2]), 420) or "Xulosa matni yo‘q. Tashxis emas."
+
+    gaplar: List[str] = []
+    mur = str(agent_holat.get("murakkablik") or "noma’lum")
+    amal = str(agent_holat.get("amal") or "STOP")
+    gaplar.append(f"Holat {mur}. Agent qarori: {amal}.")
+    yosh = bemor.get("yosh")
+    jins = bemor.get("jins") or "jins ko‘rsatilmagan"
+    shik = _matn_qisqa(bemor.get("shikoyatlar"), 90)
+    kim = f"Bemor: {yosh} yosh, {jins}." if yosh not in (None, "") else f"Bemor: {jins}."
+    if shik:
+        kim += f" Shikoyat: {shik}"
+    gaplar.append(kim)
+    umum = _matn_qisqa(agent_holat.get("umumlashtirish"), 240)
+    if len(umum) >= 40:
+        gaplar.append(umum)
+    else:
+        sabab = _matn_qisqa(agent_holat.get("murakkablik_sababi"), 220)
+        if sabab:
+            gaplar.append(sabab)
+        ecg = agent_holat.get("ecg_natija") or {}
+        if ecg.get("ok"):
+            gaplar.append(
+                "EKG taxminiy: "
+                f"HR {ecg.get('yurak_chastotasi_bpm')} bpm, "
+                f"QTc {ecg.get('qtc_bazett_ms')} ms."
+            )
+    gaplar.append("Bu tashxis emas. Yakuniy qaror shifokorga tegishli.")
+    return " ".join(gaplar)
+
+
+def _xulosa_bloklari(
+    agent_holat: Dict[str, Any], bemor: Optional[Dict[str, Any]]
+) -> List[Tuple[str, str]]:
+    """Kengroq xulosani o‘qiladigan bo‘limlarga ajratadi.
+
+    Args:
+        agent_holat: ChiefCardiologist natijasi.
+        bemor: Tahlil qilingan paket.
+
+    Returns:
+        (sarlavha, matn) juftlari. Bo‘sh bo‘lim tushib qoladi. Tashxis emas.
+    """
+    bemor = bemor or agent_holat.get("bemor") or {}
+    bloklar: List[Tuple[str, str]] = []
+
+    def qosh(nom: str, matn: Any) -> None:
+        """Bo‘sh bo‘lmagan bo‘limni ro‘yxatga qo‘shadi."""
+        s = str(matn or "").strip()
+        if s:
+            bloklar.append((nom, s))
+
+    yosh = bemor.get("yosh")
+    jins = bemor.get("jins") or "—"
+    qosh(
+        "Bemor",
+        f"Yosh {yosh}, {jins}.\n"
+        f"Shikoyat: {bemor.get('shikoyatlar') or '—'}\n"
+        f"Anamnez: {bemor.get('anamnez') or '—'}",
+    )
+    qosh("Murakkablik", f"{agent_holat.get('murakkablik') or '—'}. {agent_holat.get('murakkablik_sababi') or ''}")
+    lab = agent_holat.get("lab_natija") or {}
+    qosh("Laboratoriya", lab.get("matn") or lab.get("xabar"))
+    ecg = agent_holat.get("ecg_natija") or {}
+    if ecg.get("ok"):
+        tech = agent_holat.get("ecg_technician_natija") or ecg.get("technician") or {}
+        qosh(
+            "EKG",
+            "Taxminiy o‘lchov: "
+            f"HR {ecg.get('yurak_chastotasi_bpm')} bpm, "
+            f"QRS {ecg.get('qrs_ms')} ms, PR {ecg.get('pr_ms')} ms, "
+            f"QT {ecg.get('qt_ms')} ms, QTc {ecg.get('qtc_bazett_ms')} ms.\n"
+            f"Sifat: {tech.get('sifat') or '—'}. {tech.get('xabar') or ''}",
+        )
+    elif ecg.get("xabar"):
+        qosh("EKG", ecg.get("xabar"))
+    echo = agent_holat.get("echo_natija") or {}
+    if echo:
+        kor = echo.get("korinishlar") or []
+        kor_matn = ", ".join(str(x) for x in kor) if isinstance(kor, list) else str(kor)
+        qosh("Echo", f"Ko‘rinishlar: {kor_matn or '—'}.\n{echo.get('xabar') or ''}")
+    mask = agent_holat.get("echo_mask") or {}
+    qosh("LV segment", mask.get("xabar"))
+    fellow = agent_holat.get("fellow_natija") or {}
+    if fellow:
+        qosh("Fellow", f"Manba: {fellow.get('manba') or '—'}.\n{fellow.get('matn') or ''}")
+    qosh("Stepwise", agent_holat.get("umumlashtirish"))
+    dalillar = agent_holat.get("rag_dalillar") or []
+    if dalillar:
+        qosh(
+            "CardiacRAG",
+            "\n".join(f"{i}. {_matn_qisqa(d, 280)}" for i, d in enumerate(dalillar, start=1)),
+        )
+    mdt = agent_holat.get("mdt_natija") or {}
+    if mdt:
+        qosh(
+            "MDT",
+            f"Konsensus: {mdt.get('konsensus')}.\n{mdt.get('umumlashtirish') or ''}",
+        )
+    if not bloklar and agent_holat.get("xulosa"):
+        qosh("Xulosa", agent_holat.get("xulosa"))
+    return bloklar
+
+
+def _xulosa_rejimi(agent_holat: Dict[str, Any], bemor: Optional[Dict[str, Any]]) -> None:
+    """Qisqa xulosani ko‘rsatadi; «Kengroq xulosa» tanlansa bo‘limli matn ochiladi.
+
+    Args:
+        agent_holat: Yakuniy agent holati.
+        bemor: Tahlil qilingan bemor.
+
+    Returns:
+        None. Tanlov session_state da saqlanadi. Tashxis o‘rnini bosmaydi.
+    """
+    keng = bool(st.session_state.get("xulosa_keng"))
+    # Ustun tor: yonma-yon tugma yozuvi kesiladi, shuning uchun to‘liq kenglikda.
+    if st.button(
+        "Qisqa xulosa",
+        key="xulosa_qisqa_btn",
+        type="primary" if not keng else "secondary",
+        use_container_width=True,
+    ):
+        st.session_state.xulosa_keng = False
+        st.rerun()
+    if st.button(
+        "Kengroq xulosa",
+        key="xulosa_keng_btn",
+        type="primary" if keng else "secondary",
+        use_container_width=True,
+    ):
+        st.session_state.xulosa_keng = True
+        st.rerun()
+
+    with st.container(border=True):
+        if not keng:
+            st.markdown(
+                f'<div class="xulosa-qisqa">{html.escape(_xulosa_qisqa_matn(agent_holat, bemor))}</div>',
+                unsafe_allow_html=True,
+            )
+            return
+        qismlar = []
+        for nom, matn in _xulosa_bloklari(agent_holat, bemor):
+            qismlar.append(
+                '<div class="xulosa-blok">'
+                f'<div class="xulosa-nom">{html.escape(nom)}</div>'
+                f'<div class="xulosa-matn">{html.escape(matn)}</div>'
+                "</div>"
+            )
+        if not qismlar:
+            st.caption("Kengroq xulosa uchun maydon yo‘q.")
+            return
+        st.markdown("".join(qismlar), unsafe_allow_html=True)
+
+
 def _ustun3_xulosa(
     agent_holat: Optional[Dict[str, Any]],
     bemor: Optional[Dict[str, Any]],
     davom_etmoqda: bool = False,
 ) -> None:
-    """3-ustunda agent xulosasi va ehtiyotkor tavsiyalarni ko'rinishli karta bilan chizadi.
+    """3-ustunda qisqa xulosa, tanlansa kengroq xulosa va tavsiyalarni chizadi.
 
     Expander yo'q — bo'lim natijalari o'rta ustundagi _bolim_natija_paneli da.
     Faqat badge, ixcham qadam paneli, xulosa kartasi, tavsiyalar va vizual izoh.
@@ -1767,9 +2097,13 @@ def _ustun3_xulosa(
         st.caption(_sababi_q)
 
     if davom_etmoqda:
-        st.info(
-            "Tahlil davom etmoqda. Xulosa barcha bosqichlardan keyin chiqadi; "
-            "tayyor bo‘lgan natijalar chapdagi bo‘limlarda ko‘rinadi."
+        job = _tahlil_ombori().joriy()
+        _indeks, hozir = bosqich_holati(agent_holat)
+        otgan = int(time.time() - job["boshlandi"]) if job else 0
+        _tahlil_boshlandi(hozir, otgan)
+        st.caption(
+            "Xulosa barcha bosqichlardan keyin chiqadi. "
+            "Tayyor natijalar chapdagi bo‘limlarda ko‘rinadi."
         )
         return
 
@@ -1777,19 +2111,7 @@ def _ustun3_xulosa(
     with st.expander("Qadam-ba-qadam bajarish", expanded=False):
         _qadam_panel(agent_holat)
 
-    # ── Xulosa kartasi (asosiy fokus) ─────────────────────────────────────────
-    # Streamlit har markdownni alohida element qiladi, shuning uchun
-    # ochuvchi/yopuvchi div matn maydonini o‘ramaydi. border=True haqiqiy karta.
-    xulosa_matn = agent_holat.get("xulosa") or ""
-    with st.container(border=True):
-        st.markdown("**Xulosa**")
-        st.text_area(
-            "xulosa_maydoni",
-            value=xulosa_matn,
-            height=220,
-            disabled=True,
-            label_visibility="collapsed",
-        )
+    _xulosa_rejimi(agent_holat, bemor)
 
     # ── Tavsiyalar ────────────────────────────────────────────────────────────
     st.markdown("**Tavsiyalar**")
@@ -2244,6 +2566,7 @@ def _job_dan_tiklash() -> None:
         st.session_state.bemor_tahlil = job["paket"]
         st.session_state.job_natija_id = job["id"]
         st.session_state.vizual_ochiq = False
+        st.session_state.xulosa_keng = False
 
 
 def _korinadigan_holat(
@@ -2282,8 +2605,8 @@ def _jonli_oqim_paneli() -> None:
     holat = job.get("holat")
     indeks, hozir = bosqich_holati(holat)
     otgan = int(time.time() - job["boshlandi"])
+    _tahlil_boshlandi(hozir, otgan)
     _olti_bosqich_chiz(holat)
-    st.info(f"▶ Hozir: {hozir} · {otgan} s")
     with st.container(height=400, border=True):
         for q in jonli_xabarlar(job["paket"], holat, indeks):
             bosh = "&emsp;&emsp;" if q["ichki"] else ""
@@ -2410,6 +2733,7 @@ def _tahlil_boshlash_forma(bemor: Dict[str, Any], fayllar: Any, sampling_rate: f
             "«Natijani kutmaslik» tugmasini bosing."
         )
         return
+    st.toast("Tahlil boshlandi. Jarayon yuqoridagi oqimda ko‘rinadi.", icon="🫀")
     st.session_state.agent_holat = None
     st.session_state.bemor_tahlil = paket
     st.session_state.job_paket_id = job["id"]
@@ -2431,9 +2755,6 @@ def asosiy() -> None:
         layout="wide",
         page_icon="\U0001fac0",
     )
-    st.title("Kardiologik AI agent")
-
-    # Klinik ogohlantirish sahifa yuqorida qoladi (sticky)
     _klinik_ogohlantirish()
 
     # RAG yuklanadi; kesh eskirsa yangilanadi
@@ -2466,7 +2787,8 @@ def asosiy() -> None:
     with col1:
         bemor, fayllar, sampling_rate, tahlil = _ustun1_forma()
         if tahlil:
-            _tahlil_boshlash_forma(bemor, fayllar, sampling_rate)
+            with st.spinner("Tahlil ishga tushirilmoqda…"):
+                _tahlil_boshlash_forma(bemor, fayllar, sampling_rate)
         job = _tahlil_ombori().joriy()
         ishlayapti = bool(job) and not job["tugadi"]
         kor_holat = _korinadigan_holat(job, ishlayapti)

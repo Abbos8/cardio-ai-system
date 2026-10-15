@@ -6,12 +6,12 @@ Tizim shifokor o‘rnini bosmaydi. Yakuniy qaror shifokorga tegishli. **Klinik p
 
 ---
 
-## Hozir qayerdamiz (2026-10-14)
+## Hozir qayerdamiz (2026-10-15)
 
 | Maydon | Qiymat |
 |---|---|
 | Keyingi ish | K8 yopildi. Ochiq: K2 (foydalanuvchi, kod emas), K5, K6, K7, K10. K3/K4 ni qayta so‘ramang |
-| Oxirgi kod | Sintetik tanlov: `data/sintetik/{sodda,murakkab,juda_murakkab}.json`. UI shu fayldan bemor, lab, EKG va echo ni to‘ldiradi. Agent oqimi o‘zgartirilmadi. |
+| Oxirgi kod | Streamlit ko‘rinishi (`src/ui/app.py`, `.streamlit/config.toml`): qog‘oz fon. «Tahlil qilish» da spinner, toast va «Tahlil boshlandi» lentasi. O‘ng ustun: avval qisqa xulosa, «Kengroq xulosa» tanlansa bo‘limli matn. Agentdagi `xulosa` satri va oqim o‘zgarmagan. |
 | Ochiq UI reja | **qilindi** (2026-10-14): 11 bo‘lim tugmalari chap ustunda, bo‘lim natijasi o‘rta ustunda (`st.container(height=620)`, ichki scroll; 11 bo‘limda sahifa balandligi o‘zgarmasligi tekshirildi), o‘ng ustunda faqat badge+xulosa+tavsiyalar. Expander yo‘q. Ustun nisbat [1.0, 1.5, 1.0]. |
 | Jonli jarayon | **qilindi** (2026-10-14): tahlil fon oqimida (`src/ui/jonli_tahlil.py`, `TahlilOmbori`), UI har 2 s o‘qiydi (`st.fragment`). Bemor ma’lumotlari yuklandi, murakkablik, reja (qadamlari bilan), har vosita natijasi, stepwise, MDT tugagan zahoti chiqadi; bo‘lim tugmalari va o‘rta panel ham jonli. Sahifa yangilansa ish va natija yo‘qolmaydi; «Natijani kutmaslik» tugmasi bor. `st.status` olib tashlandi. |
 | GitHub | https://github.com/Abbos8/cardio-ai-system (private, `main`) |
