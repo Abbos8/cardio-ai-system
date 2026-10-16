@@ -10,7 +10,14 @@
   "sampling_rate": 500,
   "ekg_davomiylik": 8,
   "yurak_chastotasi": 118,
-  "echo_korinishlar": ["A4C", "A2C", "A3C", "PLAX", "PSAX-MV", "SUBCOSTAL-4C"],
+  "echo_korinishlar": [
+    "A4C",
+    "A2C",
+    "A3C",
+    "Parasternal_Long",
+    "Parasternal_Short",
+    "Subcostal"
+  ],
   "laboratoriya": {
     "troponin_i": 72.0,
     "nt_probnp": 640.0,

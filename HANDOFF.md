@@ -6,12 +6,12 @@ Tizim shifokor o‘rnini bosmaydi. Yakuniy qaror shifokorga tegishli. **Klinik p
 
 ---
 
-## Hozir qayerdamiz (2026-10-15)
+## Hozir qayerdamiz (2026-10-16)
 
 | Maydon | Qiymat |
 |---|---|
-| Keyingi ish | K8 yopildi. Ochiq: K2 (foydalanuvchi, kod emas), K5, K6, K7, K10. K3/K4 ni qayta so‘ramang |
-| Oxirgi kod | Streamlit ko‘rinishi (`src/ui/app.py`, `.streamlit/config.toml`): qog‘oz fon. «Tahlil qilish» da spinner, toast va «Tahlil boshlandi» lentasi. O‘ng ustun: avval qisqa xulosa, «Kengroq xulosa» tanlansa bo‘limli matn. Agentdagi `xulosa` satri va oqim o‘zgarmagan. |
+| Keyingi ish | K5 yopildi. Ochiq: K2 (foydalanuvchi, kod emas), K6, K7, K10. K3/K4 ni qayta so‘ramang |
+| Oxirgi kod | Echo ko‘rinishlari EchoPrime 11 (A5C va Doppler). ConvNeXt og‘irligi `models/echoprime/view_classifier.pt` (git emas); yo‘q bo‘lsa geometrik zaxira. |
 | Ochiq UI reja | **qilindi** (2026-10-14): 11 bo‘lim tugmalari chap ustunda, bo‘lim natijasi o‘rta ustunda (`st.container(height=620)`, ichki scroll; 11 bo‘limda sahifa balandligi o‘zgarmasligi tekshirildi), o‘ng ustunda faqat badge+xulosa+tavsiyalar. Expander yo‘q. Ustun nisbat [1.0, 1.5, 1.0]. |
 | Jonli jarayon | **qilindi** (2026-10-14): tahlil fon oqimida (`src/ui/jonli_tahlil.py`, `TahlilOmbori`), UI har 2 s o‘qiydi (`st.fragment`). Bemor ma’lumotlari yuklandi, murakkablik, reja (qadamlari bilan), har vosita natijasi, stepwise, MDT tugagan zahoti chiqadi; bo‘lim tugmalari va o‘rta panel ham jonli. Sahifa yangilansa ish va natija yo‘qolmaydi; «Natijani kutmaslik» tugmasi bor. `st.status` olib tashlandi. |
 | GitHub | https://github.com/Abbos8/cardio-ai-system (private, `main`) |
@@ -44,7 +44,7 @@ Aniqliq raqamlari (MIMIC-IV 0.87, PTB-XL 0.96, PTB 0.77) bu loyihada o‘lchanma
 | K2 | MedGemma jonli javob bermayapti (CUDA) | ochiq — foydalanuvchi | `.env` `MEDGEMMA_*`; `https://stt-pipeline.rifqat.uz/llm` (`/v1` siz) | Serverni qayta ishga tushirish. Kod o‘zgarmaydi |
 | K3 | Mayo Clinic sahifalari | to‘xtatilgan — fayl yo‘q | `data/raw/mayo/` bo‘sh | HTML paydo bo‘lsa shu yerga qo‘yib `indeks_qur.py --rebuild` |
 | K4 | To‘liq yo‘riqnoma PDF + Docling | to‘xtatilgan | `data/raw/guidelines/` — 2 ESC slayd PDF; `pypdf` o‘qiydi | Jurnal PDF yo‘q (AHA/ACC 403). Docling zaxira |
-| K5 | Echo 11 ko‘rinish EchoPrime emas | ochiq | `src/tools/echo_view_model.py` | Klinik tasnif og‘irligi. Hozir DICOM teg + geometrik model. A5C va Doppler yo‘q |
+| K5 | Echo 11 ko‘rinish EchoPrime emas | **qilindi** (2026-10-16) | `src/tools/echo_view_model.py` | EchoPrime ConvNeXt, 11 yorliq (A5C, 3 Doppler). Og‘irlik `models/echoprime/view_classifier.pt` (git emas). Yo‘q bo‘lsa: `PYTHONPATH=src python src/tools/echo_prime_yukla.py`. Torchvision: `pip install 'torchvision==0.29.1+cpu' --index-url https://download.pytorch.org/whl/cpu` |
 | K6 | LV segment Zhang 2024 emas | ochiq | `src/tools/echo_segmenter.py` | Og‘irlik yo‘q. Hozir OpenCV kavak. EF yo‘q |
 | K7 | Fellow o‘qitilgan multimodal model emas | ochiq | `src/tools/fellow_tool.py` | TGMM og‘irligi yo‘q. Hozir Qwen/DeepSeek prompt |
 | K8 | Muhokama | **qilindi** (2026-10-13) | `chief_agent._reja_modalitet_toldir`, `_stepwise_yangilash` | — |

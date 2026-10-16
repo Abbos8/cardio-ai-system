@@ -1583,7 +1583,7 @@ def _ustun1_forma() -> Tuple[Dict[str, Any], Any, float, bool]:
         "Echo (DICOM/video/rasm, bir nechta)",
         type=["dcm", "dicom", "mp4", "avi", "mov", "mkv", "png", "jpg", "jpeg"],
         accept_multiple_files=True,
-        help="11 ko‘rinish: A2C A4C A3C PLAX PSAX-* subcostal SSN. Tashxis emas.",
+        help="EchoPrime 11: A2C A3C A4C A5C, apikal/parasternal Doppler, parasternal long/short, SSN, subcostal. Tashxis emas.",
     )
     if echo_yuk:
         st.success(f"Echo yuklandi: {len(echo_yuk)} ta fayl")
@@ -1733,7 +1733,7 @@ def _ustun2_ekg(
     holat = agent_holat or {}
     echo_n = holat.get("echo_natija") or {}
     if echo_n.get("korinishlar"):
-        st.caption("Echo: " + ", ".join(echo_n.get("korinishlar") or []) + " — 11 ko‘rinish vizual tekshiruvda.")
+        st.caption("Echo: " + ", ".join(echo_n.get("korinishlar") or []) + " — EchoPrime 11 ko‘rinish.")
     if (holat.get("echo_mask") or {}).get("ok"):
         st.caption("LV overlay vizual tekshiruvda.")
     if holat.get("mdt_natija"):
@@ -1776,7 +1776,7 @@ def _vizual_tekshirish_paneli(
     e4.metric("MDT raund", viz.get("mdt_raund") if viz.get("mdt_raund") is not None else ((holat.get("mdt_natija") or {}).get("raund_soni") or "—"))
 
     tab_ekg, tab_echo, tab_lv, tab_mdt = st.tabs(
-        ["Tozalangan 12 tasma", "Echo 11 ko‘rinish", "LV overlay", "MDT raundlari"]
+        ["Tozalangan 12 tasma", "EchoPrime 11 ko‘rinish", "LV overlay", "MDT raundlari"]
     )
     with tab_ekg:
         chizma, sarlavha = _tozalangan_ekg(signal, sampling_rate)

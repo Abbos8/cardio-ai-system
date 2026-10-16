@@ -294,9 +294,9 @@ PNG/JPG qog‘oz EKG qabul qilinmaydi. Raqamli signal kerak.
 
 | O‘zgaruvchi | Ma’nosi |
 |---|---|
-| `ECHO_KORINISHLAR` | 11 yorliq: A2C, A4C, A3C, PLAX, PSAX-AV/MV/PM/APEX, SUBCOSTAL-4C, SUBCOSTAL-IVC, SSN |
-| `_TEG_KALIT` | DICOM matni → yorliq |
-| `_MODEL_W`, `_MODEL_B` | Birinchi chaqiruvda hisoblangan regressiya og‘irligi |
+| `ECHO_KORINISHLAR` | EchoPrime 11: A2C, A3C, A4C, A5C, Apical_Doppler, Doppler_Parasternal_Long, Doppler_Parasternal_Short, Parasternal_Long, Parasternal_Short, SSN, Subcostal |
+| `_TEG_KALIT` | DICOM matni → yirik yorliq. PLAX/PSAX/subcostal eski iboralari ham tushadi |
+| `view_classifier.pt` | `models/echoprime/` — ConvNeXt, git emas. Yo‘q bo‘lsa geometrik zaxira |
 
 | Funksiya | Vazifasi |
 |---|---|
@@ -305,10 +305,10 @@ PNG/JPG qog‘oz EKG qabul qilinmaydi. Raqamli signal kerak.
 | `kadr_belgilari` | 9 ta geometrik belgi |
 | `_modelni_oqit` | `LogisticRegression` yoki markazga masofa |
 | `kadrlar_tasnif` | 6 tagacha kadr ehtimolini o‘rtacha qiladi |
-| `classify_echo_views` | Avval teg, bo‘lmasa geometrik model |
+| `classify_echo_views` | Avval teg, bo‘lmasa EchoPrime ConvNeXt (og‘irlik bo‘lsa) yoki geometrik zaxira |
 | `echo_bormi` | Reja uchun: echo fayl bormi |
 
-`manba`: `dicom_teg`, `geometrik_model`, `dicom_teg+geometrik_model`, `aniqlanmadi`. Klinik CNN emas.
+`manba`: `dicom_teg`, `echoprime`, `dicom_teg+echoprime`, geometrik zaxira, `aniqlanmadi`. Og‘irlik yo‘q bo‘lsa CNN ishlamaydi.
 
 ### `echo_segmenter.py` — Echocardiography segmenter
 

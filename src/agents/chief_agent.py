@@ -309,7 +309,7 @@ def _oddiy_reja(bemor: Dict[str, Any]) -> List[Dict[str, Any]]:
             {
                 "id": "p-echo",
                 "vosita": "echo_technician",
-                "tavsif": "DICOM/video 11 ko‘rinish",
+                "tavsif": "EchoPrime 11 ko‘rinish (A5C, Doppler)",
                 "holat": "pending",
             }
         )

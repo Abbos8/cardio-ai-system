@@ -618,7 +618,7 @@ class MedicalRAG:
                     "vosita": "electrophysiologist",
                     "tavsif": "QRS, PR, QT, HRV va to‘lqin nuqtalari",
                 },
-                {"id": "p4", "vosita": "echo_technician", "tavsif": "11 ta echo ko‘rinishini tasniflash"},
+                {"id": "p4", "vosita": "echo_technician", "tavsif": "EchoPrime 11 ko‘rinish (A5C, Doppler)"},
                 {"id": "p5", "vosita": "echo_segmenter", "tavsif": "Chap qorincha konturini maskalash"},
                 {"id": "p6", "vosita": "cardiology_fellow", "tavsif": "Dastlabki multimodal xulosa"},
             ]

@@ -1,7 +1,7 @@
-"""Echocardiography technician: DICOM/video dan 11 ta standart ko‘rinishni tasniflash.
+"""Echocardiography technician: EchoPrime 11 ko‘rinish (A5C va Doppler).
 
-Kadrlar pydicom/opencv orqali olinadi; yorliq DICOM tegi yoki geometrik model.
-Tashxis qo‘yilmaydi.
+Kadrlar pydicom/opencv orqali olinadi. Yorliq DICOM tegi yoki
+EchoPrime ConvNeXt; og‘irlik yo‘q bo‘lsa geometrik zaxira. Tashxis emas.
 """
 
 from __future__ import annotations
@@ -9,7 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
-from tools.echo_view_model import ECHO_KORINISHLAR, kadrlar_tasnif, tegdan_korinish
+from tools.echo_view_model import ECHO_KORINISHLAR, kadrlar_tasnif, tasnif_model_nomi, tegdan_korinish
 from tools.echo_yuklash import echo_fayldan_kadrlar, echo_yollardan_oqish
 
 
@@ -64,7 +64,7 @@ def _yuklamalarni_yig(bemor: Dict[str, Any]) -> List[Tuple[str, bytes]]:
 
 
 def _bir_yozuvni_tasnif(nom: str, kadrlar: Sequence[Any], meta: Dict[str, Any]) -> Dict[str, Any]:
-    """Bitta DICOM/video yozuvini 11 ko‘rinishdan biriga bog‘laydi.
+    """Bitta DICOM/video yozuvini EchoPrime 11 ko‘rinishidan biriga bog‘laydi.
 
     Args:
         nom: Fayl nomi (faqat xabar).
@@ -75,6 +75,7 @@ def _bir_yozuvni_tasnif(nom: str, kadrlar: Sequence[Any], meta: Dict[str, Any]) 
         asosiy, ehtimol, manba, korinishlar. Klinik tasnif emas.
     """
     teg = tegdan_korinish(meta)
+    model_nom = tasnif_model_nomi()
     eht = kadrlar_tasnif(list(kadrlar)) if kadrlar else {n: 0.0 for n in ECHO_KORINISHLAR}
     model_yorliq = max(eht, key=eht.get) if eht else "ANIQLANMAGAN"
     model_p = float(eht.get(model_yorliq, 0.0))
@@ -82,16 +83,16 @@ def _bir_yozuvni_tasnif(nom: str, kadrlar: Sequence[Any], meta: Dict[str, Any]) 
     if teg:
         manba = "dicom_teg"
         asosiy = teg
-        # Teg va geometriya mos kelsa ishonch oshadi
+        # Teg va kadr tasnifi mos kelsa ishonch oshadi
         if teg == model_yorliq:
-            manba = "dicom_teg+geometrik_model"
+            manba = f"dicom_teg+{model_nom}"
             p = max(model_p, 0.75)
         else:
             p = 0.62
             eht = dict(eht)
             eht[teg] = max(eht.get(teg, 0.0), 0.62)
     elif model_p >= 0.18:
-        manba = "geometrik_model"
+        manba = model_nom
         asosiy = model_yorliq
         p = model_p
     else:
@@ -112,7 +113,7 @@ def _bir_yozuvni_tasnif(nom: str, kadrlar: Sequence[Any], meta: Dict[str, Any]) 
 
 
 def classify_echo_views(bemor: Dict[str, Any]) -> Dict[str, Any]:
-    """Echo DICOM/video/rasmdan 11 standart ko‘rinish yorlig‘ini beradi.
+    """Echo DICOM/video/rasmdan EchoPrime 11 ko‘rinish yorlig‘ini beradi.
 
     Args:
         bemor: echo_bayt / echo_fayllar / echo_fayl yo‘li.
@@ -162,7 +163,7 @@ def classify_echo_views(bemor: Dict[str, Any]) -> Dict[str, Any]:
                 manbalar.append(m)
     xabar = (
         f"Echo technician: {len(natijalar)} yozuv, ko‘rinishlar={unikal or ['ANIQLANMAGAN']}. "
-        f"Manba={'+'.join(manbalar)}. 11 ta standart yorliq taxminiy, tashxis emas."
+        f"Manba={'+'.join(manbalar)}. EchoPrime 11 (A5C, Doppler). Tashxis emas."
     )
     return {
         "ok": True,

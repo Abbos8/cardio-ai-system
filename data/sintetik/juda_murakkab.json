@@ -12,16 +12,16 @@
   "yurak_chastotasi": 46,
   "echo_korinishlar": [
     "A2C",
-    "A4C",
     "A3C",
-    "PLAX",
-    "PSAX-AV",
-    "PSAX-MV",
-    "PSAX-PM",
-    "PSAX-APEX",
-    "SUBCOSTAL-4C",
-    "SUBCOSTAL-IVC",
-    "SSN"
+    "A4C",
+    "A5C",
+    "Apical_Doppler",
+    "Doppler_Parasternal_Long",
+    "Doppler_Parasternal_Short",
+    "Parasternal_Long",
+    "Parasternal_Short",
+    "SSN",
+    "Subcostal"
   ],
   "laboratoriya": {
     "troponin_i": 240.0,

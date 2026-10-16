@@ -25,16 +25,16 @@ HOLAT_IDLAR = ("sodda", "murakkab", "juda_murakkab")
 # DICOM SeriesDescription — echo_view_model.tegdan_korinish kalitlariga mos
 _TEG_MATN = {
     "A2C": "apical 2 chamber",
-    "A4C": "apical 4 chamber",
     "A3C": "apical 3 chamber",
-    "PLAX": "parasternal long axis",
-    "PSAX-AV": "psax-av",
-    "PSAX-MV": "psax mv",
-    "PSAX-PM": "psax pm",
-    "PSAX-APEX": "psax apex",
-    "SUBCOSTAL-4C": "subcostal 4 chamber",
-    "SUBCOSTAL-IVC": "subcostal ivc",
+    "A4C": "apical 4 chamber",
+    "A5C": "apical 5 chamber",
+    "Apical_Doppler": "apical doppler",
+    "Doppler_Parasternal_Long": "doppler parasternal long",
+    "Doppler_Parasternal_Short": "doppler parasternal short",
+    "Parasternal_Long": "parasternal long axis",
+    "Parasternal_Short": "parasternal short axis",
     "SSN": "suprasternal",
+    "Subcostal": "subcostal 4 chamber",
 }
 
 _ECHO_URUG = {"sodda": 11, "murakkab": 22, "juda_murakkab": 33}

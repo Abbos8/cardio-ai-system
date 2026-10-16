@@ -10,7 +10,10 @@
   "sampling_rate": 500,
   "ekg_davomiylik": 8,
   "yurak_chastotasi": 72,
-  "echo_korinishlar": ["A4C", "PLAX"],
+  "echo_korinishlar": [
+    "A4C",
+    "Parasternal_Long"
+  ],
   "laboratoriya": {
     "troponin_i": 8.0,
     "nt_probnp": 80.0,

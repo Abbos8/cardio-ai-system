@@ -18,8 +18,8 @@ except ImportError:
 from tools.echo_tool import _yuklamalarni_yig
 from tools.echo_yuklash import _kulrang, echo_yollardan_oqish
 
-APICAL = {"A4C", "A2C", "A3C"}
-SAX = {"PSAX-AV", "PSAX-MV", "PSAX-PM", "PSAX-APEX"}
+APICAL = {"A4C", "A2C", "A3C", "A5C"}
+SAX = {"Parasternal_Short", "PSAX-AV", "PSAX-MV", "PSAX-PM", "PSAX-APEX"}
 
 
 def overlay_qur(kadr: np.ndarray, maska: np.ndarray) -> np.ndarray:
@@ -124,11 +124,11 @@ def _kavak_maska(g: np.ndarray, korinish: Optional[str]) -> Tuple[Optional[np.nd
         cx, cy = float(centroids[i][0]), float(centroids[i][1])
         ww, hh = float(stats[i, cv2.CC_STAT_WIDTH]), float(stats[i, cv2.CC_STAT_HEIGHT])
         dumaloq = may / (max(np.pi * (ww / 2) * (hh / 2), 1.0))
-        k = (korinish or "").upper()
+        k = str(korinish or "").upper()
         ball = ulush
-        if k in APICAL:
+        if k in {a.upper() for a in APICAL}:
             ball += 0.35 * (cy / h) + 0.25 * (cx / w)
-        elif k in SAX:
+        elif k in {a.upper() for a in SAX}:
             ball += 0.45 * min(dumaloq, 1.2)
         else:
             ball += 0.2 * (cy / h)
@@ -240,6 +240,8 @@ def segment_lv(
 
     def tartib(element: Dict[str, Any]) -> Tuple[int, int]:
         k = str(element.get("korinish") or "")
+        if "Doppler" in k:
+            return (4, 0)
         if k == "A4C":
             return (0, 0)
         if k in APICAL:
