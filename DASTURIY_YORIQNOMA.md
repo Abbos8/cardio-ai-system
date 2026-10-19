@@ -319,12 +319,13 @@ PNG/JPG qog‘oz EKG qabul qilinmaydi. Raqamli signal kerak.
 
 | Funksiya | Vazifasi |
 |---|---|
-| `segment_lv` | Kadrdan taxminiy LV maska |
-| `_kavak_maska` | Sektordagi qorong‘i bog‘langan komponent |
+| `segment_lv` | A4C klipdan LV maska; sikl yetarli bo‘lsa taxminiy EF |
+| `_kavak_maska` | Og‘irlik yo‘q bo‘lsa qorong‘i kavak zaxirasi |
+| `area_length_hajm` | V = 8·A² / (3·π·L) |
 | `overlay_qur` | Cyan maska + sariq kontur |
 | `_png_bayt` | Overlay ni PNG bytes |
 
-Muvaffaqiyatda `model="opencv-kavak"`. U-Net yo‘q. EF hisoblanmaydi. Kadr yoki kavak yo‘q bo‘lsa `ok=False`, yolg‘on maska yo‘q.
+Og‘irlik `models/echonet/deeplabv3_resnet50.pt` (EchoNet-Dynamic, git emas) bo‘lsa `model="zhang2024-deeplab"`. Yo‘q bo‘lsa `opencv-kavak` va `ef=None`. 21 kadrdan kam bo‘lsa EF berilmaydi. Kadr yoki kavak yo‘q bo‘lsa `ok=False`, yolg‘on maska yo‘q. Tashxis emas.
 
 ### `fellow_tool.py` — Cardiology fellow
 

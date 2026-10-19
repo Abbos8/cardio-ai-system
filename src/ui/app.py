@@ -1841,7 +1841,7 @@ def _vizual_tekshirish_paneli(
         if mask.get("overlay_png"):
             st.image(
                 mask["overlay_png"],
-                caption=mask.get("xabar") or "LV kontur (algoritmik, EF/tashxis emas)",
+                caption=mask.get("xabar") or "LV kontur. Taxminiy EF bo‘lmasa klinik o‘lchov emas.",
                 width="stretch",
             )
             st.write(
@@ -2455,17 +2455,21 @@ def _bolim_natija_paneli(
             c2.metric("Ko'rinish", mask.get("korinish") or "—")
             c3, c4 = st.columns(2)
             c3.metric("Maydon (px)", mask.get("maydon_px") or "—")
-            c4.metric("Ulush", mask.get("ulush") or "—")
-            st.caption(f"Model: {mask.get('model') or '—'}")
+            c4.metric("Taxminiy EF %", mask.get("ef") if mask.get("ef") is not None else "—")
+            st.caption(f"Model: {mask.get('model') or '—'} | ulush={mask.get('ulush')}")
             if mask.get("xabar"):
                 st.caption(mask["xabar"])
             if mask.get("overlay_png"):
+                sarlavha = mask.get("xabar") or "LV kontur. Tashxis emas."
                 st.image(
                     mask["overlay_png"],
-                    caption="LV kontur (algoritmik, EF/tashxis emas)",
+                    caption=sarlavha,
                     use_container_width=True,
                 )
-            st.caption("Algoritmik kavak; klinik EF emas. To'liq rasm vizual tekshiruvda.")
+            if mask.get("ef") is None:
+                st.caption("EF hisoblanmadi. Klinik o‘lchov emas. To'liq rasm vizual tekshiruvda.")
+            else:
+                st.caption("Area-length taxminiy EF. Tashxis emas. To'liq rasm vizual tekshiruvda.")
 
         # ── Cardiology fellow ─────────────────────────────────────────────────
         elif tanlangan == "fellow":

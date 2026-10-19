@@ -149,6 +149,10 @@ def _lv_qisqacha(natija: Optional[Dict[str, Any]]) -> Dict[str, Any]:
         "model": natija.get("model"),
         "overlay_png": natija.get("overlay_png"),
         "kadrlar_soni": natija.get("kadrlar_soni"),
+        "ef": natija.get("ef"),
+        "ed": natija.get("ed"),
+        "es": natija.get("es"),
+        "hfref": natija.get("hfref"),
     }
 
 

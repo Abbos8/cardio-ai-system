@@ -77,11 +77,12 @@ def _dicom_meta(ds: Any) -> Dict[str, str]:
     }
 
 
-def dicom_dan_kadrlar(bayt: bytes) -> Dict[str, Any]:
+def dicom_dan_kadrlar(bayt: bytes, kadr_limit: int = 12) -> Dict[str, Any]:
     """Ultrasound/DICOM baytidan kadrlar va meta oladi.
 
     Args:
         bayt: .dcm fayl.
+        kadr_limit: Saqlanadigan kadrlar chegarasi. Ko‘rinish tasnifi 12, LV EF 128.
 
     Returns:
         ok, kadrlar (kulrang), meta, xabar.
@@ -127,8 +128,9 @@ def dicom_dan_kadrlar(bayt: bytes) -> Dict[str, Any]:
         return {"ok": False, "kadrlar": [], "meta": meta, "xabar": f"Pixel shakli {pix.shape} noma’lum."}
 
     n = len(kadrlar)
-    if n > 12:
-        indekslar = np.linspace(0, n - 1, 12).astype(int)
+    chegara = max(int(kadr_limit), 1)
+    if n > chegara:
+        indekslar = np.linspace(0, n - 1, chegara).astype(int)
         kadrlar = [kadrlar[i] for i in indekslar]
     meta["kadrlar_soni_xom"] = n
     return {
@@ -139,11 +141,12 @@ def dicom_dan_kadrlar(bayt: bytes) -> Dict[str, Any]:
     }
 
 
-def video_dan_kadrlar(bayt: bytes) -> Dict[str, Any]:
+def video_dan_kadrlar(bayt: bytes, kadr_limit: int = 8) -> Dict[str, Any]:
     """mp4/avi baytidan bir nechta kadr oladi.
 
     Args:
         bayt: Video fayl.
+        kadr_limit: Olinadigan kadrlar chegarasi. LV EF uchun 128.
 
     Returns:
         ok, kadrlar, meta, xabar.
@@ -158,7 +161,8 @@ def video_dan_kadrlar(bayt: bytes) -> Dict[str, Any]:
             return {"ok": False, "kadrlar": [], "meta": {}, "xabar": "Video ochilmadi."}
         jami = int(cap.get(cv2.CAP_PROP_FRAME_COUNT) or 0)
         fps = float(cap.get(cv2.CAP_PROP_FPS) or 0)
-        olish = min(8, max(1, jami if jami > 0 else 8))
+        chegara = max(int(kadr_limit), 1)
+        olish = min(chegara, max(1, jami if jami > 0 else chegara))
         kadrlar: List[np.ndarray] = []
         if jami > 0:
             indekslar = np.linspace(0, max(jami - 1, 0), olish).astype(int)
@@ -226,24 +230,25 @@ def rasm_dan_kadr(bayt: bytes) -> Dict[str, Any]:
     return {"ok": False, "kadrlar": [], "meta": {}, "xabar": "Rasm o‘qilmadi."}
 
 
-def echo_fayldan_kadrlar(nom: str, bayt: bytes) -> Dict[str, Any]:
+def echo_fayldan_kadrlar(nom: str, bayt: bytes, kadr_limit: Optional[int] = None) -> Dict[str, Any]:
     """Fayl turiga qarab DICOM/video/rasm o‘qiydi.
 
     Args:
         nom: Fayl nomi (kengaytma).
         bayt: Tarkib.
+        kadr_limit: Berilsa DICOM/video chegarasi. Bo‘sh bo‘lsa odatiy (12 / 8).
 
     Returns:
         dicom_dan_kadrlar bilan bir xil shakl.
     """
     past = (nom or "").lower()
     if past.endswith((".dcm", ".dicom")) or bayt[:4] == b"DICM" or b"DICM" in bayt[:132]:
-        return dicom_dan_kadrlar(bayt)
+        return dicom_dan_kadrlar(bayt) if kadr_limit is None else dicom_dan_kadrlar(bayt, kadr_limit)
     if past.endswith((".mp4", ".avi", ".mov", ".mpg", ".mpeg", ".mkv")):
-        return video_dan_kadrlar(bayt)
+        return video_dan_kadrlar(bayt) if kadr_limit is None else video_dan_kadrlar(bayt, kadr_limit)
     if past.endswith((".png", ".jpg", ".jpeg", ".bmp", ".tif", ".tiff", ".webp")):
         return rasm_dan_kadr(bayt)
-    dicom_urinish = dicom_dan_kadrlar(bayt)
+    dicom_urinish = dicom_dan_kadrlar(bayt) if kadr_limit is None else dicom_dan_kadrlar(bayt, kadr_limit)
     if dicom_urinish.get("ok"):
         return dicom_urinish
     rasm = rasm_dan_kadr(bayt)
@@ -259,11 +264,13 @@ def echo_fayldan_kadrlar(nom: str, bayt: bytes) -> Dict[str, Any]:
 
 def echo_yollardan_oqish(
     fayllar: Sequence[Tuple[str, bytes]],
+    kadr_limit: Optional[int] = None,
 ) -> Dict[str, Any]:
     """Bir yoki bir nechta echo faylni kadr to‘plamiga yig‘adi.
 
     Args:
         fayllar: (nom, bayt) juftliklari.
+        kadr_limit: Berilsa har fayldan shuncha kadr. LV EF uchun 128.
 
     Returns:
         ok, yozuvlar [{nom, kadrlar, meta, xabar}], xabar.
@@ -273,7 +280,7 @@ def echo_yollardan_oqish(
     yozuvlar: List[Dict[str, Any]] = []
     xatolar: List[str] = []
     for nom, bayt in fayllar:
-        nat = echo_fayldan_kadrlar(nom, bayt)
+        nat = echo_fayldan_kadrlar(nom, bayt, kadr_limit=kadr_limit)
         if nat.get("ok") and nat.get("kadrlar"):
             yozuvlar.append(
                 {
