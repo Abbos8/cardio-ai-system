@@ -207,201 +207,314 @@ def _klinik_ogohlantirish() -> None:
     st.markdown(
         """
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,500;6..72,600&family=Source+Sans+3:wght@400;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&display=swap');
 
+html { scroll-padding-top: 4.5rem; }
 .stApp {
-  background: #f4f0e6;
-  color: #1c2430;
-  font-family: "Source Sans 3", "Segoe UI", sans-serif;
+  background: #ECFEFF;
+  color: #164E63;
+  font-family: "Atkinson Hyperlegible", "Segoe UI", sans-serif;
+  font-size: 16px;
+  line-height: 1.5;
 }
-[data-testid="stHeader"] { background: transparent; }
+[data-testid="stHeader"] {
+  background: rgba(236, 254, 255, 0.92);
+  border-bottom: 1px solid #A5F3FC;
+}
 [data-testid="stSidebar"] {
-  background: #ebe4d4;
-  border-right: 1px solid #d5ccbb;
+  background: #E8F1F6;
+  border-right: 1px solid #A5F3FC;
 }
-[data-testid="stSidebar"] [data-testid="stMarkdown"] h3 {
-  font-family: "Newsreader", Georgia, serif;
-  letter-spacing: 0.01em;
+h1, h2, h3, .sahifa-nom, .bolim-sarlavha, .xulosa-qisqa, .tahlil-yuradi strong {
+  font-family: "Atkinson Hyperlegible", "Segoe UI", sans-serif;
+  color: #164E63;
 }
-h1, h2, h3, .sahifa-nom, .bolim-sarlavha {
-  font-family: "Newsreader", Georgia, serif;
-  color: #1a2740;
-}
-.block-container { padding-top: 1.1rem; }
+.block-container { padding-top: 1.25rem; max-width: 1480px; }
 div[data-testid="stVerticalBlockBorderWrapper"] {
-  background: #fbf8f2;
-  border-color: #ddd4c4 !important;
+  background: #FFFFFF;
+  border-color: #A5F3FC !important;
+}
+button {
+  min-height: 44px;
+  border-radius: 6px;
+}
+button:focus-visible, [data-baseweb="select"] :focus-visible, input:focus-visible, textarea:focus-visible {
+  outline: 3px solid #0891B2 !important;
+  outline-offset: 2px !important;
 }
 button[kind="primary"], button[data-testid="stBaseButton-primary"] {
-  background: #0f5f57;
-  border: 1px solid #0c4c46;
-  color: #f7f3ea;
-  border-radius: 4px;
-  font-weight: 600;
+  background: #0891B2;
+  border: 1px solid #0E7490;
+  color: #000000;
+  font-weight: 700;
 }
 button[kind="primary"]:hover, button[data-testid="stBaseButton-primary"]:hover {
-  background: #0c4e48;
-  border-color: #0c4e48;
-  color: #f7f3ea;
+  background: #06B6D4;
+  border-color: #0E7490;
+  color: #000000;
 }
 button[kind="secondary"], button[data-testid="stBaseButton-secondary"] {
-  background: #fbf8f2;
-  border: 1px solid #d5ccbb;
-  color: #243044;
-  border-radius: 4px;
+  background: #FFFFFF;
+  border: 1px solid #A5F3FC;
+  color: #164E63;
   text-align: left;
   justify-content: flex-start;
+  white-space: normal;
+  height: auto;
+  line-height: 1.35;
 }
 button[kind="secondary"]:hover, button[data-testid="stBaseButton-secondary"]:hover {
-  border-color: #0f5f57;
-  color: #0f5f57;
-  background: #f3f7f4;
+  border-color: #0891B2;
+  color: #164E63;
+  background: #F0FDFA;
 }
-[class*="st-key-xulosa"] button {
-  white-space: nowrap;
-  font-size: 0.84rem;
-  min-height: 2.15rem;
+[class*="st-key-xulosa"] button,
+[class*="st-key-bolim_btn"] button {
+  white-space: normal;
+  font-size: 0.95rem;
+  min-height: 44px;
   height: auto;
-  padding-left: 0.45rem;
-  padding-right: 0.45rem;
+  padding: 0.4rem 0.6rem;
 }
 .sahifa-boshi {
-  border-bottom: 1px solid #d5ccbb;
-  padding-bottom: 0.35rem; margin: 0 0 0.5rem;
+  border-bottom: 1px solid #A5F3FC;
+  padding-bottom: 0.45rem;
+  margin: 0 0 0.65rem;
 }
 .sahifa-kicker {
-  margin-top: 0.1rem;
-  font-size: 0.72rem; letter-spacing: 0.14em; text-transform: uppercase;
-  color: #6d6456; font-weight: 600;
+  margin-top: 0.15rem;
+  font-size: 0.8rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #475569;
+  font-weight: 700;
 }
 .sahifa-nom {
-  font-size: 1.85rem; font-weight: 600; line-height: 1.05;
-  letter-spacing: -0.02em;
+  font-size: 1.75rem;
+  font-weight: 700;
+  line-height: 1.2;
 }
 .klinik-ogoh {
-  position: sticky; top: 0; z-index: 999;
-  background: #f4e4c4; border: 1px solid #c9a15a; color: #3f2e08;
-  padding: 0.42rem 0.8rem; border-radius: 4px; margin-bottom: 0.55rem;
-  font-size: 0.87rem; line-height: 1.35;
-  border-left: 4px solid #a67c2d;
+  position: sticky;
+  top: 0.35rem;
+  z-index: 20;
+  background: #FEF3C7;
+  border: 1px solid #D97706;
+  color: #451A03;
+  padding: 0.55rem 0.8rem;
+  border-radius: 6px;
+  margin-bottom: 0.75rem;
+  font-size: 0.95rem;
+  line-height: 1.45;
+  border-left: 4px solid #D97706;
 }
 .bolim-sarlavha {
-  font-size: 1.05rem; font-weight: 600; color: #1a2740;
-  border-bottom: 1px solid #d5ccbb; padding-bottom: 0.12rem;
-  margin-top: 0.85rem; margin-bottom: 0.35rem;
-  letter-spacing: 0.01em;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #164E63;
+  border-bottom: 1px solid #A5F3FC;
+  padding-bottom: 0.2rem;
+  margin-top: 0.9rem;
+  margin-bottom: 0.45rem;
 }
 .bosh-holat-ogoh {
-  background: #fbf8f2; border: 1px dashed #c9bfae; color: #243044;
-  border-radius: 4px; padding: 1rem 1.15rem; text-align: left;
-  font-size: 0.95rem; margin-top: 0.4rem; line-height: 1.45;
+  background: #FFFFFF;
+  border: 1px dashed #67E8F9;
+  color: #164E63;
+  border-radius: 6px;
+  padding: 1rem 1.1rem;
+  text-align: left;
+  font-size: 1rem;
+  margin-top: 0.4rem;
+  line-height: 1.5;
 }
 .xulosa-qisqa {
-  font-family: "Newsreader", Georgia, serif;
-  font-size: 1.08rem; line-height: 1.45; color: #1a2740;
+  font-size: 1.08rem;
+  line-height: 1.5;
+  color: #164E63;
   margin: 0.15rem 0 0.2rem;
 }
 .xulosa-blok {
-  border-top: 1px solid #d5ccbb;
-  padding: 0.45rem 0 0.2rem; margin-top: 0.15rem;
+  border-top: 1px solid #A5F3FC;
+  padding: 0.5rem 0 0.2rem;
+  margin-top: 0.15rem;
 }
 .xulosa-nom {
-  font-size: 0.68rem; letter-spacing: 0.14em; text-transform: uppercase;
-  color: #6d6456; font-weight: 700; margin-bottom: 0.15rem;
+  font-size: 0.8rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #475569;
+  font-weight: 700;
+  margin-bottom: 0.2rem;
 }
 .xulosa-matn {
-  white-space: pre-wrap; font-size: 0.9rem; line-height: 1.45; color: #1c2430;
+  white-space: pre-wrap;
+  font-size: 1rem;
+  line-height: 1.5;
+  color: #164E63;
 }
 .oqim-qator {
-  display: flex; flex-wrap: wrap; gap: 0.35rem; margin: 0.15rem 0 0.7rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 0.2rem 0 0.75rem;
 }
 .oqim-chip {
-  font-size: 0.8rem; line-height: 1.2; white-space: nowrap;
-  padding: 0.26rem 0.55rem; border-radius: 4px; border: 1px solid #d5ccbb;
-  background: #fbf8f2; color: #3d4a5c;
+  font-size: 0.85rem;
+  line-height: 1.3;
+  padding: 0.35rem 0.6rem;
+  border-radius: 6px;
+  border: 1px solid #A5F3FC;
+  background: #FFFFFF;
+  color: #164E63;
 }
-.oqim-chip.done { background: #e4f0e6; border-color: #8dcea0; color: #145c2e; }
-.oqim-chip.current { background: #e7f1ef; border-color: #7eaea6; color: #0f5f57; font-weight: 700; }
-.oqim-chip.skip { background: #f3efe6; color: #6b6458; }
+.oqim-chip.done { background: #D1FAE5; border-color: #059669; color: #064E3B; }
+.oqim-chip.current { background: #CFFAFE; border-color: #0891B2; color: #164E63; font-weight: 700; }
+.oqim-chip.skip { background: #E8F1F6; color: #475569; }
 .tahlil-yuradi {
-  display: flex; align-items: center; gap: 0.65rem;
-  background: #e7f1ef; border: 1px solid #7eaea6; border-left: 4px solid #0f5f57;
-  color: #14332f; border-radius: 4px;
-  padding: 0.55rem 0.75rem; margin: 0.1rem 0 0.55rem;
-  font-size: 0.92rem; line-height: 1.35;
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  background: #CFFAFE;
+  border: 1px solid #0891B2;
+  border-left: 4px solid #0891B2;
+  color: #164E63;
+  border-radius: 6px;
+  padding: 0.6rem 0.8rem;
+  margin: 0.1rem 0 0.65rem;
+  font-size: 1rem;
+  line-height: 1.4;
 }
 .tahlil-nuqta {
-  width: 0.55rem; height: 0.55rem; border-radius: 50%;
-  background: #0f5f57; flex-shrink: 0;
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 50%;
+  background: #0891B2;
+  flex-shrink: 0;
   animation: tahlil-pulse 1.4s ease-in-out infinite;
 }
-.tahlil-yuradi strong {
-  font-family: "Newsreader", Georgia, serif; font-weight: 600;
-}
 .tahlil-vaqt {
-  margin-left: auto; font-size: 0.78rem; letter-spacing: 0.06em;
-  color: #0f5f57; font-weight: 700; white-space: nowrap;
+  margin-left: auto;
+  font-size: 0.85rem;
+  letter-spacing: 0.04em;
+  color: #0E7490;
+  font-weight: 700;
+  white-space: nowrap;
 }
 @keyframes tahlil-pulse {
   0%, 100% { opacity: 1; }
-  50% { opacity: 0.3; }
+  50% { opacity: 0.35; }
 }
 @media (prefers-reduced-motion: reduce) {
   .tahlil-nuqta { animation: none; }
 }
-/* ── Yangi komponentlar ─────────────────────────────────────────────────── */
 .lab-card {
-  display:flex; align-items:center; gap:0.5rem; background:#fbf8f2; color:#1c2430;
-  border-radius:4px; padding:0.35rem 0.6rem; margin:0.18rem 0;
-  font-size:0.84rem; border:1px solid #e4dccb; border-left:4px solid #9ca3af;
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  background: #FFFFFF;
+  color: #164E63;
+  border-radius: 6px;
+  padding: 0.45rem 0.65rem;
+  margin: 0.28rem 0;
+  font-size: 0.95rem;
+  border: 1px solid #A5F3FC;
+  border-left: 4px solid #64748B;
 }
-.lab-card.ok     { border-left-color:#16a34a; }
-.lab-card.warning{ border-left-color:#d97706; }
-.lab-card.danger { border-left-color:#dc2626; }
-.lab-card .lab-val { font-weight:700; font-size:0.94rem; margin-right:0.2rem; }
-.lab-dot-ok      { color:#16a34a; }
-.lab-dot-warning { color:#d97706; }
-.lab-dot-danger  { color:#dc2626; }
+.lab-card.ok { border-left-color: #059669; }
+.lab-card.warning { border-left-color: #D97706; }
+.lab-card.danger { border-left-color: #DC2626; }
+.lab-card .lab-val {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  min-width: 3.2rem;
+}
+.lab-holat {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  min-width: 4.6rem;
+}
+.lab-card.ok .lab-holat { color: #065F46; }
+.lab-card.warning .lab-holat { color: #92400E; }
+.lab-card.danger .lab-holat { color: #991B1B; }
 .ecg-badge {
-  display:inline-block; padding:0.22rem 0.55rem; border-radius:999px;
-  font-size:0.82rem; font-weight:600; margin:0.15rem 0.2rem;
-  background:#f4f6f8; color:#3d4a5c; border:1px solid #d5dbe3;
+  display: inline-block;
+  padding: 0.28rem 0.6rem;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  margin: 0.15rem 0.25rem 0.15rem 0;
+  background: #FFFFFF;
+  color: #164E63;
+  border: 1px solid #A5F3FC;
 }
-.ecg-badge.ok      { background:#dcfce7; color:#14532d; border-color:#86efac; }
-.ecg-badge.warning { background:#fef3c7; color:#78350f; border-color:#fbbf24; }
-.ecg-badge.danger  { background:#fee2e2; color:#7f1d1d; border-color:#f87171; }
-.risk-badge {
-  display:inline-block; padding:0.2rem 0.6rem; border-radius:999px;
-  font-size:0.82rem; font-weight:700; margin:0.1rem 0.2rem;
+.ecg-badge.ok { background: #D1FAE5; color: #064E3B; border-color: #059669; }
+.ecg-badge.warning { background: #FEF3C7; color: #78350F; border-color: #D97706; }
+.ecg-badge.danger { background: #FEE2E2; color: #7F1D1D; border-color: #DC2626; }
+.risk-badge, .agent-badge {
+  display: inline-block;
+  padding: 0.28rem 0.65rem;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  margin: 0.1rem 0.2rem 0.1rem 0;
 }
-.risk-badge.oddiy    { background:#dcfce7; color:#14532d; }
-.risk-badge.murakkab { background:#ffedd5; color:#7c2d12; }
-.risk-badge.unknown  { background:#f3f4f6; color:#6b7280; }
-.agent-badge {
-  display:inline-block; padding:0.2rem 0.6rem; border-radius:999px;
-  font-size:0.82rem; font-weight:700; margin:0.1rem 0.2rem;
+.risk-badge.oddiy { background: #D1FAE5; color: #064E3B; }
+.risk-badge.murakkab { background: #FFEDD5; color: #7C2D12; }
+.risk-badge.unknown { background: #E8F1F6; color: #334155; }
+.agent-badge.stop { background: #CCFBF1; color: #134E4A; }
+.agent-badge.continue { background: #DBEAFE; color: #1E3A8A; }
+.mdt-gemma, .mdt-qwen, .mdt-deepseek {
+  border-radius: 6px;
+  padding: 0.5rem 0.7rem;
+  margin: 0.3rem 0;
+  color: #164E63;
 }
-.agent-badge.stop     { background:#ccfbf1; color:#134e4a; }
-.agent-badge.continue { background:#dbeafe; color:#1e3a8a; }
-.mdt-gemma   { border-left:3px solid #7c3aed; background:#f5f3ff; border-radius:4px; padding:0.4rem 0.6rem; margin:0.2rem 0; }
-.mdt-qwen    { border-left:3px solid #0891b2; background:#ecfeff; border-radius:4px; padding:0.4rem 0.6rem; margin:0.2rem 0; }
-.mdt-deepseek{ border-left:3px solid #b91c1c; background:#fff1f2; border-radius:4px; padding:0.4rem 0.6rem; margin:0.2rem 0; }
+.mdt-gemma { border-left: 4px solid #0E7490; background: #F0FDFA; }
+.mdt-qwen { border-left: 4px solid #0891B2; background: #ECFEFF; }
+.mdt-deepseek { border-left: 4px solid #DC2626; background: #FFF1F2; }
 .step-card {
-  border:1px solid #e5e7eb; border-radius:6px;
-  padding:0.5rem 0.75rem; margin:0.3rem 0; background:#fafafa;
+  border: 1px solid #A5F3FC;
+  border-radius: 6px;
+  padding: 0.55rem 0.75rem;
+  margin: 0.35rem 0;
+  background: #FFFFFF;
+  color: #164E63;
 }
-.step-card.done    { border-left:4px solid #16a34a; }
-.step-card.pending { border-left:4px solid #3b82f6; }
-.step-card.xato    { border-left:4px solid #dc2626; }
+.step-card.done { border-left: 4px solid #059669; }
+.step-card.pending { border-left: 4px solid #0891B2; }
+.step-card.xato { border-left: 4px solid #DC2626; }
+.qadam-holat {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
 .replan-alert {
-  background:#fffbeb; border:1px solid #f59e0b; border-radius:6px;
-  padding:0.5rem 0.8rem; margin:0.4rem 0; color:#78350f; font-size:0.87rem;
+  background: #FFFBEB;
+  border: 1px solid #D97706;
+  border-radius: 6px;
+  padding: 0.55rem 0.8rem;
+  margin: 0.4rem 0;
+  color: #78350F;
+  font-size: 0.95rem;
 }
 .log-entry {
-  font-family:monospace; font-size:0.82rem; background:#f8fafc;
-  border:1px solid #e2e8f0; border-radius:4px;
-  padding:0.4rem 0.6rem; margin:0.2rem 0; white-space:pre-wrap;
-  word-break:break-all; color:#1e293b;
+  font-family: ui-monospace, "Cascadia Code", monospace;
+  font-size: 0.85rem;
+  background: #F8FAFC;
+  border: 1px solid #A5F3FC;
+  border-radius: 6px;
+  padding: 0.45rem 0.65rem;
+  margin: 0.25rem 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: #164E63;
+}
+@media (max-width: 900px) {
+  .block-container { padding-left: 0.8rem; padding-right: 0.8rem; }
 }
 </style>
 """,
@@ -461,17 +574,17 @@ def _sidebar_paneli(rag_paket: Any, agent_holat: Optional[Dict[str, Any]]) -> No
         None. Tashxis emas; kalit va PII ko‘rsatilmaydi.
     """
     with st.sidebar:
-        st.markdown("### 🫀 Tizim holati")
+        st.markdown("### Tizim holati")
 
-        # LLM/VLM qisqa holati
+        # LLM/VLM qisqa holati. Belgini matn bilan yozamiz — rang yagona signal emas.
         if llm_mavjud():
             vlm = vlm_sozlama("medgemma") or vlm_sozlama("qwen_vl")
             if vlm:
-                st.caption("✅ LLM ulangan · VLM sozlangan")
+                st.caption("LLM ulangan. VLM sozlangan.")
             else:
-                st.caption("⚠️ LLM ulangan · VLM yo‘q (MDT shablon)")
+                st.caption("LLM ulangan. VLM yo‘q (MDT shablon).")
         else:
-            st.warning("Shablon rejimi: LLM kaliti yo‘q. MDT/fellow qoida bilan ishlaydi.", icon="⚠️")
+            st.warning("Shablon rejimi: LLM kaliti yo‘q. MDT/fellow qoida bilan ishlaydi.")
 
         # RAG holati (yig‘ilgan)
         with st.expander("CardiacRAG holati", expanded=False):
@@ -493,7 +606,7 @@ def _sidebar_paneli(rag_paket: Any, agent_holat: Optional[Dict[str, Any]]) -> No
 
         # Formani tozalash: tahlil natijalarini o‘chiradi, widget state saqlanadi
         st.caption("Tahlil natijalarini o‘chiring (yuklangan fayllar saqlanadi).")
-        if st.button("🗑️ Formani tozalash", use_container_width=True, key="formani_tozala"):
+        if st.button("Formani tozalash", use_container_width=True, key="formani_tozala"):
             st.session_state.agent_holat = None
             st.session_state.bemor_tahlil = None
             st.session_state.vizual_ochiq = False
@@ -552,7 +665,7 @@ def _olti_bosqich_chiz(holat: Optional[Dict[str, Any]]) -> None:
     for nom, s in zip(sarlavhalar, holatlar):
         yozuv = nom + (" · o‘tkazildi" if s == "skip" else "")
         if s == "current":
-            yozuv = "▶ " + yozuv
+            yozuv = "hozir · " + yozuv
         qismlar.append(
             f'<span class="oqim-chip {html.escape(s)}">{html.escape(yozuv)}</span>'
         )
@@ -664,17 +777,27 @@ def ekg_grafik_chiz(
 
     n = massiv.shape[0]
     t = np.arange(n) / float(sampling_rate)
-    try:
-        plt.style.use("seaborn-v0_8-whitegrid")
-    except OSError:
-        plt.style.use("ggplot")
+    fig_fon = "#FFFFFF"
+    iz = "#B42318"
+    grid = "#CFFAFE"
 
     def _belgi(ax: Any, y: np.ndarray) -> None:
         if not tolqinlar:
             return
         hz = float(sampling_rate)
 
-        def nuqta(indekslar: List[int], rang: str, nom: str) -> None:
+        def nuqta(indekslar: List[int], rang: str, belgi: str, nom: str) -> None:
+            """P/QRS/T ni rang va shakl bilan belgilaydi.
+
+            Args:
+                indekslar: Namuna indekslari.
+                rang: Marker rangi.
+                belgi: Matplotlib marker (doira, uchburchak, kvadrat).
+                nom: Legend yozuvi.
+
+            Returns:
+                None. Rang yagona farq emas.
+            """
             if not indekslar:
                 return
             idx = [i for i in indekslar if 0 <= i < len(y)]
@@ -683,40 +806,49 @@ def ekg_grafik_chiz(
             ax.scatter(
                 np.asarray(idx) / hz,
                 y[idx],
-                s=18,
+                s=28,
                 c=rang,
+                marker=belgi,
                 label=nom,
                 zorder=3,
+                edgecolors="#164E63",
+                linewidths=0.4,
             )
 
-        nuqta(list(tolqinlar.get("p_choqqilar") or []), "#1565c0", "P")
-        nuqta(list(tolqinlar.get("r_choqqilar") or []), "#c62828", "R")
-        nuqta(list(tolqinlar.get("t_choqqilar") or []), "#2e7d32", "T")
+        nuqta(list(tolqinlar.get("p_choqqilar") or []), "#1D4ED8", "o", "P (doira)")
+        nuqta(list(tolqinlar.get("r_choqqilar") or []), "#B42318", "^", "R (uchburchak)")
+        nuqta(list(tolqinlar.get("t_choqqilar") or []), "#047857", "s", "T (kvadrat)")
 
     if tasma_tanlov == "12 tasma":
-        fig, oqlar = plt.subplots(6, 2, figsize=(8.2, 9.2), sharex=True)
+        fig, oqlar = plt.subplots(6, 2, figsize=(8.2, 9.2), sharex=True, facecolor=fig_fon)
         for i, nom in enumerate(TASMA_NOMLARI):
             ax = oqlar[i // 2][i % 2]
-            ax.plot(t, massiv[:, i], color="#b71c1c", linewidth=0.7)
+            ax.set_facecolor(fig_fon)
+            ax.plot(t, massiv[:, i], color=iz, linewidth=0.8)
+            ax.grid(True, color=grid, linewidth=0.6)
             if ep_tasma == nom or (ep_tasma is None and nom == "II"):
                 _belgi(ax, massiv[:, i])
-            ax.set_ylabel(nom, rotation=0, labelpad=18, va="center", fontsize=9)
+            ax.set_ylabel(nom, rotation=0, labelpad=18, va="center", fontsize=10, color="#164E63")
+            ax.tick_params(colors="#475569", labelsize=9)
             ax.set_yticks([])
         oqlar[-1][0].set_xlabel("Vaqt (s)")
         oqlar[-1][1].set_xlabel("Vaqt (s)")
-        fig.suptitle(sarlavha, fontsize=11)
+        fig.suptitle(sarlavha, fontsize=12, color="#164E63")
         fig.tight_layout()
         return fig
 
     idx = TASMA_NOMLARI.index(tasma_tanlov) if tasma_tanlov in TASMA_NOMLARI else 1
-    fig, ax = plt.subplots(figsize=(8.2, 3.6))
-    ax.plot(t, massiv[:, idx], color="#b71c1c", linewidth=0.9)
+    fig, ax = plt.subplots(figsize=(8.2, 3.6), facecolor=fig_fon)
+    ax.set_facecolor(fig_fon)
+    ax.plot(t, massiv[:, idx], color=iz, linewidth=1.0)
+    ax.grid(True, color=grid, linewidth=0.6)
     _belgi(ax, massiv[:, idx])
     if tolqinlar and (tolqinlar.get("p_choqqilar") or tolqinlar.get("r_choqqilar")):
-        ax.legend(loc="upper right", fontsize=8)
-    ax.set_xlabel("Vaqt (s)")
-    ax.set_ylabel("Amplitude (shartli)")
-    ax.set_title(f"{sarlavha} — {tasma_tanlov}")
+        ax.legend(loc="upper right", fontsize=9)
+    ax.set_xlabel("Vaqt (s)", color="#164E63")
+    ax.set_ylabel("Amplitude (shartli)", color="#164E63")
+    ax.set_title(f"{sarlavha} — {tasma_tanlov}", color="#164E63")
+    ax.tick_params(colors="#475569", labelsize=10)
     fig.tight_layout()
     return fig
 
@@ -841,7 +973,7 @@ def _lab_kartalar(lab_natija: Optional[Dict[str, Any]], bemor: Optional[Dict[str
             return "ok" if v < 5.7 else ("warning" if v < 6.5 else "danger")
         return "ok"
 
-    belgi_map = {"ok": "●", "warning": "⚠", "danger": "🔴"}
+    holat_yozuv = {"ok": "me’yor", "warning": "chegara", "danger": "og‘ish"}
     sarlavha_map = {m[0]: m[1] for m in LAB_MAYDONLARI}
     html_qismlar = []
     for k, v in qiymatlar.items():
@@ -851,10 +983,10 @@ def _lab_kartalar(lab_natija: Optional[Dict[str, Any]], bemor: Optional[Dict[str
             continue
         h = _holat(k, fv)
         s = html.escape(sarlavha_map.get(k, k))
-        belgi = belgi_map.get(h, "●")
+        yozuv = html.escape(holat_yozuv.get(h, "noma’lum"))
         html_qismlar.append(
             f'<div class="lab-card {html.escape(h)}">'
-            f'<span class="lab-dot-{html.escape(h)}">{belgi}</span>'
+            f'<span class="lab-holat">{yozuv}</span>'
             f'<span class="lab-val">{html.escape(str(round(fv, 2)))}</span>'
             f'<span>{s}</span>'
             f'</div>'
@@ -944,7 +1076,7 @@ def _qadam_panel(agent_holat: Optional[Dict[str, Any]]) -> None:
     tarix = [str(t) for t in (agent_holat.get("qadam_tarixi") or [])]
     if any("replan" in t.lower() for t in tarix):
         st.markdown(
-            '<div class="replan-alert">⚠️ REPLAN aniqlandi — reja qayta tartibga solindi. '
+            '<div class="replan-alert">REPLAN aniqlandi — reja qayta tartibga solindi. '
             'Klinik qarorni shifokor tasdiqlashi kerak.</div>',
             unsafe_allow_html=True,
         )
@@ -965,11 +1097,11 @@ def _qadam_panel(agent_holat: Optional[Dict[str, Any]]) -> None:
         qid = str(qadam.get("id") or "")
 
         if hol == "done":
-            belgi, klass = "✅", "done"
+            belgi, klass = "tayyor", "done"
         elif hol == "xato":
-            belgi, klass = "❌", "xato"
+            belgi, klass = "xato", "xato"
         else:
-            belgi, klass = "🔷", "pending"
+            belgi, klass = "kutilmoqda", "pending"
 
         natija_matn = ""
         if hol == "done":
@@ -1000,10 +1132,11 @@ def _qadam_panel(agent_holat: Optional[Dict[str, Any]]) -> None:
 
         st.markdown(
             f'<div class="step-card {html.escape(klass)}">'
-            f'{belgi} <b>{html.escape(qid)}</b> — <b>{html.escape(vosita)}</b><br>'
+            f'<span class="qadam-holat">{html.escape(belgi)}</span> '
+            f'<b>{html.escape(qid)}</b> — <b>{html.escape(vosita)}</b><br>'
             f'<span style="color:#6b7280;font-size:0.85rem;">{html.escape(tavsif)}</span>'
             + (f'<br><span style="color:#374151;font-size:0.83rem;">{html.escape(natija_matn)}</span>' if natija_matn else "")
-            + (f'<br><span style="color:#dc2626;font-size:0.83rem;">❌ {html.escape(xato_matn)}</span>' if xato_matn else "")
+            + (f'<br><span style="color:#991B1B;font-size:0.9rem;">{html.escape(xato_matn)}</span>' if xato_matn else "")
             + '</div>',
             unsafe_allow_html=True,
         )
@@ -1544,7 +1677,7 @@ def _ustun1_forma() -> Tuple[Dict[str, Any], Any, float, bool]:
     if tanlov != "yoq" and st.session_state.get("sintetik_izoh"):
         # Ma’lumotlar yuklangani haqida darhol xabar (forma, lab, EKG, echo to‘ldirildi)
         st.success(
-            "✅ Ma’lumotlar yuklandi: "
+            "Ma’lumotlar yuklandi: "
             + paket_xulosasi(
                 {
                     "yosh": st.session_state.get("bemor_yosh"),
@@ -1725,6 +1858,8 @@ def _ustun2_ekg(
     )
     st.pyplot(fig, width="stretch")
     plt.close(fig)
+    if belgi and tolqinlar:
+        st.caption("P — doira, R — uchburchak, T — kvadrat. Shakl rangdan mustaqil. Tashxis emas.")
     # EKG metrik badge'lari (HR/QRS/QTc/PR)
     _ecg_metrik(
         (agent_holat or {}).get("ecg_natija"),
@@ -2129,21 +2264,21 @@ def _ustun3_xulosa(
 
 
 def _bolim_holat(bolim_id: str, agent_holat: Optional[Dict[str, Any]]) -> Tuple[str, str]:
-    """Bo'lim uchun holat belgisi (✅/⏳/⚠️) va qisqa ko'rsatkichni qaytaradi.
+    """Bo‘lim holatini matn bilan qaytaradi: tayyor, kutilmoqda yoki ogohlantirish.
 
     Args:
         bolim_id: NATIJA_BOLIMLAR dagi kalit (masalan 'lab_tech').
         agent_holat: ChiefCardiologist.run natijasi yoki None.
 
     Returns:
-        (emoji, qisqa_matn). Tahlildan oldin ('⏳', ''). Tashxis emas.
+        (holat_so‘zi, qisqa_matn). Tahlildan oldin ('kutilmoqda', ''). Tashxis emas.
     """
     if not agent_holat:
-        return "⏳", ""
+        return "kutilmoqda", ""
 
     if bolim_id == "agent_izlar":
         soni = len(agent_holat.get("qadam_tarixi") or [])
-        return ("✅", f"{soni} qadam") if soni else ("⏳", "")
+        return ("tayyor", f"{soni} qadam") if soni else ("kutilmoqda", "")
 
     kalit_map = {
         "klinik_reja":  "reja",
@@ -2159,44 +2294,44 @@ def _bolim_holat(bolim_id: str, agent_holat: Optional[Dict[str, Any]]) -> Tuple[
     }
     kalit = kalit_map.get(bolim_id)
     if kalit is None:
-        return "⏳", ""
+        return "kutilmoqda", ""
     qiymat = agent_holat.get(kalit)
     if not qiymat:
-        return "⏳", ""
+        return "kutilmoqda", ""
 
     if bolim_id == "klinik_reja":
         reja = qiymat or []
         done = sum(1 for q in reja if q.get("holat") == "done")
         xato = sum(1 for q in reja if q.get("holat") == "xato")
-        return ("⚠️", f"{done}/{len(reja)}, {xato} xato") if xato else ("✅", f"{done}/{len(reja)} qadam")
+        return ("ogohlantirish", f"{done}/{len(reja)}, {xato} xato") if xato else ("tayyor", f"{done}/{len(reja)} qadam")
     if bolim_id == "cardiac_rag":
-        return "✅", f"{len(qiymat)} dalil"
+        return "tayyor", f"{len(qiymat)} dalil"
     if bolim_id == "lab_tech":
-        return "✅", f"{len(qiymat.get('tokenlar') or [])} token"
+        return "tayyor", f"{len(qiymat.get('tokenlar') or [])} token"
     if bolim_id == "ekg_tech":
-        return "✅", f"HR≈{qiymat.get('yurak_chastotasi_bpm') or '?'}, {qiymat.get('sifat') or '?'}"
+        return "tayyor", f"HR≈{qiymat.get('yurak_chastotasi_bpm') or '?'}, {qiymat.get('sifat') or '?'}"
     if bolim_id == "elektrofiz":
-        return "✅", f"HR {qiymat.get('yurak_chastotasi_bpm') or '?'}, QTc {qiymat.get('qtc_bazett_ms') or '?'}"
+        return "tayyor", f"HR {qiymat.get('yurak_chastotasi_bpm') or '?'}, QTc {qiymat.get('qtc_bazett_ms') or '?'}"
     if bolim_id == "echo_tech":
-        return "✅", f"{len(qiymat.get('korinishlar') or [])} ko'rinish"
+        return "tayyor", f"{len(qiymat.get('korinishlar') or [])} ko'rinish"
     if bolim_id == "echo_seg":
         if qiymat.get("ok"):
-            return "✅", f"ulush={qiymat.get('ulush') or '?'}"
-        return "⚠️", str(qiymat.get("xabar") or "xato")[:30]
+            return "tayyor", f"ulush={qiymat.get('ulush') or '?'}"
+        return "ogohlantirish", str(qiymat.get("xabar") or "xato")[:30]
     if bolim_id == "fellow":
-        return "✅", str(qiymat.get("manba") or "?")
+        return "tayyor", str(qiymat.get("manba") or "?")
     if bolim_id == "qadamlar":
-        return "✅", f"{len(qiymat)} qadam"
+        return "tayyor", f"{len(qiymat)} qadam"
     if bolim_id == "mdt":
-        k = "✓" if qiymat.get("konsensus") else "✗"
-        return "✅", f"{qiymat.get('raund_soni') or 0} raund {k}"
-    return "✅", ""
+        k = "kelishildi" if qiymat.get("konsensus") else "kelishilmadi"
+        return "tayyor", f"{qiymat.get('raund_soni') or 0} raund, {k}"
+    return "tayyor", ""
 
 
 def _natija_bolimlar_tanlovi(agent_holat: Optional[Dict[str, Any]]) -> str:
     """Natija bo'limlari ro'yxatini chap ustun pastida oqim tartibida chizadi.
 
-    Har bo'lim yonida holat belgisi (✅/⏳/⚠️) va qisqa ko'rsatkich.
+    Har bo‘lim yonida holat so‘zi (tayyor / kutilmoqda / ogohlantirish) va qisqa ko‘rsatkich.
     Tanlov st.session_state['tanlangan_bolim'] da saqlanadi.
     Bir vaqtda bitta bo'lim ochiq.
 
@@ -2208,7 +2343,7 @@ def _natija_bolimlar_tanlovi(agent_holat: Optional[Dict[str, Any]]) -> str:
     """
     st.markdown('<div class="bolim-sarlavha">Natija bo\'limlari</div>', unsafe_allow_html=True)
     if not agent_holat:
-        st.caption("Tahlildan keyin natijalar bo'lim-bo'lim ko'rinadi. ⏳ = hali yo'q.")
+        st.caption("Tahlildan keyin natijalar bo‘lim-bo‘lim ko‘rinadi. «kutilmoqda» — hali yo‘q.")
     if "tanlangan_bolim" not in st.session_state:
         st.session_state.tanlangan_bolim = "klinik_reja"
 
@@ -2737,7 +2872,7 @@ def _tahlil_boshlash_forma(bemor: Dict[str, Any], fayllar: Any, sampling_rate: f
             "«Natijani kutmaslik» tugmasini bosing."
         )
         return
-    st.toast("Tahlil boshlandi. Jarayon yuqoridagi oqimda ko‘rinadi.", icon="🫀")
+    st.toast("Tahlil boshlandi. Jarayon yuqoridagi oqimda ko‘rinadi.")
     st.session_state.agent_holat = None
     st.session_state.bemor_tahlil = paket
     st.session_state.job_paket_id = job["id"]
@@ -2757,7 +2892,6 @@ def asosiy() -> None:
     st.set_page_config(
         page_title="Kardiologik AI agent",
         layout="wide",
-        page_icon="\U0001fac0",
     )
     _klinik_ogohlantirish()
 

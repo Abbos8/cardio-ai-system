@@ -1,12 +1,12 @@
 # HANDOFF — cardio-ai-system
 
-**Qoida:** yangi sessiyada butun loyihani va bu faylning eski tarixini qidirmang. Shu bo‘lim va «Maqola kamchiliklari» jadvalini o‘qing. Sessiya kundaligini qo‘shmang — faqat «Hozir qayerdamiz» va ochiq qatorni yangilang. Modul tafsiloti: `DASTURIY_YORIQNOMA.md`.
+**Qoida:** yangi sessiyada butun loyihani va bu faylning eski tarixini qidirmang. Shu bo‘lim va «Maqola kamchiliklari» jadvalini o‘qing. Sessiya kundaligini qo‘shmang — faqat «Hozir qayerdamiz» va ochiq qatorni yangilang. Modul tafsiloti kodda (`src/`).
 
 Tizim shifokor o‘rnini bosmaydi. Yakuniy qaror shifokorga tegishli. **Klinik production emas.**
 
 ---
 
-## Hozir qayerdamiz (2026-10-19)
+## Hozir qayerdamiz (2026-11-16)
 
 | Maydon | Qiymat |
 |---|---|
@@ -15,7 +15,7 @@ Tizim shifokor o‘rnini bosmaydi. Yakuniy qaror shifokorga tegishli. **Klinik p
 | Ochiq UI reja | **qilindi** (2026-10-14): 11 bo‘lim tugmalari chap ustunda, bo‘lim natijasi o‘rta ustunda (`st.container(height=620)`, ichki scroll; 11 bo‘limda sahifa balandligi o‘zgarmasligi tekshirildi), o‘ng ustunda faqat badge+xulosa+tavsiyalar. Expander yo‘q. Ustun nisbat [1.0, 1.5, 1.0]. |
 | Jonli jarayon | **qilindi** (2026-10-14): tahlil fon oqimida (`src/ui/jonli_tahlil.py`, `TahlilOmbori`), UI har 2 s o‘qiydi (`st.fragment`). Bemor ma’lumotlari yuklandi, murakkablik, reja (qadamlari bilan), har vosita natijasi, stepwise, MDT tugagan zahoti chiqadi; bo‘lim tugmalari va o‘rta panel ham jonli. Sahifa yangilansa ish va natija yo‘qolmaydi; «Natijani kutmaslik» tugmasi bor. `st.status` olib tashlandi. |
 | GitHub | https://github.com/Abbos8/cardio-ai-system (private, `main`) |
-| UI | `./ishga_tushir.sh` → http://127.0.0.1:8501 |
+| UI | `./ishga_tushir.sh` → http://127.0.0.1:8501. Ko‘rinish: Atkinson Hyperlegible, moviy panel (`#ECFEFF` / `#0891B2`), holat so‘z bilan (tayyor, kutilmoqda, ogohlantirish). EKG belgilari shakl bilan: P doira, R uchburchak, T kvadrat. Oqim o‘zgarmagan. |
 | Oqim | murakkablik → CardiacRAG reja → vosita → CONTINUE/STOP → MDT → xulosa. Vizual panel tugma bilan |
 
 Maqola (`arXiv:2508.13256`) kamchiliklarini koddan qayta qidirmang. Jadval manba. Yopilganda status `qilindi`, keyingi ochiq qatorga o‘ting.
@@ -84,4 +84,4 @@ Conda `(base)` bilan `streamlit` ishlatmang (NumPy/FAISS aralashadi).
 - Test: `PYTHONPATH=src python -m unittest tests.test_barqarorlik tests.test_xavfsizlik tests.test_rag_korpus tests.test_sintetik_bemor -v`
 - 2026-10-12: DeepSeek-R1 va Qwen2.5-VL javob berdi. Fellow rasmi `FELLOW_VISION_*` yoki `QWEN_VL_*` (`qwen/qwen-2.5-vl-72b-instruct`). Reasoner ga rasm ketmaydi.
 
-14 bosqich (1–14) **qilindi**. Kod xaritasi `DASTURIY_YORIQNOMA.md`.
+14 bosqich (1–14) **qilindi**. `DASTURIY_YORIQNOMA.md` olib tashlandi; kod xaritasi `src/` da.
