@@ -15,7 +15,8 @@ Tizim shifokor o‘rnini bosmaydi. Yakuniy qaror shifokorga tegishli. **Klinik p
 | Ochiq UI reja | **qilindi** (2026-10-14): 11 bo‘lim tugmalari chap ustunda, bo‘lim natijasi o‘rta ustunda (`st.container(height=620)`, ichki scroll; 11 bo‘limda sahifa balandligi o‘zgarmasligi tekshirildi), o‘ng ustunda faqat badge+xulosa+tavsiyalar. Expander yo‘q. Ustun nisbat [1.0, 1.5, 1.0]. |
 | Jonli jarayon | **qilindi** (2026-10-14): tahlil fon oqimida (`src/ui/jonli_tahlil.py`, `TahlilOmbori`), UI har 2 s o‘qiydi (`st.fragment`). Bemor ma’lumotlari yuklandi, murakkablik, reja (qadamlari bilan), har vosita natijasi, stepwise, MDT tugagan zahoti chiqadi; bo‘lim tugmalari va o‘rta panel ham jonli. Sahifa yangilansa ish va natija yo‘qolmaydi; «Natijani kutmaslik» tugmasi bor. `st.status` olib tashlandi. |
 | GitHub | https://github.com/Abbos8/cardio-ai-system (private, `main`) |
-| UI | `./ishga_tushir.sh` → http://127.0.0.1:8501. Ko‘rinish: Atkinson Hyperlegible, moviy panel (`#ECFEFF` / `#0891B2`), holat so‘z bilan (tayyor, kutilmoqda, ogohlantirish). EKG belgilari shakl bilan: P doira, R uchburchak, T kvadrat. Oqim o‘zgarmagan. |
+| UI | `./ishga_tushir.sh` → http://127.0.0.1:8501. Kiritish 6 qadam (chap qadam, markaz forma, o‘ng yig‘ilgan holat), natija alohida ekran. «Tahlil qilish» agentni ishga tushiradi. Oqim o‘zgarmagan. |
+| Workflow prototip | `design/workflow/index.html` dizayn manbasi. Ishlaydigan oqim endi `src/ui/app.py` da. |
 | Oqim | murakkablik → CardiacRAG reja → vosita → CONTINUE/STOP → MDT → xulosa. Vizual panel tugma bilan |
 
 Maqola (`arXiv:2508.13256`) kamchiliklarini koddan qayta qidirmang. Jadval manba. Yopilganda status `qilindi`, keyingi ochiq qatorga o‘ting.
@@ -78,7 +79,7 @@ cd cardio-ai-system
 ./ishga_tushir.sh
 ```
 
-Conda `(base)` bilan `streamlit` ishlatmang (NumPy/FAISS aralashadi).
+Conda `(base)` bilan `streamlit` ishlatmang (NumPy/FAISS aralashadi). NumPy 1.26 qoladi: `pyarrow` 26 emas, `>=18,<25`.
 
 - Smoke: `PYTHONPATH=src python3 -c "from agents.chief_agent import ChiefCardiologist"`
 - Test: `PYTHONPATH=src python -m unittest tests.test_barqarorlik tests.test_xavfsizlik tests.test_rag_korpus tests.test_sintetik_bemor -v`

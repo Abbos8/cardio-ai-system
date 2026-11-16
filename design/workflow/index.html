@@ -1,0 +1,725 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kardiologik AI agent — holat yig‘ish</title>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --fon: #ECFEFF;
+    --siyoh: #164E63;
+    --aksent: #0891B2;
+    --aksent-chuqur: #0E7490;
+    --chiziq: #A5F3FC;
+    --oq: #FFFFFF;
+    --ogoh-fon: #FEF3C7;
+    --ogoh-siyoh: #451A03;
+    --joriy-matn: #042F2E;
+  }
+  * { box-sizing: border-box; }
+  html { height: 100%; }
+  body {
+    margin: 0;
+    min-height: 100%;
+    background: var(--fon);
+    color: var(--siyoh);
+    font-family: "Atkinson Hyperlegible", "Segoe UI", sans-serif;
+    font-size: 16px;
+    line-height: 1.5;
+    color-scheme: light;
+  }
+  ::selection { background: #A5F3FC; color: #164E63; }
+  * { scrollbar-width: thin; scrollbar-color: #67E8F9 #ECFEFF; }
+  :focus-visible { outline: 3px solid #0891B2; outline-offset: 2px; }
+  input, textarea, select { caret-color: #0891B2; }
+  .sakrash {
+    position: absolute;
+    left: 12px;
+    top: -40px;
+    background: #0891B2;
+    color: #000;
+    padding: 8px 12px;
+    z-index: 5;
+  }
+  .sakrash:focus { top: 12px; }
+  .qobiq {
+    display: grid;
+    grid-template-columns: 280px minmax(0, 1fr) 340px;
+    height: 100vh;
+  }
+  .chap, .holat, main {
+    min-height: 0;
+    overflow: auto;
+  }
+  .chap, .holat {
+    background: var(--oq);
+  }
+  .chap { border-right: 1px solid var(--chiziq); padding: 22px 16px 28px; }
+  .holat { border-left: 1px solid var(--chiziq); padding: 28px 18px 32px; }
+  main { padding: 22px 28px 36px; }
+  .nom { font-size: 18px; font-weight: 700; margin: 0 0 16px; }
+  .band {
+    display: block;
+    width: 100%;
+    text-align: left;
+    background: var(--oq);
+    color: var(--siyoh);
+    border: 1px solid transparent;
+    border-radius: 12px;
+    padding: 12px;
+    margin: 0 0 6px;
+    font: 700 18px/1.3 "Atkinson Hyperlegible", "Segoe UI", sans-serif;
+    cursor: pointer;
+  }
+  .band small {
+    display: block;
+    margin-top: 2px;
+    font-weight: 400;
+    font-size: 16px;
+    color: var(--aksent-chuqur);
+  }
+  .band.joriy { background: var(--aksent); color: #000; border-color: var(--aksent-chuqur); }
+  .band.joriy small { color: #000; }
+  .band:hover { border-color: var(--aksent); }
+  .qaytish {
+    margin-top: 18px;
+    background: var(--oq);
+    color: var(--siyoh);
+    border: 1px solid var(--chiziq);
+  }
+  .ogoh {
+    background: var(--ogoh-fon);
+    color: var(--ogoh-siyoh);
+    border-radius: 12px;
+    padding: 12px 14px;
+    margin: 0 0 22px;
+  }
+  h1 { font-size: 40px; line-height: 1.15; font-weight: 700; margin: 0 0 16px; }
+  h2 { font-size: 28px; line-height: 1.2; margin: 0 0 12px; }
+  .izoh { margin: 0 0 16px; max-width: 68ch; }
+  .qator { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+  label.maydon { display: block; margin-bottom: 12px; }
+  .maydon span, .radio-qator b, legend {
+    display: block;
+    font-weight: 700;
+    font-size: 16px;
+    margin-bottom: 6px;
+  }
+  .past-izoh { display: block; margin-top: 4px; color: var(--aksent-chuqur); font-size: 16px; }
+  input[type="number"], input[type="text"], select, textarea, .quti {
+    width: 100%;
+    background: var(--oq);
+    color: var(--siyoh);
+    border: 1px solid var(--chiziq);
+    border-radius: 12px;
+    padding: 12px 14px;
+    font: 400 20px/1.4 "Atkinson Hyperlegible", "Segoe UI", sans-serif;
+  }
+  textarea { min-height: 92px; resize: vertical; }
+  .xato { color: var(--ogoh-siyoh); background: var(--ogoh-fon); border-radius: 12px; padding: 8px 12px; margin-top: 6px; }
+  fieldset { border: 0; margin: 0; padding: 0; }
+  .radio-qator {
+    display: grid;
+    grid-template-columns: 22px 1fr;
+    gap: 10px;
+    align-items: start;
+    background: var(--oq);
+    border: 1px solid var(--chiziq);
+    border-radius: 12px;
+    padding: 12px 14px;
+    margin: 0 0 8px;
+  }
+  .radio-qator input { width: 18px; height: 18px; margin-top: 3px; accent-color: #0891B2; }
+  .radio-qator p { margin: 4px 0 0; }
+  .pastki {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    margin-top: 8px;
+  }
+  button {
+    min-height: 48px;
+    border-radius: 8px;
+    padding: 0 18px;
+    font: 700 18px/1.2 "Atkinson Hyperlegible", "Segoe UI", sans-serif;
+    cursor: pointer;
+  }
+  .asosiy { background: var(--aksent); color: #000; border: 1px solid var(--aksent-chuqur); }
+  .asosiy:hover { background: #06B6D4; }
+  .ikkilamchi { background: var(--oq); color: var(--siyoh); border: 1px solid var(--chiziq); }
+  .ikkilamchi:hover { border-color: var(--aksent); background: #F0FDFA; }
+  .lab-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .lab-grid .son { font-variant-numeric: tabular-nums; }
+  .holat-soz { font-weight: 700; color: var(--aksent-chuqur); }
+  .holat-soz.ogoh { display: inline; background: transparent; color: #92400E; padding: 0; border-radius: 0; }
+  .fakt { border-top: 1px solid var(--chiziq); padding: 10px 0; }
+  .fakt b { display: block; font-size: 16px; color: var(--aksent-chuqur); font-weight: 700; }
+  .fakt.yangilandi { animation: yozildi 700ms cubic-bezier(0.16, 1, 0.3, 1); }
+  @keyframes yozildi { from { background: #A5F3FC; } to { background: transparent; } }
+  .bo‘shliq { margin-top: 14px; background: var(--fon); border-radius: 12px; padding: 10px 12px; }
+  table { width: 100%; border-collapse: collapse; background: var(--oq); border-radius: 12px; overflow: hidden; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--chiziq); font-variant-numeric: tabular-nums; }
+  th { font-size: 16px; }
+  .royxat { margin: 0; padding-left: 1.1rem; max-width: 68ch; }
+  .royxat li { margin: 0 0 6px; }
+  input[type="file"]::file-selector-button {
+    min-height: 44px;
+    margin-right: 12px;
+    border-radius: 8px;
+    border: 1px solid var(--chiziq);
+    background: var(--oq);
+    color: var(--siyoh);
+    font: 700 16px "Atkinson Hyperlegible", "Segoe UI", sans-serif;
+    padding: 0 12px;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .fakt.yangilandi { animation: none; }
+  }
+  @media (max-width: 960px) {
+    html, body { width: 100%; overflow-x: hidden; }
+    body { overflow-y: auto; }
+    .qobiq { display: block; height: auto; max-width: 100%; }
+    main { padding-left: 16px; padding-right: 16px; }
+    .chap, .holat, main { overflow: visible; max-width: 100%; }
+    .chap { border-right: 0; border-bottom: 1px solid var(--chiziq); position: sticky; top: 0; z-index: 3; overflow: hidden; }
+    nav { display: flex; gap: 8px; overflow-x: auto; max-width: 100%; min-width: 0; }
+    .band { flex: 0 0 auto; width: auto; min-width: 148px; }
+    .ogoh { overflow-wrap: break-word; }
+    .qator, .lab-grid { grid-template-columns: 1fr; }
+    h1 { font-size: 32px; }
+    .pastki { flex-direction: column; }
+    .pastki button { width: 100%; }
+  }
+</style>
+</head>
+<body>
+<a class="sakrash" href="#markaz">Markazga o‘tish</a>
+<div class="qobiq">
+  <aside class="chap" id="chap"></aside>
+  <main id="markaz"></main>
+  <aside class="holat" id="ong" aria-label="Yig‘ilgan holat"></aside>
+</div>
+<script>
+/** HTML matnini xavfsiz chiqaradi. Kirish: istalgan qiymat. Chiqish: qochirilgan qator. */
+function esc(qiymat) {
+  return String(qiymat ?? "").replace(/[&<>"']/g, function (belgi) {
+    return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[belgi];
+  });
+}
+
+const QADAMLAR = [
+  ["holat", "Holat"],
+  ["bemor", "Bemor"],
+  ["lab", "Laboratoriya"],
+  ["ekg", "EKG"],
+  ["echo", "Echo"],
+  ["tekshiruv", "Tekshiruv"]
+];
+
+const LABLAR = [
+  ["troponin_i", "Troponin I", "ng/L", "0–34, laboratoriya usuliga bog‘liq", function (n) { return n > 34; }],
+  ["nt_probnp", "NT-proBNP", "pg/mL", "yosh va jinsga bog‘liq", null],
+  ["kreatinin", "Kreatinin", "µmol/L", "taxminan 60–110", function (n) { return n < 60 || n > 110; }],
+  ["kaliy", "Kaliy", "mmol/L", "taxminan 3.5–5.1", function (n) { return n < 3.5 || n > 5.1; }],
+  ["glyukoza", "Glyukoza", "mmol/L", "och holatda taxminan 3.9–6.1", function (n) { return n < 3.9 || n > 6.1; }],
+  ["ldl", "LDL", "mmol/L", "xavf guruhiga bog‘liq", null],
+  ["hdl", "HDL", "mmol/L", "taxminan 1.0 dan yuqori", function (n) { return n < 1; }],
+  ["hba1c", "HbA1c", "%", "taxminan 5.7 dan past", function (n) { return n >= 5.7; }]
+];
+
+const BOLIMLAR = [
+  ["klinik_reja", "Klinik reja P", "Murakkablik va reja qadamlari shu yerda ochiladi."],
+  ["cardiac_rag", "CardiacRAG kontekst C", "Topilgan parcha va manba shu yerda ochiladi."],
+  ["lab_tech", "Lab technician", "Kiritilgan raqamlar. Talqin emas."],
+  ["ekg_tech", "EKG technician", "Signal bor-yo‘qligi va chastota. Tahlil ulanmagan."],
+  ["elektrofiz", "Elektrofiziolog", "P, QRS va T belgilari tahlildan keyin chiqadi."],
+  ["echo_tech", "Echo technician", "Ko‘rinishlar ro‘yxati. Tasnif ulanmagan."],
+  ["echo_seg", "Echo segmenter", "LV niqobi va EF tahlildan keyin. Og‘irlik bo‘lmasa EF yo‘q."],
+  ["fellow", "Cardiology fellow", "Fellow matni tahlildan keyin. Hozir bo‘sh."],
+  ["qadamlar", "Qadamlar (LangGraph)", "CONTINUE yoki STOP tahlildan keyin yoziladi."],
+  ["mdt", "MDT munozara", "Murakkab holatda uch model. Bu prototipda yo‘q."],
+  ["agent_izlar", "Agent izlar va mulohaza", "Texnik iz. Klinik xulosa emas."]
+];
+
+const PAKETLAR = {
+  sodda: {
+    izoh: "Yengil shikoyat, biomarkerlar me’yorda, sinus ritmiga yaqin EKG, 2 ta echo ko‘rinish.",
+    yosh: 45, jins: "ayol",
+    shikoyat: "Vaqti-vaqti bilan yengil yurak urishi. Ko‘krak og‘rig‘i yo‘q, hushdan ketish yo‘q.",
+    anamnez: "Surunkali kasallik yo‘q. Chekmaydi. Oldingi MI yo‘q.",
+    dorilar: "yo‘q", hz: 500, soniya: 8, chastota: 72,
+    echo: ["A4C", "Parasternal long"],
+    lab: { troponin_i: 8, nt_probnp: 80, kreatinin: 78, kaliy: 4.2, glyukoza: 5.2, ldl: 2.2, hdl: 1.4, hba1c: 5.3 }
+  },
+  murakkab: {
+    izoh: "O‘tkir ko‘krak og‘rig‘i, troponin va NT-proBNP ogohlantirish zonasida, taxikardiya, 6 ta echo ko‘rinish.",
+    yosh: 62, jins: "erkak",
+    shikoyat: "1 soatdan beri ko‘krak qisilishi, chap qo‘lga tarqaladi, terlash.",
+    anamnez: "Gipertenziya 8 yil. Chekuvchi. Oldingi MI yo‘q.",
+    dorilar: "aspirin | 100 mg | kuniga bir marta\namlodipin | 5 mg | kuniga bir marta",
+    hz: 500, soniya: 8, chastota: 118,
+    echo: ["A4C", "A2C", "A3C", "Parasternal long", "Parasternal short", "Subcostal"],
+    lab: { troponin_i: 72, nt_probnp: 640, kreatinin: 140, kaliy: 3.2, glyukoza: 8.4, ldl: 3.8, hdl: 0.9, hba1c: 6.1 }
+  },
+  juda_murakkab: {
+    izoh: "Nafas qisishi va hushdan ketish, xavfli biomarkerlar, bradikardiya, 11 ta echo ko‘rinish.",
+    yosh: 78, jins: "erkak",
+    shikoyat: "Dam olishda nafas qisishi, ko‘krak og‘rig‘i, hushdan ketish epizodi, oyoq shishi.",
+    anamnez: "Yurak yetishmovchiligi, qandli diabet, buyrak funksiyasi pasaygan, oldingi MI. Gipertenziya.",
+    dorilar: "bisoprolol | 2.5 mg | kuniga bir marta\nfurosemid | 40 mg | kuniga bir marta\ninsulin | 10 IU | kuniga ikki marta\nspironolakton | 25 mg | kuniga bir marta",
+    hz: 500, soniya: 8, chastota: 46,
+    echo: ["A2C", "A3C", "A4C", "A5C", "Apical Doppler", "Doppler parasternal long", "Doppler parasternal short", "Parasternal long", "Parasternal short", "SSN", "Subcostal"],
+    lab: { troponin_i: 240, nt_probnp: 4800, kreatinin: 360, kaliy: 6.1, glyukoza: 18.5, ldl: 5.6, hdl: 0.55, hba1c: 9.4 }
+  }
+};
+
+/** Joriy holat. Sintetik paket haqiqiy yozuv emas; tahlil chaqirilmaydi. */
+const holat = {
+  ekran: "kiritish",
+  qadam: "bemor",
+  manba: "sodda",
+  yosh: "",
+  jins: "ko‘rsatilmagan",
+  shikoyat: "",
+  anamnez: "",
+  dorilar: "",
+  lab: {},
+  ekgFayl: "",
+  ekgXato: "",
+  echoFayl: [],
+  echoXato: "",
+  hz: null,
+  soniya: null,
+  chastota: null,
+  echo: [],
+  bolim: "klinik_reja",
+  vizual: false
+};
+
+let oldingiKalitlar = null;
+
+/** Bo‘sh holatga qaytaradi. Chiqish: maydonlar tozalanadi. Tashxis emas. */
+function boshga() {
+  holat.manba = "bosh";
+  holat.yosh = "";
+  holat.jins = "ko‘rsatilmagan";
+  holat.shikoyat = "";
+  holat.anamnez = "";
+  holat.dorilar = "";
+  holat.lab = {};
+  holat.ekgFayl = "";
+  holat.ekgXato = "";
+  holat.echoFayl = [];
+  holat.echoXato = "";
+  holat.hz = null;
+  holat.soniya = null;
+  holat.chastota = null;
+  holat.echo = [];
+}
+
+/** Sintetik paketni maydonlarga yozadi. Kirish: sodda, murakkab yoki juda_murakkab. */
+function paketniYoz(kalit) {
+  const paket = PAKETLAR[kalit];
+  holat.manba = kalit;
+  holat.yosh = paket.yosh;
+  holat.jins = paket.jins;
+  holat.shikoyat = paket.shikoyat;
+  holat.anamnez = paket.anamnez;
+  holat.dorilar = paket.dorilar;
+  holat.lab = Object.assign({}, paket.lab);
+  holat.hz = paket.hz;
+  holat.soniya = paket.soniya;
+  holat.chastota = paket.chastota;
+  holat.echo = paket.echo.slice();
+  holat.ekgFayl = "";
+  holat.echoFayl = [];
+  holat.ekgXato = "";
+  holat.echoXato = "";
+}
+
+/** Laboratoriya qiymatining so‘zini qaytaradi. Orientir tashxis chegarasi emas. */
+function labSoz(kalit, qiymat) {
+  if (qiymat === "" || qiymat === null || qiymat === undefined || Number.isNaN(Number(qiymat))) return "hali yo‘q";
+  const qator = LABLAR.find(function (band) { return band[0] === kalit; });
+  if (qator && qator[4] && qator[4](Number(qiymat))) return "ogohlantirish";
+  return "tayyor";
+}
+
+/** Qadam holat so‘zini qaytaradi: tayyor, ogohlantirish yoki hali yo‘q. */
+function qadamSoz(kalit) {
+  if (kalit === "holat") return holat.manba ? "tayyor" : "hali yo‘q";
+  if (kalit === "bemor") {
+    const yosh = holat.yosh === "" ? NaN : Number(holat.yosh);
+    if (!holat.shikoyat.trim() || !holat.jins || Number.isNaN(yosh)) return "hali yo‘q";
+    if (yosh < 0 || yosh > 120) return "ogohlantirish";
+    return "tayyor";
+  }
+  if (kalit === "lab") {
+    const sozlar = LABLAR.map(function (band) { return labSoz(band[0], holat.lab[band[0]]); });
+    if (sozlar.every(function (soz) { return soz === "hali yo‘q"; })) return "hali yo‘q";
+    if (sozlar.some(function (soz) { return soz !== "tayyor"; })) return "ogohlantirish";
+    return "tayyor";
+  }
+  if (kalit === "ekg") return holat.ekgFayl || holat.manba !== "bosh" ? "tayyor" : "hali yo‘q";
+  if (kalit === "echo") return holat.echo.length || holat.echoFayl.length ? "tayyor" : "hali yo‘q";
+  const kamchilik = QADAMLAR.slice(0, 5).filter(function (band) { return qadamSoz(band[0]) !== "tayyor"; });
+  return kamchilik.length ? "ogohlantirish" : "tayyor";
+}
+
+/** Yetishmovchiliklar ro‘yxati. Yashirilmaydi; tahlil o‘rnini bosmaydi. */
+function kamchiliklar() {
+  const royxat = [];
+  if (qadamSoz("bemor") !== "tayyor") royxat.push("Bemor: yosh, jins yoki shikoyat yetishmaydi, yoki yosh 0–120 dan tashqarida.");
+  if (qadamSoz("lab") !== "tayyor") royxat.push("Laboratoriya: bo‘sh maydon yoki orientirdan tashqari qiymat bor.");
+  if (qadamSoz("ekg") !== "tayyor") royxat.push("EKG: fayl ham, sintetik signal ham yo‘q.");
+  if (qadamSoz("echo") !== "tayyor") royxat.push("Echo: ko‘rinish ham, fayl ham yo‘q.");
+  return royxat;
+}
+
+/** O‘ng ustun faktlari. Har qator kalit bilan, o‘zgarish ajraladi. */
+function faktlar() {
+  const manba = holat.manba === "bosh" ? "Bo‘sh holat" : "Sintetik · " + holat.manba.replace("_", " ");
+  const yosh = holat.yosh === "" ? "hali yo‘q" : holat.yosh + " yosh, " + holat.jins;
+  const labSoni = LABLAR.filter(function (band) { return labSoz(band[0], holat.lab[band[0]]) !== "hali yo‘q"; }).length;
+  const ekg = holat.ekgFayl
+    ? holat.ekgFayl
+    : (holat.manba === "bosh" ? "hali yo‘q" : "sintetik signal, " + holat.hz + " Hz, " + holat.soniya + " s");
+  const echo = holat.echoFayl.length
+    ? holat.echoFayl.join(", ")
+    : (holat.echo.length ? holat.echo.join(", ") : "hali yo‘q");
+  return [
+    ["manba", "Manba", manba + " · haqiqiy yozuv emas"],
+    ["yosh", "Yosh va jins", yosh],
+    ["shikoyat", "Shikoyat", holat.shikoyat.trim() || "hali yo‘q"],
+    ["anamnez", "Anamnez", holat.anamnez.trim() || "hali yo‘q"],
+    ["dorilar", "Dorilar", holat.dorilar.trim() || "hali yo‘q"],
+    ["lab", "Laboratoriya", labSoni + " / 8 qiymat · " + qadamSoz("lab")],
+    ["ekg", "EKG", ekg],
+    ["echo", "Echo", echo]
+  ];
+}
+
+/** Keyingi ochiq ishni bir gapda aytadi. */
+function keyingiIsh() {
+  const ochiq = QADAMLAR.find(function (band) { return qadamSoz(band[0]) !== "tayyor"; });
+  if (!ochiq) return "Barcha qadamlar to‘lgan. Natija ekrani tahlilni ishga tushirmaydi.";
+  return "Keyingi ochiq ish: " + ochiq[1].toLowerCase() + ".";
+}
+
+/** Natija bo‘limi holati. Xom ma’lumot kiritilgan bo‘lsa shunday yoziladi; agent natijasi emas. */
+function bolimSoz(kalit) {
+  if (kalit === "lab_tech") return qadamSoz("lab") === "hali yo‘q" ? "kutilmoqda" : "kiritilgan";
+  if (kalit === "ekg_tech") return qadamSoz("ekg") === "hali yo‘q" ? "kutilmoqda" : "kiritilgan";
+  if (kalit === "echo_tech") return qadamSoz("echo") === "hali yo‘q" ? "kutilmoqda" : "kiritilgan";
+  return "kutilmoqda";
+}
+
+/** Chap qadamlar yoki natija bo‘limlarini chizadi. */
+function chizChap() {
+  const chap = document.getElementById("chap");
+  if (holat.ekran === "natija") {
+    chap.innerHTML = '<p class="nom">Kardiologik AI agent</p><nav aria-label="Natija bo‘limlari">' +
+      BOLIMLAR.map(function (band) {
+        const soz = bolimSoz(band[0]);
+        const joriy = holat.bolim === band[0] ? " joriy" : "";
+        return '<button class="band' + joriy + '" data-bolim="' + band[0] + '">' + esc(band[1]) + "<small>" + soz + "</small></button>";
+      }).join("") +
+      '</nav><button class="band qaytish" id="qaytish">Kiritishga qaytish</button>';
+    chap.querySelectorAll("[data-bolim]").forEach(function (tugma) {
+      tugma.addEventListener("click", function () {
+        holat.bolim = tugma.getAttribute("data-bolim");
+        chiz();
+      });
+    });
+    document.getElementById("qaytish").addEventListener("click", function () {
+      holat.ekran = "kiritish";
+      holat.vizual = false;
+      chiz();
+    });
+    return;
+  }
+  chap.innerHTML = '<p class="nom">Kardiologik AI agent</p><nav aria-label="Kiritish qadamlari">' +
+    QADAMLAR.map(function (band) {
+      const joriy = holat.qadam === band[0] ? " joriy" : "";
+      return '<button class="band' + joriy + '" data-qadam="' + band[0] + '">' + esc(band[1]) + "<small>" + esc(qadamSoz(band[0])) + "</small></button>";
+    }).join("") + "</nav>";
+  chap.querySelectorAll("[data-qadam]").forEach(function (tugma) {
+    tugma.addEventListener("click", function () { otish(tugma.getAttribute("data-qadam")); });
+  });
+}
+
+/** Qadamlar orasida sakraydi va markaz sarlavhasiga fokus beradi. */
+function otish(kalit) {
+  holat.qadam = kalit;
+  chiz();
+  const sarlavha = document.querySelector("#markaz h1");
+  if (sarlavha) sarlavha.focus();
+}
+
+/** Markazdagi joriy qadam yoki natija bo‘limini chizadi. */
+function chizMarkaz() {
+  const markaz = document.getElementById("markaz");
+  if (holat.ekran === "natija") {
+    chizNatija(markaz);
+    return;
+  }
+  const ogoh = '<p class="ogoh">Tashxis emas. Yakuniy qaror shifokorga tegishli. Klinik production emas.</p>';
+  const indeks = QADAMLAR.findIndex(function (band) { return band[0] === holat.qadam; });
+  const oldingi = indeks > 0 ? QADAMLAR[indeks - 1] : null;
+  const keyingi = indeks < QADAMLAR.length - 1 ? QADAMLAR[indeks + 1] : null;
+  let ichki = "";
+  if (holat.qadam === "holat") ichki = chizHolatQadam();
+  if (holat.qadam === "bemor") ichki = chizBemor();
+  if (holat.qadam === "lab") ichki = chizLab();
+  if (holat.qadam === "ekg") ichki = chizEkg();
+  if (holat.qadam === "echo") ichki = chizEcho();
+  if (holat.qadam === "tekshiruv") ichki = chizTekshiruv();
+  const orqaga = oldingi ? '<button class="ikkilamchi" id="orqaga">Orqaga · ' + esc(oldingi[1]) + "</button>" : "<span></span>";
+  const oldinga = keyingi
+    ? '<button class="asosiy" id="keyingi">Keyingi · ' + esc(keyingi[1]) + "</button>"
+    : '<button class="asosiy" id="natijaga">Natija ekraniga o‘tish</button>';
+  markaz.innerHTML = ogoh + ichki + '<div class="pastki">' + orqaga + oldinga + "</div>";
+  const orqagaTugma = document.getElementById("orqaga");
+  const keyingiTugma = document.getElementById("keyingi");
+  if (orqagaTugma) orqagaTugma.addEventListener("click", function () { otish(oldingi[0]); });
+  if (keyingiTugma) keyingiTugma.addEventListener("click", function () { otish(keyingi[0]); });
+  boglaMarkaz();
+}
+
+/** Holat tanlovi: sintetik paket yoki bo‘sh varaq. */
+function chizHolatQadam() {
+  const variantlar = [
+    ["sodda", "Sodda", PAKETLAR.sodda.izoh],
+    ["murakkab", "Murakkab", PAKETLAR.murakkab.izoh],
+    ["juda_murakkab", "Juda murakkab", PAKETLAR.juda_murakkab.izoh],
+    ["bosh", "Bo‘sh holat", "Maydonlar tozalanadi. O‘z ma’lumotingizni keyingi qadamlarda yozasiz."]
+  ];
+  return "<h1 tabindex=\"-1\">Holat</h1><p class=\"izoh\">Bitta holat tanlanadi. Paket maydonlarni to‘ldiradi. Haqiqiy bemor yozuvi emas.</p><fieldset><legend class=\"izoh\">Manba</legend>" +
+    variantlar.map(function (band) {
+      const belgi = holat.manba === band[0] ? " checked" : "";
+      return '<label class="radio-qator"><input type="radio" name="manba" value="' + band[0] + '"' + belgi + '><span><b>' + esc(band[1]) + "</b><p>" + esc(band[2]) + "</p></span></label>";
+    }).join("") + "</fieldset>";
+}
+
+/** Bemor maydonlari. Yoshi va shikoyati bo‘lmasa qadam hali yo‘q. */
+function chizBemor() {
+  const yosh = Number(holat.yosh);
+  const yoshXato = holat.yosh !== "" && (Number.isNaN(yosh) || yosh < 0 || yosh > 120)
+    ? '<p class="xato">Yosh 0 dan 120 gacha bo‘lsin.</p>' : "";
+  return "<h1 tabindex=\"-1\">Bemor</h1><div class=\"qator\"><label class=\"maydon\"><span>Yosh (yil)</span><input id=\"yosh\" inputmode=\"numeric\" type=\"number\" min=\"0\" max=\"120\" value=\"" + esc(holat.yosh) + "\">" + yoshXato + "</label><label class=\"maydon\"><span>Jins</span><select id=\"jins\">" +
+    ["erkak", "ayol", "ko‘rsatilmagan"].map(function (jins) {
+      return '<option' + (holat.jins === jins ? " selected" : "") + ">" + esc(jins) + "</option>";
+    }).join("") +
+    "</select></label></div><label class=\"maydon\"><span>Shikoyatlar</span><textarea id=\"shikoyat\">" + esc(holat.shikoyat) + "</textarea></label><label class=\"maydon\"><span>Anamnez</span><textarea id=\"anamnez\">" + esc(holat.anamnez) + "</textarea></label><label class=\"maydon\"><span>Dori-darmonlar</span><textarea id=\"dorilar\">" + esc(holat.dorilar) + "</textarea><small class=\"past-izoh\">Har qator: nom | doza | chastota</small></label>";
+}
+
+/** Sakkizta laboratoriya maydoni. Orientir tashxis chegarasi emas. */
+function chizLab() {
+  return "<h1 tabindex=\"-1\">Laboratoriya</h1><p class=\"izoh\">Orientir. CSV yoki PDF bu prototipda o‘qilmaydi; raqamni qo‘lda yozing.</p><div class=\"lab-grid\">" +
+    LABLAR.map(function (band) {
+      const qiymat = holat.lab[band[0]];
+      const korinish = qiymat === undefined || qiymat === null ? "" : qiymat;
+      const soz = labSoz(band[0], qiymat);
+      return '<label class="maydon"><span>' + esc(band[1]) + " (" + esc(band[2]) + ")</span><input class=\"son\" id=\"lab-" + band[0] + "\" type=\"number\" step=\"0.1\" value=\"" + esc(korinish) + "\"><small class=\"past-izoh\">" + esc(band[3]) + " · " + esc(soz) + "</small></label>";
+    }).join("") + "</div>";
+}
+
+/** EKG manbasi: sintetik signal yoki fayl nomi. Signal chizilmaydi, tahlil yo‘q. */
+function chizEkg() {
+  const signal = holat.manba === "bosh"
+    ? "Sintetik signal yo‘q."
+    : "Sintetik signal bor: " + holat.hz + " Hz, " + holat.soniya + " s. Paketdagi chastota " + holat.chastota + " (haqiqiy o‘lchov emas).";
+  const fayl = holat.ekgFayl ? "<p>Tanlangan fayl: " + esc(holat.ekgFayl) + ". Prototip faylni saqlamaydi va tahlil qilmaydi.</p>" : "";
+  const xato = holat.ekgXato ? '<p class="xato">' + esc(holat.ekgXato) + "</p>" : "";
+  return "<h1 tabindex=\"-1\">EKG</h1><p class=\"izoh\">" + esc(signal) + " CSV, HEA, DAT yoki TXT fayl nomi sintetik signalning o‘rniga yoziladi.</p><label class=\"maydon\"><span>EKG fayli</span><input id=\"ekg-fayl\" type=\"file\" accept=\".csv,.hea,.dat,.txt\"></label>" + fayl + xato;
+}
+
+/** Echo ko‘rinishlari yoki yuklangan fayl nomlari. Tasnif yo‘q. */
+function chizEcho() {
+  const bor = holat.echo.length
+    ? "<ul class=\"royxat\">" + holat.echo.map(function (nom) { return "<li>" + esc(nom) + "</li>"; }).join("") + "</ul>"
+    : "<p>Sintetik ko‘rinish yo‘q.</p>";
+  const fayl = holat.echoFayl.length ? "<p>Tanlangan fayllar: " + esc(holat.echoFayl.join(", ")) + ".</p>" : "";
+  const xato = holat.echoXato ? '<p class="xato">' + esc(holat.echoXato) + "</p>" : "";
+  return "<h1 tabindex=\"-1\">Echo</h1><p class=\"izoh\">Paketdagi ko‘rinishlar haqiqiy DICOM emas. Fayl tanlansa, shu nomlar qo‘shiladi. Tasnif ulanmagan.</p>" + bor + "<label class=\"maydon\"><span>Echo fayllari</span><input id=\"echo-fayl\" type=\"file\" multiple accept=\".dcm,.dicom,.mp4,.avi,.mov,.mkv,.png,.jpg,.jpeg\"></label>" + fayl + xato;
+}
+
+/** To‘liqlik ro‘yxati va natija ekraniga o‘tish. Agent ishga tushmaydi. */
+function chizTekshiruv() {
+  const qatorlar = QADAMLAR.slice(0, 5).map(function (band) {
+    return "<li>" + esc(band[1]) + ": " + esc(qadamSoz(band[0])) + "</li>";
+  }).join("");
+  const kam = kamchiliklar();
+  const ogohlantirish = kam.length
+    ? '<p class="ogoh">' + esc(kam.join(" ")) + " Natija ekraniga o‘tish mumkin.</p>"
+    : "<p>Kiritish qismi to‘lgan.</p>";
+  return "<h1 tabindex=\"-1\">Tekshiruv</h1><p class=\"izoh\">Agent bu prototipda ishga tushmaydi. Natija ekrani joylashuvni ko‘rsatadi, xulosa bermaydi.</p><ul class=\"royxat\">" + qatorlar + "</ul>" + ogohlantirish;
+}
+
+/** Natija markazi: kiritilgan xom ma’lumot yoki bo‘sh bo‘lim. Tashxis yo‘q. */
+function chizNatija(markaz) {
+  const bolim = BOLIMLAR.find(function (band) { return band[0] === holat.bolim; }) || BOLIMLAR[0];
+  let tanasi = "<p class=\"izoh\">" + esc(bolim[2]) + " Agent ulanmagan.</p>";
+  if (bolim[0] === "lab_tech") {
+    tanasi += "<table><thead><tr><th>Ko‘rsatkich</th><th>Qiymat</th><th>Holat</th></tr></thead><tbody>" +
+      LABLAR.map(function (band) {
+        const qiymat = holat.lab[band[0]];
+        const korinish = qiymat === undefined || qiymat === "" ? "hali yo‘q" : qiymat;
+        return "<tr><td>" + esc(band[1]) + "</td><td>" + esc(korinish) + " " + esc(band[2]) + "</td><td>" + esc(labSoz(band[0], qiymat)) + "</td></tr>";
+      }).join("") + "</tbody></table><p class=\"past-izoh\">Orientir, tashxis chegarasi emas.</p>";
+  }
+  if (bolim[0] === "ekg_tech") {
+    const matn = holat.ekgFayl || (holat.manba === "bosh" ? "Signal yo‘q." : "Sintetik signal, " + holat.hz + " Hz. 12 tasma chizmasi bu yerda tahlildan keyin turadi.");
+    tanasi += "<p>" + esc(matn) + "</p>";
+  }
+  if (bolim[0] === "echo_tech") {
+    const korinish = holat.echo.concat(holat.echoFayl);
+    tanasi += korinish.length
+      ? "<ul class=\"royxat\">" + korinish.map(function (nom) { return "<li>" + esc(nom) + "</li>"; }).join("") + "</ul>"
+      : "<p>Echo yo‘q.</p>";
+  }
+  const vizual = holat.vizual
+    ? '<div class="quti">Vizual tekshiruv bo‘sh. EKG grafigi va echo kadrlari tahlildan keyin shu yerda ochiladi. Hozir rasm yo‘q.</div>'
+    : "";
+  markaz.innerHTML = '<p class="ogoh">Natija ekrani. Tahlil ishga tushmagan. Bu xulosa emas.</p><h1 tabindex="-1">' + esc(bolim[1]) + "</h1>" + tanasi +
+    '<p class="pastki"><button class="ikkilamchi" id="vizual">' + (holat.vizual ? "Vizual panelni yopish" : "Vizual tekshiruvni ochish") + "</button></p>" + vizual;
+  document.getElementById("vizual").addEventListener("click", function () {
+    holat.vizual = !holat.vizual;
+    chizMarkaz();
+  });
+}
+
+/** O‘ng ustun: kiritishda yig‘ilgan holat, natijada bo‘sh xulosa joyi. */
+function chizOng() {
+  const ong = document.getElementById("ong");
+  if (holat.ekran === "natija") {
+    ong.setAttribute("aria-label", "Xulosa joyi");
+    const eslatma = kamchiliklar().length
+      ? "Xulosa yo‘q. Kiritishga qaytib, yetishmovchilikni to‘ldirish mumkin."
+      : "Kiritilgan holat saqlangan. Agent ulanmagan, tavsiya yo‘q.";
+    ong.innerHTML = "<h2>Xulosa</h2><div class=\"fakt\"><b>Murakkablik</b>aniqlanmagan</div><div class=\"fakt\"><b>Amal</b>yo‘q</div><div class=\"fakt\"><b>Matn</b>Agent ulanmagan. Tavsiya yo‘q. Yakuniy qaror shifokorga tegishli.</div><p class=\"bo‘shliq\" id=\"jonli\">" + esc(eslatma) + "</p>";
+    return;
+  }
+  ong.setAttribute("aria-label", "Yig‘ilgan holat");
+  const qatorlar = faktlar();
+  ong.innerHTML = "<h2>Yig‘ilgan holat</h2>" + qatorlar.map(function (band) {
+    const yangi = oldingiKalitlar && oldingiKalitlar[band[0]] !== band[2] ? " yangilandi" : "";
+    return '<div class="fakt' + yangi + '"><b>' + esc(band[1]) + "</b>" + esc(band[2]) + "</div>";
+  }).join("") + '<p class="bo‘shliq" id="jonli">' + esc(keyingiIsh()) + "</p>";
+  const esda = {};
+  qatorlar.forEach(function (band) { esda[band[0]] = band[2]; });
+  oldingiKalitlar = esda;
+  const jonli = document.getElementById("jonli");
+  if (jonli) jonli.setAttribute("aria-live", "polite");
+}
+
+/** Markaz maydonlarini holatga bog‘laydi. Har tugma qayta chizilmaydi. */
+function boglaMarkaz() {
+  document.querySelectorAll('input[name="manba"]').forEach(function (radio) {
+    radio.addEventListener("change", function () {
+      if (radio.value === "bosh") boshga();
+      else paketniYoz(radio.value);
+      chizChap();
+      chizOng();
+      const izoh = document.querySelector("#markaz .izoh");
+      if (izoh) izoh.focus();
+    });
+  });
+  const maydonlar = {
+    yosh: "yosh",
+    jins: "jins",
+    shikoyat: "shikoyat",
+    anamnez: "anamnez",
+    dorilar: "dorilar"
+  };
+  Object.keys(maydonlar).forEach(function (id) {
+    const element = document.getElementById(id);
+    if (!element) return;
+    element.addEventListener("input", function () {
+      holat[maydonlar[id]] = element.value;
+      if (id === "yosh") {
+        const xato = element.parentElement.querySelector(".xato");
+        const yosh = Number(element.value);
+        const yomon = element.value !== "" && (Number.isNaN(yosh) || yosh < 0 || yosh > 120);
+        if (yomon && !xato) {
+          const yozuv = document.createElement("p");
+          yozuv.className = "xato";
+          yozuv.textContent = "Yosh 0 dan 120 gacha bo‘lsin.";
+          element.after(yozuv);
+        }
+        if (!yomon && xato) xato.remove();
+      }
+      chizChap();
+      chizOng();
+    });
+  });
+  LABLAR.forEach(function (band) {
+    const element = document.getElementById("lab-" + band[0]);
+    if (!element) return;
+    element.addEventListener("input", function () {
+      holat.lab[band[0]] = element.value;
+      const izoh = element.parentElement.querySelector(".past-izoh");
+      if (izoh) izoh.textContent = band[3] + " · " + labSoz(band[0], element.value);
+      chizChap();
+      chizOng();
+    });
+  });
+  const ekg = document.getElementById("ekg-fayl");
+  if (ekg) {
+    ekg.addEventListener("change", function () {
+      const fayl = ekg.files && ekg.files[0];
+      if (!fayl) return;
+      const past = fayl.name.toLowerCase();
+      if (!/\.(csv|hea|dat|txt)$/.test(past)) {
+        holat.ekgXato = "Bu fayl EKG uchun emas. CSV, HEA, DAT yoki TXT tanlang.";
+        holat.ekgFayl = "";
+      } else {
+        holat.ekgXato = "";
+        holat.ekgFayl = fayl.name;
+      }
+      chiz();
+    });
+  }
+  const echo = document.getElementById("echo-fayl");
+  if (echo) {
+    echo.addEventListener("change", function () {
+      const fayllar = Array.from(echo.files || []);
+      const yomon = fayllar.filter(function (fayl) {
+        return !/\.(dcm|dicom|mp4|avi|mov|mkv|png|jpg|jpeg)$/i.test(fayl.name);
+      });
+      if (yomon.length) {
+        holat.echoXato = "Ba’zi fayllar echo uchun emas: " + yomon.map(function (fayl) { return fayl.name; }).join(", ") + ".";
+      } else holat.echoXato = "";
+      holat.echoFayl = fayllar.filter(function (fayl) { return yomon.indexOf(fayl) === -1; }).map(function (fayl) { return fayl.name; });
+      chiz();
+    });
+  }
+  const natija = document.getElementById("natijaga");
+  if (natija) {
+    natija.addEventListener("click", function () {
+      holat.ekran = "natija";
+      holat.bolim = "klinik_reja";
+      chiz();
+    });
+  }
+}
+
+/** Uch ustunni joriy ekranga moslaydi. */
+function chiz() {
+  chizChap();
+  chizMarkaz();
+  chizOng();
+}
+
+const sorov = new URLSearchParams(location.search);
+const boshlangich = sorov.get("holat");
+if (PAKETLAR[boshlangich]) paketniYoz(boshlangich);
+else if (boshlangich === "bosh") boshga();
+else paketniYoz("sodda");
+const qadam = sorov.get("qadam");
+if (QADAMLAR.some(function (band) { return band[0] === qadam; })) holat.qadam = qadam;
+chiz();
+</script>
+</body>
+</html>

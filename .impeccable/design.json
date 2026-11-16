@@ -1,0 +1,233 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-16T16:22:00+05:00",
+  "title": "Design System: Kardiologik AI agent",
+  "extensions": {
+    "colorMeta": {
+      "ground": {
+        "role": "neutral",
+        "displayName": "Clinic Ground",
+        "canonical": "#ECFEFF",
+        "tonalRamp": ["oklch(15% 0.006 201)", "oklch(26% 0.009 201)", "oklch(38% 0.013 201)", "oklch(50% 0.017 201)", "oklch(62% 0.017 201)", "oklch(74% 0.013 201)", "oklch(85% 0.009 201)", "oklch(95% 0.006 201)"]
+      },
+      "ink": {
+        "role": "neutral",
+        "displayName": "Deep Teal Ink",
+        "canonical": "#164E63",
+        "tonalRamp": ["oklch(15% 0.020 227)", "oklch(26% 0.033 227)", "oklch(38% 0.047 227)", "oklch(50% 0.061 227)", "oklch(62% 0.058 227)", "oklch(74% 0.044 227)", "oklch(85% 0.032 227)", "oklch(95% 0.020 227)"]
+      },
+      "white": {
+        "role": "neutral",
+        "displayName": "Work White",
+        "canonical": "#FFFFFF",
+        "tonalRamp": ["oklch(15% 0.000 0)", "oklch(26% 0.000 0)", "oklch(38% 0.000 0)", "oklch(50% 0.000 0)", "oklch(62% 0.000 0)", "oklch(74% 0.000 0)", "oklch(85% 0.000 0)", "oklch(95% 0.000 0)"]
+      },
+      "line": {
+        "role": "neutral",
+        "displayName": "Selection Line",
+        "canonical": "#A5F3FC",
+        "tonalRamp": ["oklch(15% 0.023 205)", "oklch(26% 0.038 205)", "oklch(38% 0.054 205)", "oklch(50% 0.070 205)", "oklch(62% 0.068 205)", "oklch(74% 0.052 205)", "oklch(85% 0.037 205)", "oklch(95% 0.023 205)"]
+      },
+      "wash": {
+        "role": "neutral",
+        "displayName": "Hover Wash",
+        "canonical": "#F0FDFA",
+        "tonalRamp": ["oklch(15% 0.004 181)", "oklch(26% 0.007 181)", "oklch(38% 0.010 181)", "oklch(50% 0.013 181)", "oklch(62% 0.012 181)", "oklch(74% 0.009 181)", "oklch(85% 0.007 181)", "oklch(95% 0.004 181)"]
+      },
+      "accent": {
+        "role": "primary",
+        "displayName": "Signal Cyan",
+        "canonical": "#0891B2",
+        "tonalRamp": ["oklch(15% 0.029 222)", "oklch(26% 0.048 222)", "oklch(38% 0.070 222)", "oklch(50% 0.092 222)", "oklch(62% 0.097 222)", "oklch(74% 0.074 222)", "oklch(85% 0.053 222)", "oklch(95% 0.033 222)"]
+      },
+      "accent-deep": {
+        "role": "primary",
+        "displayName": "Deep Signal",
+        "canonical": "#0E7490",
+        "tonalRamp": ["oklch(15% 0.028 223)", "oklch(26% 0.046 223)", "oklch(38% 0.066 223)", "oklch(50% 0.085 223)", "oklch(62% 0.082 223)", "oklch(74% 0.062 223)", "oklch(85% 0.044 223)", "oklch(95% 0.028 223)"]
+      },
+      "accent-hover": {
+        "role": "primary",
+        "displayName": "Lifted Cyan",
+        "canonical": "#06B6D4",
+        "tonalRamp": ["oklch(15% 0.027 215)", "oklch(26% 0.046 215)", "oklch(38% 0.067 215)", "oklch(50% 0.089 215)", "oklch(62% 0.110 215)", "oklch(74% 0.084 215)", "oklch(85% 0.060 215)", "oklch(95% 0.038 215)"]
+      },
+      "on-accent": {
+        "role": "neutral",
+        "displayName": "On-Accent Black",
+        "canonical": "#000",
+        "tonalRamp": ["oklch(15% 0.000 0)", "oklch(26% 0.000 0)", "oklch(38% 0.000 0)", "oklch(50% 0.000 0)", "oklch(62% 0.000 0)", "oklch(74% 0.000 0)", "oklch(85% 0.000 0)", "oklch(95% 0.000 0)"]
+      },
+      "warning-bg": {
+        "role": "warning",
+        "displayName": "Amber Band",
+        "canonical": "#FEF3C7",
+        "tonalRamp": ["oklch(15% 0.017 96)", "oklch(26% 0.029 96)", "oklch(38% 0.041 96)", "oklch(50% 0.053 96)", "oklch(62% 0.051 96)", "oklch(74% 0.039 96)", "oklch(85% 0.028 96)", "oklch(95% 0.017 96)"]
+      },
+      "warning-ink": {
+        "role": "warning",
+        "displayName": "Amber Ink",
+        "canonical": "#451A03",
+        "tonalRamp": ["oklch(15% 0.022 46)", "oklch(26% 0.037 46)", "oklch(38% 0.052 46)", "oklch(50% 0.068 46)", "oklch(62% 0.065 46)", "oklch(74% 0.050 46)", "oklch(85% 0.035 46)", "oklch(95% 0.022 46)"]
+      }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Display", "purpose": "The entry heading." },
+      "headline": { "displayName": "Headline", "purpose": "The column heading on the case side." },
+      "title": { "displayName": "Title", "purpose": "Step names and the name in the rail." },
+      "body": { "displayName": "Body", "purpose": "Running text, held near 68 characters." },
+      "label": { "displayName": "Label", "purpose": "Field names, in sentence case." }
+    },
+    "shadows": [
+      {
+        "name": "none",
+        "value": "none",
+        "purpose": "Surfaces stay flat. Depth is tonal: Clinic Ground, Work White, then the amber band."
+      }
+    ],
+    "motion": [
+      {
+        "name": "fact-wash",
+        "value": "700ms cubic-bezier(0.16, 1, 0.3, 1)",
+        "purpose": "A changed fact row washes from Selection Line to transparent. Removed when prefers-reduced-motion is set."
+      }
+    ],
+    "breakpoints": [
+      { "name": "compact", "value": "960px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The forward action. Black type on Signal Cyan, with a Deep Signal border.",
+      "html": "<button class=\"ds-btn-primary\" type=\"button\">Keyingi</button>",
+      "css": ".ds-btn-primary { background: #0891B2; color: #000; border: 1px solid #0E7490; border-radius: 8px; padding: 0 18px; min-height: 48px; font: 700 18px/1.2 \"Atkinson Hyperlegible\", \"Segoe UI\", sans-serif; cursor: pointer; } .ds-btn-primary:hover { background: #06B6D4; } .ds-btn-primary:focus-visible { outline: 3px solid #0891B2; outline-offset: 2px; }"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "The back action. White fill, ink type, Selection Line border.",
+      "html": "<button class=\"ds-btn-secondary\" type=\"button\">Orqaga</button>",
+      "css": ".ds-btn-secondary { background: #FFFFFF; color: #164E63; border: 1px solid #A5F3FC; border-radius: 8px; padding: 0 18px; min-height: 48px; font: 700 18px/1.2 \"Atkinson Hyperlegible\", \"Segoe UI\", sans-serif; cursor: pointer; } .ds-btn-secondary:hover { border-color: #0891B2; background: #F0FDFA; } .ds-btn-secondary:focus-visible { outline: 3px solid #0891B2; outline-offset: 2px; }"
+    },
+    {
+      "name": "Text Field",
+      "kind": "input",
+      "refersTo": "field",
+      "description": "A single-line entry. White, 20px type, Selection Line border, cyan caret.",
+      "html": "<input class=\"ds-field\" type=\"text\" value=\"Shikoyat matni\">",
+      "css": ".ds-field { display: block; width: 100%; background: #FFFFFF; color: #164E63; border: 1px solid #A5F3FC; border-radius: 12px; padding: 12px 14px; font: 400 20px/1.4 \"Atkinson Hyperlegible\", \"Segoe UI\", sans-serif; caret-color: #0891B2; } .ds-field:hover { border-color: #A5F3FC; } .ds-field:focus-visible { outline: 3px solid #0891B2; outline-offset: 2px; }"
+    },
+    {
+      "name": "Numeric Field",
+      "kind": "input",
+      "refersTo": "field",
+      "description": "A clinical figure. The text field with tabular numerals.",
+      "html": "<input class=\"ds-field-num\" type=\"text\" inputmode=\"numeric\" value=\"4.2\">",
+      "css": ".ds-field-num { display: block; width: 100%; background: #FFFFFF; color: #164E63; border: 1px solid #A5F3FC; border-radius: 12px; padding: 12px 14px; font: 400 20px/1.4 \"Atkinson Hyperlegible\", \"Segoe UI\", sans-serif; font-variant-numeric: tabular-nums; caret-color: #0891B2; } .ds-field-num:hover { border-color: #A5F3FC; } .ds-field-num:focus-visible { outline: 3px solid #0891B2; outline-offset: 2px; }"
+    },
+    {
+      "name": "Step",
+      "kind": "nav",
+      "refersTo": "step",
+      "description": "A step in the rail. The name is ink; the status word is Deep Signal.",
+      "html": "<button class=\"ds-step\" type=\"button\">Bemor<small>tayyor</small></button>",
+      "css": ".ds-step { display: block; width: 100%; text-align: left; background: #FFFFFF; color: #164E63; border: 1px solid transparent; border-radius: 12px; padding: 12px; font: 700 18px/1.3 \"Atkinson Hyperlegible\", \"Segoe UI\", sans-serif; cursor: pointer; } .ds-step small { display: block; margin-top: 2px; font-weight: 400; font-size: 16px; line-height: 1.5; color: #0E7490; } .ds-step:hover { border-color: #0891B2; } .ds-step:focus-visible { outline: 3px solid #0891B2; outline-offset: 2px; }"
+    },
+    {
+      "name": "Current Step",
+      "kind": "nav",
+      "refersTo": "step-current",
+      "description": "The step in progress. Name and status word are black on Signal Cyan.",
+      "html": "<button class=\"ds-step-current\" type=\"button\">Laboratoriya<small>ogohlantirish</small></button>",
+      "css": ".ds-step-current { display: block; width: 100%; text-align: left; background: #0891B2; color: #000; border: 1px solid #0E7490; border-radius: 12px; padding: 12px; font: 700 18px/1.3 \"Atkinson Hyperlegible\", \"Segoe UI\", sans-serif; cursor: pointer; } .ds-step-current small { display: block; margin-top: 2px; font-weight: 400; font-size: 16px; line-height: 1.5; color: #000; } .ds-step-current:hover { background: #0891B2; border-color: #0891B2; } .ds-step-current:focus-visible { outline: 3px solid #0891B2; outline-offset: 2px; }"
+    },
+    {
+      "name": "Warning Band",
+      "kind": "custom",
+      "refersTo": "alert",
+      "description": "Full amber caution across the entry column.",
+      "html": "<p class=\"ds-alert\">Tashxis emas. Yakuniy qaror shifokorga tegishli. Klinik production emas.</p>",
+      "css": ".ds-alert { margin: 0; background: #FEF3C7; color: #451A03; border-radius: 12px; padding: 12px 14px; font: 400 16px/1.5 \"Atkinson Hyperlegible\", \"Segoe UI\", sans-serif; } .ds-alert:hover { background: #FEF3C7; } .ds-alert:focus-visible { outline: 3px solid #0891B2; outline-offset: 2px; }"
+    },
+    {
+      "name": "Fact Row",
+      "kind": "custom",
+      "refersTo": "fact",
+      "description": "One line of the case. A change washes the row for 700ms.",
+      "html": "<div class=\"ds-fact ds-fact-changed\"><b>Yosh va jins</b>45 yosh, ayol</div>",
+      "css": ".ds-fact { border-top: 1px solid #A5F3FC; padding: 10px 0; font: 400 16px/1.5 \"Atkinson Hyperlegible\", \"Segoe UI\", sans-serif; color: #164E63; } .ds-fact b { display: block; font-size: 16px; font-weight: 700; color: #0E7490; } .ds-fact-changed { animation: ds-yozildi 700ms cubic-bezier(0.16, 1, 0.3, 1); } @keyframes ds-yozildi { from { background: #A5F3FC; } to { background: transparent; } } @media (prefers-reduced-motion: reduce) { .ds-fact-changed { animation: none; } } .ds-fact:hover { color: #164E63; } .ds-fact:focus-visible { outline: 3px solid #0891B2; outline-offset: 2px; }"
+    },
+    {
+      "name": "Choice Row",
+      "kind": "input",
+      "refersTo": "choice",
+      "description": "A single-choice source row. White, Selection Line border, cyan radio.",
+      "html": "<label class=\"ds-choice\"><input type=\"radio\" name=\"ds-manba\" checked><span><b>Sodda</b><p>Maydonlar to‘ldiriladi.</p></span></label>",
+      "css": ".ds-choice { display: grid; grid-template-columns: 22px 1fr; gap: 10px; align-items: start; background: #FFFFFF; color: #164E63; border: 1px solid #A5F3FC; border-radius: 12px; padding: 12px 14px; font: 400 16px/1.5 \"Atkinson Hyperlegible\", \"Segoe UI\", sans-serif; } .ds-choice input { width: 18px; height: 18px; margin-top: 3px; accent-color: #0891B2; } .ds-choice b { display: block; font-weight: 700; } .ds-choice p { margin: 4px 0 0; } .ds-choice:hover { background: #FFFFFF; } .ds-choice input:focus-visible { outline: 3px solid #0891B2; outline-offset: 2px; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Case Spine",
+    "overview": "The Case Spine is a full-height work surface for one case. Steps sit in a narrow column on the left, the current entry fills the center, and the case rewrites itself in the column on the right. The conclusion is a later screen. This is an operate surface: dense, quiet, and meant to be read at a workstation. The screen assembles the case and leaves the decision with the physician.\n\nThe palette is a pale cyan ground, white columns, and a single cyan accent. Caution is a full amber band. Status is written as a word. Secondary lines use the deep accent. Surfaces are flat, and depth is a change of tone: ground, white column, amber band.\n\nMotion is rare. When a fact changes, that row washes for 700ms and settles. If the reader prefers reduced motion, the wash is removed. Type is one face, Atkinson Hyperlegible, in two weights: 400 for reading and 700 for headings, steps, actions, and labels.",
+    "keyCharacteristics": [
+      "One cyan accent on a pale ground and white columns",
+      "Status carried by a word, with the current step in black on the accent",
+      "A full amber warning band",
+      "Tabular numerals on clinical figures",
+      "Flat surfaces, with depth made by tone",
+      "Three independently scrolling columns, and a sticky step rail when the window is narrow"
+    ],
+    "rules": [
+      {
+        "name": "The Status-in-Words Rule",
+        "body": "Status is a word — tayyor, hali yo‘q, ogohlantirish, kutilmoqda, or kiritilgan. Color does not carry status by itself. On the current step the word is black on the accent.",
+        "section": "colors"
+      },
+      {
+        "name": "The Single Accent Rule",
+        "body": "Signal cyan is the only accent. The amber pair is the warning surface. Secondary text is Deep Signal.",
+        "section": "colors"
+      },
+      {
+        "name": "The Tabular Numerals Rule",
+        "body": "Lab values, rates, and table cells use tabular numerals so columns of figures stay aligned.",
+        "section": "typography"
+      },
+      {
+        "name": "The Own Scroll Rule",
+        "body": "The three columns fill the viewport and each one scrolls on its own. At 960px and below, the step rail sticks to the top, fields stack in one column, and the case panel follows the entry.",
+        "section": "layout"
+      },
+      {
+        "name": "The Tonal Depth Rule",
+        "body": "Surfaces are flat. Depth is Clinic Ground, then Work White, then the amber band.",
+        "section": "elevation"
+      },
+      {
+        "name": "The Two Radii Rule",
+        "body": "Fields, steps, the warning band, tables, and the case note use a 12px corner. Actions use an 8px corner.",
+        "section": "shapes"
+      }
+    ],
+    "dos": [
+      "Do write status as one of these words: tayyor, hali yo‘q, ogohlantirish, kutilmoqda, kiritilgan.",
+      "Do put black text on the accent for the current step and the primary action.",
+      "Do paint caution as a full amber band, amber ink on Amber Band, with a 12px corner.",
+      "Do set secondary text in the deep accent.",
+      "Do draw a 3px accent focus ring, offset 2px, on keyboard focus.",
+      "Do use tabular numerals on clinical figures.",
+      "Do wash a changed fact row for 700ms on cubic-bezier(0.16, 1, 0.3, 1), and disable that animation under prefers-reduced-motion."
+    ],
+    "donts": [
+      "Don't add a second accent, gray secondary text, or a drop shadow.",
+      "Don't communicate status by color alone.",
+      "Don't place an eyebrow or kicker above a heading, and don't use emoji as icons.",
+      "Don't set headings or field labels in uppercase.",
+      "Don't invent a font weight between 400 and 700."
+    ]
+  }
+}

@@ -3,6 +3,8 @@ langgraph
 matplotlib>=3.8,<3.11
 neurokit2
 numpy>=1.26.4,<2
+# pyarrow 26+ NumPy 2 talab qiladi; Streamlit 25.0.0 ni rad etadi.
+pyarrow>=18,<25
 streamlit
 torch
 # PyPI dagi torchvision bu CPU torch bilan mos kelmaydi.
